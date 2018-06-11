@@ -45,7 +45,7 @@ class Bitmap  {
 			}
 		
 		}
-		Bitmap(size_t width, size_t height, unsigned int color = 0xFFFFFFFF){
+		Bitmap(unsigned int width, unsigned int height, unsigned int color = 0xFFFFFFFF){
 			pixel_n = width * height;
 
 			//finsih
@@ -161,7 +161,7 @@ class Bitmap  {
 		//
 		ifstream instream;
 		ofstream outstream;
-		size_t pixel_n;
+		uint32 pixel_n;
 		uint32 readInt(uint32 bytes);
 		void writeInt(uint32, int length);
 		

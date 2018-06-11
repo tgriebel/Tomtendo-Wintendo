@@ -21,19 +21,16 @@
     <ClInclude Include="targetver.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="types_common.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
     <ClInclude Include="6502.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="utility.h">
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="debug.h">
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="bitmap.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="common.h">
       <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -44,10 +41,19 @@
     <ClCompile Include="6502.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="nes_main.cpp">
+    <ClCompile Include="bitmap.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="bitmap.cpp">
+    <ClCompile Include="NesMappers.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="test6502.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="NesSystem.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="tomTendo.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
