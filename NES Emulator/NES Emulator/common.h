@@ -4,8 +4,9 @@
 #include <fstream>
 #include <string>
 
-#define NES_MODE 0
+#define NES_MODE 1
 #define DEBUG_MODE 1
+#define DEBUG_ADDR 1
 #define DEBUG_MEM 1
 
 typedef unsigned short	ushort;
@@ -59,12 +60,16 @@ static void LoadNesFile( const std::string& fileName, NesCart& outCart )
 	nesFile.read( reinterpret_cast<char*>( &outCart ), len );
 	nesFile.close();
 
-	//
+	assert( outCart.header.type[0] == 'N' );
+	assert( outCart.header.type[1] == 'E' );
+	assert( outCart.header.type[2] == 'S' );
+	assert( outCart.header.magic == 0x1A );
+
 	std::ofstream checkFile;
 	checkFile.open( "checkFile.nes", std::ios::binary );
 	checkFile.write( reinterpret_cast<char*>( &outCart ), len );
 	checkFile.close();
-	//
+	
 
 	outCart.size = len - sizeof( outCart.header ); // TODO: trainer needs to be checked
 }

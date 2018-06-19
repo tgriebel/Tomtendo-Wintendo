@@ -125,17 +125,15 @@ int main()
 {
 	Cpu6502 cpu;
 
-	cpu.BuildInstructionMap();
-	//cpu.PrintInstructionMap();
 	cpu.Reset();
 
 #if NES_MODE == 1
 	NesCart cart;
-	LoadNesFile( "Donkey Kong.nes", cart );
+	LoadNesFile( "nestest.nes", cart );
 
-	LoadProgram( cart );
+	cpu.LoadProgram( cart, 0xC000 );
 
-	//Run();
+	cpu.Run();
 #else
 	const float passedPercent = RunTests( cpu );
 
@@ -159,7 +157,7 @@ int main()
 	*/
 
 #if NES_MODE == 1
-	uint colorIndex[] = { 0x000000FF, 0xFF0000FF,	0x880000FF, 0xAAFFEEFF };
+	/*uint colorIndex[] = { 0x000000FF, 0xFF0000FF,	0x880000FF, 0xAAFFEEFF };
 
 	Bitmap image( 128, 256, 0x00 );
 	
@@ -190,20 +188,16 @@ int main()
 				image.setPixel( imageX, 255 - imageY, colorIndex[lowerBits] );
 			}
 		}
-
-		//stringstream bitmapNameStream;
-		//bitmapNameStream << "output" << tileIx << ".bmp";
-		//image.write( bitmapNameStream.str() );
 	}
 	
 
-	image.write( "output.bmp" );
+	image.write( "chrRom.bmp" );*/
 #endif // #if NES_MODE == 1
 	
 #endif // #if DEBUG_MEM
 
-	char end;
-	cin >> end;
+	//char end;
+	//cin >> end;
 
 	return 0;
 }

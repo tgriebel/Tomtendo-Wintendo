@@ -1,6 +1,7 @@
 #pragma once
 
 #include <map>
+#include <sstream>
 #include "common.h"
 
 typedef byte StatusBit;
@@ -41,7 +42,7 @@ const StatusBit	STATUS_OVERFLOW		= ( 1 << BIT_OVERFLOW );
 const StatusBit	STATUS_NEGATIVE		= ( 1 << BIT_NEGATIVE );
 
 
-enum RegisterIndex
+enum RegisterIndex : byte
 {
 	iX = 0,
 	iY = 1,
@@ -53,7 +54,7 @@ enum RegisterIndex
 };
 
 
-enum OpCode
+enum OpCode : byte
 {
 	BRK = 0x00,
 	JSR = 0x20,
@@ -94,7 +95,7 @@ enum OpCode
 	DEX = 0xCA,
 	Nop = 0xEA,
 
-	JMP = 0x4C,
+	JMP	= 0x4C,
 	JMPI = 0x6C,
 
 	BIT = 0x20,
@@ -123,113 +124,63 @@ enum OpCode
 };
 
 
-// For aaabbbcc instructions, these code the bbbcc portion.
-// The number suffix in the address enum stands for the cc bits. No op-codes end in 11.
-enum AddrMode
-{
-	IMM0 = 0x00,
-	ZP0 = 0x04,
-	ABS0 = 0x0C,
-	ZPX0 = 0x14,
-	ABSX0 = 0x1C,
-
-	ZPIX1 = 0x01,
-	ZP1 = 0x05,
-	IMM1 = 0x09,
-	ABS1 = 0x0D,
-	ZPY1 = 0x11,
-	ZPX1 = 0x15,
-	ABSY1 = 0x19,
-	ABSX1 = 0x1D,
-
-	IMM2 = 0x02,
-	ZP2 = 0x06,
-	ACC2 = 0x0A,
-	ABS2 = 0x0E,
-	ZPX2 = 0x16,
-	ABSX2 = 0x1E,
-};
-
-
 enum FormatCode
 {
-	ILLEGAL = 0xFF,
-	MATH_OP = 0xFF,
-	STACK_OP = 0xFF,
-	JUMP_OP = 0xFF,
-	SYSTEM_OP = 0xFF,
-	REGISTER_OP = 0xFF,
-	BRANCH_OP = 0xF0,
-	ADDR_OP = 0xE3,
-	BITWISE_OP = 0xE3,
+	MATH_OP		= 0x01,
+	STACK_OP	= 0x02,
+	JUMP_OP		= 0x03,
+	SYSTEM_OP	= 0x04,
+	REGISTER_OP	= 0x05,
+	COMPARE_OP	= 0x06,
+	STATUS_OP	= 0x07,
+	BRANCH_OP	= 0x08,
+	ADDR_OP		= 0x09,
+	LOAD_OP		= 0x10,
+	STORE_OP	= 0x11,
+	BITWISE_OP	= 0x12,
+	ILLEGAL		= 0xFF,
 };
 
 
 struct InstrParams
 {
-	byte*			reg0;
-	byte* 			reg1;
 	byte			param0;
 	byte			param1;
 	byte			cycles;
-	StatusBit		statusFlag;
 	AddrFunction	getAddr;
 
-	InstrParams() : cycles( 0 ), getAddr( NULL ), param0( 0 ), param1( 0 ), reg0( NULL ), reg1( NULL ), statusFlag( STATUS_NONE ) {}
+	InstrParams() : cycles( 0 ), getAddr( NULL ), param0( 0 ), param1( 0 ) {}
 };
 
 
 struct InstructionMapTuple
 {
-	byte			operands;
-	InstrParams		params;
-	Instruction		instr;
-
 #if DEBUG_MODE == 1
-	static const uint BufferSize = 16;
-
-	char			mnemonic[BufferSize];
-	char			descriptor[BufferSize];
-
-	InstructionMapTuple() : operands( 0 )
-	{
-		memset( mnemonic, 0, BufferSize );
-		memset( descriptor, 0, BufferSize );
-	}
-#endif // #if DEBUG_MODE == 1 
-};
-
-
-struct DisassemblerMapTuple
-{
-	char opCode[16];
-	char addrFormat[16];
-	byte length;
-};
-
-
-struct Cpu6502Config
-{
-	static const half StackBase = 0x0100;
-	static const half ram = 0x0800;
-	static const half Bank0 = 0x8000;
-	static const half Bank1 = 0xC000;
-	static const half BankSize = 0x4000;
-	static const half ResetVectorAddr = 0xFFFC;
-	static const half NmiAddr = 0xFFFC;
-	static const half IrqAddr = 0xFFFA;
+	char			mnemonic[16];
+#endif // #if DEBUG_MODE == 1
+	byte			byteCode;
+	FormatCode		format;
+	Instruction		instr;
+	AddrFunction	addrFunc;
+	byte			operands;
+	byte			cycles;
 };
 
 
 struct Cpu6502
 {
+	static const half StackBase			= 0x0100;
+	static const half ram				= 0x0800;
+	static const half Bank0				= 0x8000;
+	static const half Bank1				= 0xC000;
+	static const half BankSize			= 0x4000;
+	static const half ResetVectorAddr	= 0xFFFC;
+	static const half NmiAddr			= 0xFFFC;
+	static const half IrqAddr			= 0xFFFA;
 	static const uint NumInstructions	= 256;
 	static const half VirtualMemorySize = 0xFFFF;
-
-	Cpu6502Config config;
-
-	InstructionMapTuple instructionMap[NumInstructions];
-	DisassemblerMapTuple disassemblerMap[NumInstructions];
+	static const half ZeroPageWrap		= 0x0100;
+	static const uint MemoryWrap		= ( VirtualMemorySize + 1 );
 
 	half nmiVector;
 	half irqVector;
@@ -245,13 +196,9 @@ struct Cpu6502
 	byte& P		= regs[iP];
 	half PC;
 
-	/*
-	Cpu6502()
-	{
-		BuildInstructionMap();
-		Reset();
-	}
-	*/
+#if DEBUG_MODE == 1
+	std::stringstream debugAddr;
+#endif // #if DEBUG_MODE == 1
 
 	void Reset()
 	{
@@ -260,9 +207,9 @@ struct Cpu6502
 		X = 0;
 		Y = 0;
 		A = 0;
-		SP = 0xFF;
+		SP = 0xFD;//0xFF;
 
-		P = STATUS_UNUSED | STATUS_BREAK;
+		P = 0x24;//STATUS_UNUSED | STATUS_BREAK;
 	}
 
 	bool Run();
@@ -271,46 +218,71 @@ struct Cpu6502
 	void PushToStack( const byte value );
 	byte PopFromStack();
 
-	void LoadProgram( const NesCart& cart )
+	void LoadProgram( const NesCart& cart, const uint resetVectorManual = 0x10000 )
 	{
 		memset( memory, 0, VirtualMemorySize );
 
-		memcpy( memory + config.Bank0, cart.rom, config.BankSize );
+		memcpy( memory + Bank0, cart.rom, BankSize );
 
 		assert( cart.header.prgRomBanks <= 2 );
 
 		if ( cart.header.prgRomBanks == 1 )
 		{
-			memcpy( memory + config.Bank1, cart.rom, config.BankSize );
+			memcpy( memory + Bank1, cart.rom, BankSize );
 		}
 		else
 		{
-			memcpy( memory + config.Bank1, cart.rom + config.Bank1, config.BankSize );
+			memcpy( memory + Bank1, cart.rom + Bank1, BankSize );
 		}
 
-		resetVector = ( memory[config.ResetVectorAddr + 1] << 8 ) | memory[config.ResetVectorAddr];
+		if( resetVectorManual == 0x10000 )
+		{
+			resetVector = ( memory[ResetVectorAddr + 1] << 8 ) | memory[ResetVectorAddr];
+
+		}
+		else
+		{
+			resetVector = static_cast< half >( resetVectorManual & 0xFFFF );
+		}
 
 		Reset();
 	}
 
-	void PrintInstructionMap();
-
 	byte Illegal( const InstrParams& params );
-	byte Store( const InstrParams& params );
-	byte Load( const InstrParams& params );
-	byte Move( const InstrParams& params );
-	byte IncReg( const InstrParams& params );
-	byte DecReg( const InstrParams& params );
+	byte STA( const InstrParams& params );
+	byte STX( const InstrParams& params );
+	byte STY( const InstrParams& params );
+	byte LDA( const InstrParams& params );
+	byte LDX( const InstrParams& params );
+	byte LDY( const InstrParams& params );
+	byte TXS( const InstrParams& params );
+	byte TAX( const InstrParams& params );
+	byte TAY( const InstrParams& params );
+	byte TSX( const InstrParams& params );
+	byte TYA( const InstrParams& params );
+	byte TXA( const InstrParams& params );
+	byte INX( const InstrParams& params );
+	byte INY( const InstrParams& params );
+	byte DEX( const InstrParams& params );
+	byte DEY( const InstrParams& params );
 	byte INC( const InstrParams& params );
 	byte DEC( const InstrParams& params );
 	byte ADC( const InstrParams& params );
 	byte SBC( const InstrParams& params );
-	byte Compare( const InstrParams& params );
-	byte Push( const InstrParams& params );
-	byte Pop( const InstrParams& params );
+	byte CMP( const InstrParams& params );
+	byte CPX( const InstrParams& params );
+	byte CPY( const InstrParams& params );
+	byte PHP( const InstrParams& params );
+	byte PHA( const InstrParams& params );
+	byte PLA( const InstrParams& params );
 	byte PLP( const InstrParams& params );
-	byte SetStatusBit( const InstrParams& params );
-	byte ClearStatusBit( const InstrParams& params );
+	byte SEC( const InstrParams& params );
+	byte SEI( const InstrParams& params );
+	byte SED( const InstrParams& params );
+	byte CLI( const InstrParams& params );
+	byte CLC( const InstrParams& params );
+	byte CLV( const InstrParams& params );
+	byte CLD( const InstrParams& params );
 
 	byte ASL( const InstrParams& params );
 	byte AND( const InstrParams& params );
@@ -328,157 +300,311 @@ struct Cpu6502
 	byte RTS( const InstrParams& params );
 	byte RTI( const InstrParams& params );
 
-	byte BranchOnSet( const InstrParams& params );
-	byte BranchOnClear( const InstrParams& params );
+	byte BMI( const InstrParams& params );
+	byte BVS( const InstrParams& params );
+	byte BCS( const InstrParams& params );
+	byte BEQ( const InstrParams& params );
+	byte BPL( const InstrParams& params );
+	byte BVC( const InstrParams& params );
+	byte BCC( const InstrParams& params );
+	byte BNE( const InstrParams& params );
 
 	byte NOP( const InstrParams& params );
-
+	 
 	byte& Absolute( const InstrParams& params, word& outValue );
-	byte& IndexedAbsolute( const InstrParams& params, word& outValue );
 	byte& Zero( const InstrParams& params, word& outValue );
-	byte& IndexedZero( const InstrParams& params, word& outValue );
 	byte& Immediate( const InstrParams& params, word& outValue );
-	byte& Indirect( const InstrParams& params, word& outValue );
-	byte& IndexedIndirect( const InstrParams& params, word& outValue );
+	byte& IndexedIndirect( const InstrParams& params, word& address );
 	byte& IndirectIndexed( const InstrParams& params, word& outValue );
 	byte& Accumulator( const InstrParams& params, word& outValue );
 
-	friend struct OpCodeMap;
-	friend struct AddrMapTuple;
-	 
-//private:
+	byte& Cpu6502::IndexedAbsolute( const InstrParams& params, word& address, const byte& reg );
+	byte& IndexedAbsoluteX( const InstrParams& params, word& address );
+	byte& IndexedAbsoluteY( const InstrParams& params, word& address );
+
+	byte& IndexedZero( const InstrParams& params, word& address, const byte& reg );
+	byte& IndexedZeroX( const InstrParams& params, word& address );
+	byte& IndexedZeroY( const InstrParams& params, word& address );
+
+private:
 	static bool CheckSign( const half checkValue );
 	static bool CheckCarry( const half checkValue );
 	static bool CheckZero( const half checkValue );
+	static bool CheckOverflow( const half src, const half temp, const byte finalValue );
 	static bool IsIllegalOp( const byte opCode );
 
-	bool BuildInstructionMap();
-
-	half CombineIndirect( const byte lsb, const byte msb );
-
-	void Branch( const InstrParams& params, const bool takeBranch );
-
-	byte& Read( const InstrParams& params );
-	void Write( const InstrParams& params, const byte value );
-	byte& GetParamReg0( const InstrParams& params );
-	byte& GetParamReg1( const InstrParams& params );
 	byte& Cpu6502::GetStack();
 	byte& Cpu6502::GetMemory( const half address );
+	void Cpu6502::SetMemory( const half address, byte value );
+	void SetAluFlags( const half value );
+
+	half CombineIndirect( const byte lsb, const byte msb, const word wrap );
+
+	void Branch( const InstrParams& params, const bool takeBranch );
+	byte& Read( const InstrParams& params );
+	void Write( const InstrParams& params, const byte value );
 };
 
 
-struct OpCodeMap
+const half NumInstructions = 256;
+static const InstructionMapTuple InstructionMap[NumInstructions] =
 {
-	char			mnemonic[16];
-	byte			byteCode;
-	FormatCode		format;
-	Instruction		instr;
-	RegisterIndex	reg0;
-	RegisterIndex	reg1;
-	StatusBit		statusBits;
-	byte			operands;
-	byte			cycles;
-};
-
-
-struct AddrMapTuple
-{
-	byte			byteCode;
-	char			format[16];
-	char			descriptor[16];
-	AddrFunction	addrFunc;
-	RegisterIndex	reg;
-	byte			operands;
-	byte			cycles;
-};
-
-
-// These must be ordered from highest enum to lowest
-const byte NumOpCodes = 57;
-static const OpCodeMap OpMap[NumOpCodes] =
-{
-	{ "BRK",	BRK,	SYSTEM_OP,		&Cpu6502::BRK,				iNil,	iNil,	STATUS_NONE,		0,	7 },
-	{ "JSR",	JSR,	JUMP_OP,		&Cpu6502::JSR,				iNil,	iNil,	STATUS_NONE,		2,	2 },
-	{ "RTI",	RTI,	JUMP_OP,		&Cpu6502::RTI,				iNil,	iNil,	STATUS_NONE,		0,	6 },
-	{ "RTS",	RTS,	JUMP_OP,		&Cpu6502::RTS,				iNil,	iNil,	STATUS_NONE,		0,	6 },
-	{ "JMP",	JMP,	JUMP_OP,		&Cpu6502::JMP,				iNil,	iNil,	STATUS_NONE,		2,	3 },
-	{ "JMP()",	JMPI,	JUMP_OP,		&Cpu6502::JMPI,				iNil,	iNil,	STATUS_NONE,		2,	5 },
-	{ "PHP",	PHP,	STACK_OP,		&Cpu6502::Push,				iP,		iNil,	STATUS_NONE,		0,	3 },
-	{ "PLP",	PLP,	STACK_OP,		&Cpu6502::PLP,				iNil,	iNil,	STATUS_NONE,		0,	4 },
-	{ "PHA",	PHA,	STACK_OP,		&Cpu6502::Push,				iA,		iNil,	STATUS_NONE,		0,	3 },
-	{ "PLA",	PLA,	STACK_OP,		&Cpu6502::Pop,				iA,		iNil,	STATUS_NONE,		0,	4 },
-	{ "TXA",	TXA,	REGISTER_OP,	&Cpu6502::Move,				iX,		iA,		STATUS_NONE,		0,	2 },
-	{ "TYA",	TYA,	REGISTER_OP,	&Cpu6502::Move,				iY,		iA,		STATUS_NONE,		0,	2 },
-	{ "TXS",	TXS,	REGISTER_OP,	&Cpu6502::Move,				iX,		iSP,	STATUS_NONE,		0,	2 },
-	{ "TAY",	TAY,	REGISTER_OP,	&Cpu6502::Move,				iA,		iY,		STATUS_NONE,		0,	2 },
-	{ "TAX",	TAX,	REGISTER_OP,	&Cpu6502::Move,				iA,		iX,		STATUS_NONE,		0,	2 },
-	{ "TSX",	TSX,	REGISTER_OP,	&Cpu6502::Move,				iSP,	iX,		STATUS_NONE,		0,	2 },
-	{ "SEC",	SEC,	REGISTER_OP,	&Cpu6502::SetStatusBit,		iNil,	iNil,	STATUS_CARRY,		0,	2 },
-	{ "SEI",	SEI,	REGISTER_OP,	&Cpu6502::SetStatusBit,		iNil,	iNil,	STATUS_INTERRUPT,	0,	2 },
-	{ "SED",	SED,	REGISTER_OP,	&Cpu6502::SetStatusBit,		iNil,	iNil,	STATUS_DECIMAL,		0,	2 },
-	{ "CLI",	CLI,	REGISTER_OP,	&Cpu6502::ClearStatusBit,	iNil,	iNil,	STATUS_INTERRUPT,	0,	2 },
-	{ "CLC",	CLC,	REGISTER_OP,	&Cpu6502::ClearStatusBit,	iNil,	iNil,	STATUS_CARRY,		0,	2 },
-	{ "CLV",	CLV,	REGISTER_OP,	&Cpu6502::ClearStatusBit,	iNil,	iNil,	STATUS_OVERFLOW,	0,	2 },
-	{ "CLD",	CLD,	REGISTER_OP,	&Cpu6502::ClearStatusBit,	iNil,	iNil,	STATUS_DECIMAL,		0,	2 },
-	{ "INX",	INX,	MATH_OP,		&Cpu6502::IncReg,			iX,		iNil,	STATUS_NONE,		0,	2 },
-	{ "INY",	INY,	MATH_OP,		&Cpu6502::IncReg,			iY,		iNil,	STATUS_NONE,		0,	2 },
-	{ "DEX",	DEX,	MATH_OP,		&Cpu6502::DecReg,			iX,		iNil,	STATUS_NONE,		0,	2 },
-	{ "DEY",	DEY,	MATH_OP,		&Cpu6502::DecReg,			iY,		iNil,	STATUS_NONE,		0,	2 },
-	{ "NOP",	Nop,	SYSTEM_OP,		&Cpu6502::NOP,				iNil,	iNil,	STATUS_NONE,		0,	2 },
-	{ "BMI",	BMI,	BRANCH_OP,		&Cpu6502::BranchOnSet,		iNil,	iNil,	STATUS_NEGATIVE,	1,	2 },
-	{ "BVS",	BVS,	BRANCH_OP,		&Cpu6502::BranchOnSet,		iNil,	iNil,	STATUS_OVERFLOW,	1,	2 },
-	{ "BCS",	BCS,	BRANCH_OP,		&Cpu6502::BranchOnSet,		iNil,	iNil,	STATUS_CARRY,		1,	2 },
-	{ "BEQ",	BEQ,	BRANCH_OP,		&Cpu6502::BranchOnSet,		iNil,	iNil,	STATUS_ZERO,		1,	2 },
-	{ "BPL",	BPL,	BRANCH_OP,		&Cpu6502::BranchOnClear,	iNil,	iNil,	STATUS_NEGATIVE,	1,	2 },
-	{ "BVC",	BVC,	BRANCH_OP,		&Cpu6502::BranchOnClear,	iNil,	iNil,	STATUS_OVERFLOW,	1,	2 },
-	{ "BCC",	BCC,	BRANCH_OP,		&Cpu6502::BranchOnClear,	iNil,	iNil,	STATUS_CARRY,		1,	2 },
-	{ "BNE",	BNE,	BRANCH_OP,		&Cpu6502::BranchOnClear,	iNil,	iNil,	STATUS_ZERO,		1,	2 },
-	{ "CMP",	CMP,	ADDR_OP,		&Cpu6502::Compare,			iA,		iNil,	STATUS_NONE,		0,	0 },
-	{ "CPY",	CPY,	ADDR_OP,		&Cpu6502::Compare,			iY,		iNil,	STATUS_NONE,		0,	0 },
-	{ "CPX",	CPX,	ADDR_OP,		&Cpu6502::Compare,			iX,		iNil,	STATUS_NONE,		0,	0 },
-	{ "STY",	STY,	ADDR_OP,		&Cpu6502::Store,			iY,		iNil,	STATUS_NONE,		0,	0 },
-	{ "STA",	STA,	ADDR_OP,		&Cpu6502::Store,			iA,		iNil,	STATUS_NONE,		0,	0 },
-	{ "STX",	STX,	ADDR_OP,		&Cpu6502::Store,			iX,		iNil,	STATUS_NONE,		0,	0 },
-	{ "LDY",	LDY,	ADDR_OP,		&Cpu6502::Load,				iY,		iNil,	STATUS_NONE,		0,	0 },
-	{ "LDA",	LDA,	ADDR_OP,		&Cpu6502::Load,				iA,		iNil,	STATUS_NONE,		0,	0 },
-	{ "LDX",	LDX,	ADDR_OP,		&Cpu6502::Load,				iX,		iNil,	STATUS_NONE,		0,	0 },
-	{ "ADC",	ADC,	ADDR_OP,		&Cpu6502::ADC,				iA,		iNil,	STATUS_NONE,		0,	0 },
-	{ "DEC",	DEC,	ADDR_OP,		&Cpu6502::DEC,				iNil,	iNil,	STATUS_NONE,		0,	2 },
-	{ "SBC",	SBC,	ADDR_OP,		&Cpu6502::SBC,				iA,		iNil,	STATUS_NONE,		0,	0 },
-	{ "INC",	INC,	ADDR_OP,		&Cpu6502::INC,				iNil,	iNil,	STATUS_NONE,		0,	2 },
-	{ "BIT",	BIT,	BITWISE_OP,		&Cpu6502::BIT,				iNil,	iNil,	STATUS_NONE,		0,	0 },
-	{ "AND",	AND,	BITWISE_OP,		&Cpu6502::AND,				iNil,	iNil,	STATUS_NONE,		0,	0 },
-	{ "ORA",	ORA,	BITWISE_OP,		&Cpu6502::ORA,				iNil,	iNil,	STATUS_NONE,		0,	0 },
-	{ "EOR",	EOR,	BITWISE_OP,		&Cpu6502::EOR,				iNil,	iNil,	STATUS_NONE,		0,	0 },
-	{ "ASL",	ASL,	BITWISE_OP,		&Cpu6502::ASL,				iNil,	iNil,	STATUS_NONE,		0,	2 },
-	{ "LSR",	LSR,	BITWISE_OP,		&Cpu6502::LSR,				iNil,	iNil,	STATUS_NONE,		0,	2 },
-	{ "ROL",	ROL,	BITWISE_OP,		&Cpu6502::ROL,				iNil,	iNil,	STATUS_NONE,		0,	2 },
-	{ "ROR",	ROR,	BITWISE_OP,		&Cpu6502::ROR,				iNil,	iNil,	STATUS_NONE,		0,	2 },
-};
-
-
-const byte NumAddrModes = 19;
-static AddrMapTuple AddrMap[NumAddrModes]
-{
-	{ ZPIX1,	"($%02x,X)",	"(ZeroPage,X)",		&Cpu6502::IndexedIndirect,	iX,		1,	2 },
-	{ ZP1,		"$%02x",		"ZeroPage",			&Cpu6502::Zero,				iNil,	1,	3 },
-	{ IMM1,		"#$%02x",		"Immediate",		&Cpu6502::Immediate,		iNil,	1,	2 },
-	{ ABS1,		"$%04x",		"Absolute",			&Cpu6502::Absolute,			iNil,	2,	4 },
-	{ ZPY1,		"($%02x),Y",	"(ZeroPage),Y",		&Cpu6502::IndirectIndexed,	iY,		1,	6 },
-	{ ZPX1,		"$%02x,X",		"ZeroPage,X",		&Cpu6502::IndexedZero,		iX,		1,	4 },
-	{ ABSY1,	"$%04x,Y",		"Absolute,Y",		&Cpu6502::IndexedAbsolute,	iY,		2,	4 },
-	{ ABSX1,	"$%04x,X",		"Absolute,X",		&Cpu6502::IndexedAbsolute,	iX,		2,	4 },
-	{ IMM2,		"#$%02x",		"Immediate",		&Cpu6502::Immediate,		iNil,	1,	2 },
-	{ ZP2,		"$%02x",		"ZeroPage",			&Cpu6502::Zero,				iNil,	1,	3 },
-	{ ACC2,		"",				"Accumulator",		&Cpu6502::Accumulator,		iNil,	0,	2 },
-	{ ABS2,		"$%04x",		"Absolute",			&Cpu6502::Absolute,			iNil,	2,	4 },
-	{ ZPX2,		"$%02x,X/Y",	"ZeroPage,X/Y",		&Cpu6502::IndexedZero,		iX,		1,	4 },
-	{ ABSX2,	"$%04x,X/Y",	"Absolute,X/Y",		&Cpu6502::IndexedAbsolute,	iX,		2,	4 },
-	{ IMM0,		"#$%02x",		"Immediate",		&Cpu6502::Immediate,		iNil,	1,	2 },
-	{ ZP0,		"$%02x",		"ZeroPage",			&Cpu6502::Zero,				iNil,	1,	3 },
-	{ ABS0,		"$%04x",		"Absolute",			&Cpu6502::Absolute,			iNil,	2,	4 },
-	{ ZPX0,		"$%02x,X",		"ZeroPage,X",		&Cpu6502::IndexedZero,		iX,		1,	4 },
-	{ ABSX0,	"$%04x",		"Absolute,X",		&Cpu6502::IndexedAbsolute,	iX,		2,	4 },
+	{ "BRK",	BRK,	SYSTEM_OP,	&Cpu6502::BRK,		nullptr,					0, 0 },	//	00
+	{ "ORA",	ORA,	BITWISE_OP,	&Cpu6502::ORA,		&Cpu6502::IndexedIndirect,	1, 0 },	//	01
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	02
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	03
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	04
+	{ "ORA",	ORA,	BITWISE_OP,	&Cpu6502::ORA,		&Cpu6502::Zero,				1, 0 },	//	05
+	{ "ASL",	ASL,	BITWISE_OP,	&Cpu6502::ASL,		&Cpu6502::Zero,				1, 0 },	//	06
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	07
+	{ "PHP",	PHP,	STACK_OP,	&Cpu6502::PHP,		nullptr,					0, 0 },	//	08
+	{ "ORA",	ORA,	BITWISE_OP,	&Cpu6502::ORA,		&Cpu6502::Immediate,		1, 0 },	//	09
+	{ "ASL",	ASL,	BITWISE_OP,	&Cpu6502::ASL,		&Cpu6502::Accumulator,		0, 0 },	//	0A
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	0B
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	0C
+	{ "ORA",	ORA,	BITWISE_OP,	&Cpu6502::ORA,		&Cpu6502::Absolute,			2, 0 },	//	0D
+	{ "ASL",	ASL,	BITWISE_OP,	&Cpu6502::ASL,		&Cpu6502::Absolute,			2, 0 },	//	0E
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	0F
+	{ "BPL",	BPL,	BRANCH_OP,	&Cpu6502::BPL,		nullptr,					1, 0 },	//	10
+	{ "ORA",	ORA,	BITWISE_OP,	&Cpu6502::ORA,		&Cpu6502::IndirectIndexed,	1, 0 },	//	11
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	// 	12
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	13
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	14
+	{ "ORA",	ORA,	BITWISE_OP,	&Cpu6502::ORA,		&Cpu6502::IndexedZeroX,		1, 0 },	//	15
+	{ "ASL",	ASL,	BITWISE_OP,	&Cpu6502::ASL,		&Cpu6502::IndexedZeroX,		1, 0 },	//	16
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	17
+	{ "CLC",	CLC,	COMPARE_OP,	&Cpu6502::CLC,		nullptr,					0, 0 },	//	18
+	{ "ORA",	ORA,	BITWISE_OP,	&Cpu6502::ORA,		&Cpu6502::IndexedAbsoluteY,	2, 0 },	//	19
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	1A
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	1B
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	1C
+	{ "ORA",	ORA,	BITWISE_OP,	&Cpu6502::ORA,		&Cpu6502::IndexedAbsoluteX,	2, 0 },	//	1D
+	{ "ASL",	ASL,	BITWISE_OP,	&Cpu6502::ASL,		&Cpu6502::IndexedAbsoluteX,	2, 0 },	//	1E
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	1F
+	{ "JSR",	JSR,	JUMP_OP,	&Cpu6502::JSR,		nullptr,					2, 0 },	//	20
+	{ "AND",	AND,	BITWISE_OP,	&Cpu6502::AND,		&Cpu6502::IndexedIndirect,	1, 0 },	//	21
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	22
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	23
+	{ "BIT",	BIT,	BITWISE_OP,	&Cpu6502::BIT,		&Cpu6502::Zero,				1, 0 },	//	24
+	{ "AND",	AND,	BITWISE_OP,	&Cpu6502::AND,		&Cpu6502::Zero,				1, 0 },	// 	25
+	{ "ROL",	ROL,	BITWISE_OP,	&Cpu6502::ROL,		&Cpu6502::Zero,				1, 0 },	//	26
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	27
+	{ "PLP",	PLP,	STACK_OP,	&Cpu6502::PLP,		nullptr,					0, 0 },	//	28
+	{ "AND",	AND,	BITWISE_OP,	&Cpu6502::AND,		&Cpu6502::Immediate,		1, 0 },	//	29
+	{ "ROL",	ROL,	BITWISE_OP,	&Cpu6502::ROL,		&Cpu6502::Accumulator,		0, 0 },	//	2A
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	2B
+	{ "BIT",	BIT,	BITWISE_OP,	&Cpu6502::BIT,		&Cpu6502::Absolute,			2, 0 },	//	2C
+	{ "AND",	AND,	BITWISE_OP,	&Cpu6502::AND,		&Cpu6502::Absolute,			2, 0 },	//	2D
+	{ "ROL",	ROL,	BITWISE_OP,	&Cpu6502::ROL,		&Cpu6502::Absolute,			2, 0 },	//	2E
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	2F
+	{ "BMI",	BMI,	BRANCH_OP,	&Cpu6502::BMI,		nullptr,					1, 0 },	//	30
+	{ "AND",	AND,	BITWISE_OP,	&Cpu6502::AND,		&Cpu6502::IndirectIndexed,	1, 0 },	//	31
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	32
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	33
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	34
+	{ "AND",	AND,	BITWISE_OP,	&Cpu6502::AND,		&Cpu6502::IndexedZeroX,		1, 0 },	//	35
+	{ "ROL",	ROL,	BITWISE_OP,	&Cpu6502::ROL,		&Cpu6502::IndexedZeroX,		1, 0 },	//	36
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	37
+	{ "SEC",	SEC,	STATUS_OP,	&Cpu6502::SEC,		nullptr,					0, 0 },	//	38
+	{ "AND",	AND,	BITWISE_OP,	&Cpu6502::AND,		&Cpu6502::IndexedAbsoluteY,	2, 0 },	//	39
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	3A
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	3B
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	3C
+	{ "AND",	AND,	BITWISE_OP,	&Cpu6502::AND,		&Cpu6502::IndexedAbsoluteX,	2, 0 },	//	3D
+	{ "ROL",	ROL,	BITWISE_OP,	&Cpu6502::ROL,		&Cpu6502::IndexedAbsoluteX,	2, 0 },	//	3E
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	3F
+	{ "RTI",	RTI,	JUMP_OP,	&Cpu6502::RTI,		nullptr,					0, 0 },	//	40
+	{ "EOR",	EOR,	BITWISE_OP,	&Cpu6502::EOR,		&Cpu6502::IndexedIndirect,	1, 0 },	//	41
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	42
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	43
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	44
+	{ "EOR",	EOR,	BITWISE_OP,	&Cpu6502::EOR,		&Cpu6502::Zero,				1, 0 },	//	45
+	{ "LSR",	LSR,	BITWISE_OP,	&Cpu6502::LSR,		&Cpu6502::Zero,				1, 0 },	//	46
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	47
+	{ "PHA",	PHA,	STACK_OP,	&Cpu6502::PHA,		nullptr,					0, 0 },	//	48
+	{ "EOR",	EOR,	BITWISE_OP,	&Cpu6502::EOR,		&Cpu6502::Immediate,		1, 0 },	//	49
+	{ "LSR",	LSR,	BITWISE_OP,	&Cpu6502::LSR,		&Cpu6502::Accumulator,		0, 0 },	//	4A
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	4B
+	{ "JMP",	JMP,	BITWISE_OP,	&Cpu6502::JMP,		nullptr,					2, 0 },	//	4C
+	{ "EOR",	EOR,	BITWISE_OP,	&Cpu6502::EOR,		&Cpu6502::Absolute,			2, 0 },	//	4D
+	{ "LSR",	LSR,	BITWISE_OP,	&Cpu6502::LSR,		&Cpu6502::Absolute,			2, 0 },	//	4E
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	4F
+	{ "BVC",	BVC,	ILLEGAL,	&Cpu6502::BVC,		nullptr,					1, 0 },	//	50
+	{ "EOR",	EOR,	BITWISE_OP,	&Cpu6502::EOR,		&Cpu6502::IndirectIndexed,	1, 0 },	//	51
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	52
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	53
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	54
+	{ "EOR",	EOR,	BITWISE_OP,	&Cpu6502::EOR,		&Cpu6502::IndexedZeroX,		1, 0 },	//	55
+	{ "LSR",	LSR,	LOAD_OP,	&Cpu6502::LSR,		&Cpu6502::IndexedZeroX,		1, 0 },	//	56
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	57
+	{ "CLI",	CLI,	STATUS_OP,	&Cpu6502::CLI,		nullptr,					0, 0 },	//	58
+	{ "EOR",	EOR,	BITWISE_OP,	&Cpu6502::EOR,		&Cpu6502::IndexedAbsoluteY,	2, 0 },	//	59
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	5A
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	5B
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	5C
+	{ "EOR",	EOR,	BITWISE_OP,	&Cpu6502::EOR,		&Cpu6502::IndexedAbsoluteX,	2, 0 },	//	5D
+	{ "LSR",	LSR,	BITWISE_OP,	&Cpu6502::LSR,		&Cpu6502::IndexedAbsoluteX,	2, 0 },	//	5E
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	5F
+	{ "RTS",	RTS,	JUMP_OP,	&Cpu6502::RTS,		nullptr,					0, 0 },	//	60
+	{ "ADC",	ADC,	MATH_OP,	&Cpu6502::ADC,		&Cpu6502::IndexedIndirect,	1, 0 },	//	61
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	62
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	63
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	64
+	{ "ADC",	ADC,	MATH_OP,	&Cpu6502::ADC,		&Cpu6502::Zero,				1, 0 },	//	65
+	{ "ROR",	ROR,	BITWISE_OP,	&Cpu6502::ROR,		&Cpu6502::Zero,				1, 0 },	//	66
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	67
+	{ "PLA",	PLA,	STACK_OP,	&Cpu6502::PLA,		nullptr,					0, 0 },	//	68
+	{ "ADC",	ADC,	MATH_OP,	&Cpu6502::ADC,		&Cpu6502::Immediate,		1, 0 },	//	69
+	{ "ROR",	ROR,	BITWISE_OP,	&Cpu6502::ROR,		&Cpu6502::Accumulator,		0, 0 },	//	6A
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	6B
+	{ "JMP",	JMPI,	JUMP_OP,	&Cpu6502::JMPI,		nullptr,					2, 0 },	//	6C
+	{ "ADC",	ADC,	MATH_OP,	&Cpu6502::ADC,		&Cpu6502::Absolute,			2, 0 },	//	6D
+	{ "ROR",	ROR,	BITWISE_OP,	&Cpu6502::ROR,		&Cpu6502::Absolute,			2, 0 },	//	6E
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	6F
+	{ "BVS",	BVS,	BRANCH_OP,	&Cpu6502::BVS,		nullptr,					1, 0 },	//	70
+	{ "ADC",	ADC,	MATH_OP,	&Cpu6502::ADC,		&Cpu6502::IndirectIndexed,	1, 0 },	//	71
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	72
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	73
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	74
+	{ "ADC",	ADC,	MATH_OP,	&Cpu6502::ADC,		&Cpu6502::IndexedZeroX,		1, 0 },	//	75
+	{ "ROR",	ROR,	BITWISE_OP,	&Cpu6502::ROR,		&Cpu6502::IndexedZeroX,		1, 0 },	//	76
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	77
+	{ "SEI",	SEI,	STATUS_OP,	&Cpu6502::SEI,		nullptr,					0, 0 },	//	78
+	{ "ADC",	ADC,	MATH_OP,	&Cpu6502::ADC,		&Cpu6502::IndexedAbsoluteY,	2, 0 },	//	79
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	7A
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	7B
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	7C
+	{ "ADC",	ADC,	MATH_OP,	&Cpu6502::ADC,		&Cpu6502::IndexedAbsoluteX,	2, 0 },	//	7D
+	{ "ROR",	ROR,	BITWISE_OP,	&Cpu6502::ROR,		&Cpu6502::IndexedAbsoluteX,	2, 0 },	//	7E
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	7F
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	80
+	{ "STA",	STA,	STORE_OP,	&Cpu6502::STA,		&Cpu6502::IndexedIndirect,	1, 0 },	//	81
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	82
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	83
+	{ "STY",	STY,	STORE_OP,	&Cpu6502::STY,		&Cpu6502::Zero,				1, 0 },	//	84
+	{ "STA",	STA,	STORE_OP,	&Cpu6502::STA,		&Cpu6502::Zero,				1, 0 },	//	85
+	{ "STX",	STX,	STORE_OP,	&Cpu6502::STX,		&Cpu6502::Zero,				1, 0 },	//	86
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	87
+	{ "DEY",	DEY,	MATH_OP,	&Cpu6502::DEY,		nullptr,					0, 0 },	//	88
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	89
+	{ "TXA",	TXA,	REGISTER_OP,&Cpu6502::TXA,		nullptr,					0, 0 },	//	8A
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	8B
+	{ "STY",	STY,	STORE_OP,	&Cpu6502::STY,		&Cpu6502::Absolute,			2, 0 },	//	8C
+	{ "STA",	STA,	STORE_OP,	&Cpu6502::STA,		&Cpu6502::Absolute,			2, 0 },	//	8D
+	{ "STX",	STX,	STORE_OP,	&Cpu6502::STX,		&Cpu6502::Absolute,			2, 0 },	//	8E
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	8F
+	{ "BCC",	BCC,	BRANCH_OP,	&Cpu6502::BCC,		nullptr,					1, 0 },	//	90
+	{ "STA",	STA,	STORE_OP,	&Cpu6502::STA,		&Cpu6502::IndirectIndexed,	1, 0 },	//	91
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	92
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	93
+	{ "STY",	STY,	STORE_OP,	&Cpu6502::STY,		&Cpu6502::IndexedZeroX,		1, 0 },	//	94
+	{ "STA",	STA,	STORE_OP,	&Cpu6502::STA,		&Cpu6502::IndexedZeroX,		1, 0 },	//	95
+	{ "STX",	STX,	STORE_OP,	&Cpu6502::STX,		&Cpu6502::IndexedZeroY,		1, 0 },	//	96
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	97
+	{ "TYA",	TYA,	REGISTER_OP,&Cpu6502::TYA,		nullptr,					0, 0 },	//	98
+	{ "STA",	STA,	STORE_OP,	&Cpu6502::STA,		&Cpu6502::IndexedAbsoluteY,	2, 0 },	//	99
+	{ "TXS",	TXS,	REGISTER_OP,&Cpu6502::TXS,		nullptr,					0, 0 },	//	9A
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	9B
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	9C
+	{ "STA",	STA,	STORE_OP,	&Cpu6502::STA,		&Cpu6502::IndexedAbsoluteX,	2, 0 },	//	9D
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	9E
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	9F
+	{ "LDY",	LDY,	LOAD_OP,	&Cpu6502::LDY,		&Cpu6502::Immediate,		1, 0 },	//	A0
+	{ "LDA",	LDA,	LOAD_OP,	&Cpu6502::LDA,		&Cpu6502::IndexedIndirect,	1, 0 },	//	A1
+	{ "LDX",	LDX,	LOAD_OP,	&Cpu6502::LDX,		&Cpu6502::Immediate,		1, 0 },	//	A2
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	A3
+	{ "LDY",	LDY,	LOAD_OP,	&Cpu6502::LDY,		&Cpu6502::Zero,				1, 0 },	//	A4
+	{ "LDA",	LDA,	LOAD_OP,	&Cpu6502::LDA,		&Cpu6502::Zero,				1, 0 },	//	A5
+	{ "LDX",	LDX,	LOAD_OP,	&Cpu6502::LDX,		&Cpu6502::Zero,				1, 0 },	//	A6
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	A7
+	{ "TAY",	TAY,	REGISTER_OP,&Cpu6502::TAY,		nullptr,					0, 0 },	//	A8
+	{ "LDA",	LDA,	LOAD_OP,	&Cpu6502::LDA,		&Cpu6502::Immediate,		1, 0 },	//	A9
+	{ "TAX",	TAX,	REGISTER_OP,&Cpu6502::TAX,		nullptr,					0, 0 },	//	AA
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	AB
+	{ "LDY",	LDY,	LOAD_OP,	&Cpu6502::LDY,		&Cpu6502::Absolute,			2, 0 },	//	AC
+	{ "LDA",	LDA,	LOAD_OP,	&Cpu6502::LDA,		&Cpu6502::Absolute,			2, 0 },	//	AD
+	{ "LDX",	LDX,	LOAD_OP,	&Cpu6502::LDX,		&Cpu6502::Absolute,			2, 0 },	//	AE
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	AF
+	{ "BCS",	BCS,	BRANCH_OP,	&Cpu6502::BCS,		nullptr,					1, 0 },	//	B0
+	{ "LDA",	LDA,	LOAD_OP,	&Cpu6502::LDA,		&Cpu6502::IndirectIndexed,	1, 0 },	//	B1
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	B2
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	B3
+	{ "LDY",	LDY,	LOAD_OP,	&Cpu6502::LDY,		&Cpu6502::IndexedZeroX,		1, 0 },	//	B4
+	{ "LDA",	LDA,	LOAD_OP,	&Cpu6502::LDA,		&Cpu6502::IndexedZeroX,		1, 0 },	//	B5
+	{ "LDX",	LDX,	LOAD_OP,	&Cpu6502::LDX,		&Cpu6502::IndexedZeroY,		1, 0 },	//	B6
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	B7
+	{ "CLV",	CLV,	STATUS_OP,	&Cpu6502::CLV,		nullptr,					0, 0 },	//	B8
+	{ "LDA",	LDA,	LOAD_OP,	&Cpu6502::LDA,		&Cpu6502::IndexedAbsoluteY,	2, 0 },	//	B9
+	{ "TSX",	TSX,	REGISTER_OP,&Cpu6502::TSX,		nullptr,					0, 0 },	//	BA
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	BB
+	{ "LDY",	LDY,	LOAD_OP,	&Cpu6502::LDY,		&Cpu6502::IndexedAbsoluteX,	2, 0 },	//	BC
+	{ "LDA",	LDA,	LOAD_OP,	&Cpu6502::LDA,		&Cpu6502::IndexedAbsoluteX,	2, 0 },	//	BD
+	{ "LDX",	LDX,	LOAD_OP,	&Cpu6502::LDX,		&Cpu6502::IndexedAbsoluteY,	2, 0 },	//	BE
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	BF
+	{ "CPY",	CPY,	COMPARE_OP,	&Cpu6502::CPY,		&Cpu6502::Immediate,		1, 0 },	//	C0
+	{ "CMP",	CMP,	COMPARE_OP,	&Cpu6502::CMP,		&Cpu6502::IndexedIndirect,	1, 0 },	//	C1
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	C2
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	C3
+	{ "CPY",	CPY,	COMPARE_OP,	&Cpu6502::CPY,		&Cpu6502::Zero,				1, 0 },	//	C4
+	{ "CMP",	CMP,	COMPARE_OP,	&Cpu6502::CMP,		&Cpu6502::Zero,				1, 0 },	//	C5
+	{ "DEC",	DEC,	MATH_OP,	&Cpu6502::DEC,		&Cpu6502::Zero,				1, 0 },	//	C6
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	C7
+	{ "INY",	INY,	MATH_OP,	&Cpu6502::INY,		nullptr,					0, 0 },	//	C8
+	{ "CMP",	CMP,	COMPARE_OP,	&Cpu6502::CMP,		&Cpu6502::Immediate,		1, 0 },	//	C9
+	{ "DEX",	DEX,	MATH_OP,	&Cpu6502::DEX,		nullptr,					0, 0 },	//	CA
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	CB
+	{ "CPY",	CPY,	COMPARE_OP,	&Cpu6502::CPY,		&Cpu6502::Absolute,			2, 0 },	//	CC
+	{ "CMP",	CMP,	COMPARE_OP,	&Cpu6502::CMP,		&Cpu6502::Absolute,			2, 0 },	//	CD
+	{ "DEC",	DEC,	MATH_OP,	&Cpu6502::DEC,		&Cpu6502::Absolute,			2, 0 },	//	CE
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	CF
+	{ "BNE",	BNE,	BRANCH_OP,	&Cpu6502::BNE,		nullptr,					1, 0 },	//	D0
+	{ "CMP",	CMP,	COMPARE_OP,	&Cpu6502::CMP,		&Cpu6502::IndirectIndexed,	1, 0 },	//	D1
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	D2
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	D3
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	D4
+	{ "CMP",	CMP,	COMPARE_OP,	&Cpu6502::CMP,		&Cpu6502::IndexedZeroX,		1, 0 },	//	D5
+	{ "DEC",	DEC,	MATH_OP,	&Cpu6502::DEC,		&Cpu6502::IndexedZeroX,		1, 0 },	//	D6
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	D7
+	{ "CLD",	CLD,	STATUS_OP,	&Cpu6502::CLD,		nullptr,					0, 0 },	//	D8
+	{ "CMP",	CMP,	COMPARE_OP,	&Cpu6502::CMP,		&Cpu6502::IndexedAbsoluteY,	2, 0 },	//	D9
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	DA
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	DB
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	DC
+	{ "CMP",	CMP,	COMPARE_OP,	&Cpu6502::CMP,		&Cpu6502::IndexedAbsoluteX,	2, 0 },	//	DD
+	{ "DEC",	DEC,	MATH_OP,	&Cpu6502::DEC,		&Cpu6502::IndexedAbsoluteX,	2, 0 },	//	DE
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	DF
+	{ "CPX",	CPX,	COMPARE_OP,	&Cpu6502::CPX,		&Cpu6502::Immediate,		1, 0 },	//	E0
+	{ "SBC",	SBC,	MATH_OP,	&Cpu6502::SBC,		&Cpu6502::IndexedIndirect,	1, 0 },	//	E1
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	E2
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	E3
+	{ "CPX",	CPX,	COMPARE_OP,	&Cpu6502::CPX,		&Cpu6502::Zero,				1, 0 },	//	E4
+	{ "SBC",	SBC,	MATH_OP,	&Cpu6502::SBC,		&Cpu6502::Zero,				1, 0 },	//	E5
+	{ "INC",	INC,	MATH_OP,	&Cpu6502::INC,		&Cpu6502::Zero,				1, 0 },	//	E6
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	E7
+	{ "INX",	INX,	MATH_OP,	&Cpu6502::INX,		nullptr,					0, 0 },	//	E8
+	{ "SBC",	SBC,	MATH_OP,	&Cpu6502::SBC,		&Cpu6502::Immediate,		1, 0 },	//	E9
+	{ "NOP",	Nop,	SYSTEM_OP,	&Cpu6502::NOP,		nullptr,					0, 0 },	//	EA
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	EB
+	{ "CPX",	CPX,	COMPARE_OP,	&Cpu6502::CPX,		&Cpu6502::Absolute,			2, 0 },	//	EC
+	{ "SBC",	SBC,	MATH_OP,	&Cpu6502::SBC,		&Cpu6502::Absolute,			2, 0 },	//	ED
+	{ "INC",	INC,	MATH_OP,	&Cpu6502::INC,		&Cpu6502::Absolute,			2, 0 },	//	EE
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	EF
+	{ "BEQ",	BEQ,	BRANCH_OP,	&Cpu6502::BEQ,		nullptr,					1, 0 },	//	F0
+	{ "SBC",	SBC,	MATH_OP,	&Cpu6502::SBC,		&Cpu6502::IndirectIndexed,	1, 0 },	//	F1
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	F2
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	F3
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	F4
+	{ "SBC",	SBC,	MATH_OP,	&Cpu6502::SBC,		&Cpu6502::IndexedZeroX,		1, 0 },	//	F5
+	{ "INC",	INC,	MATH_OP,	&Cpu6502::INC,		&Cpu6502::IndexedZeroX,		1, 0 },	//	F6
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	F7
+	{ "SED",	SED,	STATUS_OP,	&Cpu6502::SED,		nullptr,					0, 0 },	//	F8
+	{ "SBC",	SBC,	MATH_OP,	&Cpu6502::SBC,		&Cpu6502::IndexedAbsoluteY,	2, 0 },	//	F9
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	FA
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	FB
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	FC
+	{ "SBC",	SBC,	MATH_OP,	&Cpu6502::SBC,		&Cpu6502::IndexedAbsoluteX,	2, 0 },	//	FD
+	{ "INC",	INC,	MATH_OP,	&Cpu6502::INC,		&Cpu6502::IndexedAbsoluteX,	2, 0 },	//	FE
+	{ "???",	Nop,	ILLEGAL,	&Cpu6502::Illegal,	nullptr,					0, 0 },	//	FF
 };
 
 
