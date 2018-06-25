@@ -1,81 +1,57 @@
 #include "stdafx.h"
 #include <assert.h>
+#include <sstream>
+#include <fstream>
+#include <iostream>
+#include <iomanip>
 #include "common.h"
+#include "NesSystem.h"
 #include "6502.h"
 
 
-class System6502
+inline void NesSystem::SetMemory( const half address, byte value )
 {
-public:
-	System6502(){};
-protected:
-	byte* memory;
-	Cpu6502 cpu;
-};
+#if DEBUG_MODE == 1
+	if ( ( address == 0x4014 || address == 0x2003 ) || ( ( address >= 0x2000 ) && ( address <= 0x2008 ) ) )
+	{
+		std::cout << "DMA/PPU Registers Address Hit" << std::endl;
+	}
+#endif // #if DEBUG_MODE == 1
+
+	// TODO: Implement mirroring, etc
+	memory[MirrorAddress( address )] = value;
+}
 
 
-class TestSystem6503 : System6502
+void NesSystem::LoadProgram( const NesCart& cart, const uint resetVectorManual )
 {
-	static const half PhysicalMemorySize = 0x0800;
-	static const half VirtualMemorySize = 0xFFFF;
+	memset( memory, 0, VirtualMemorySize );
 
-public:
-	TestSystem6503()
+	memcpy( memory + Bank0, cart.rom, BankSize );
+
+	assert( cart.header.prgRomBanks <= 2 );
+
+	if ( cart.header.prgRomBanks == 1 )
 	{
-		memory = &ram[0];
+		memcpy( memory + Bank1, cart.rom, BankSize );
+	}
+	else
+	{
+		memcpy( memory + Bank1, cart.rom + Bank1, BankSize );
 	}
 
-private:
-	byte ram[VirtualMemorySize];
-};
-
-
-class NesSystem : System6502
-{
-	static const half PhysicalMemorySize = 0x0800;
-	static const half VirtualMemorySize = 0xFFFF;
-
-	PPU ppu;
-	Cpu6502 cpu;
-
-public:
-	NesSystem()
+	if ( resetVectorManual == 0x10000 )
 	{
-		memory = &ram[0];
+		cpu.resetVector = ( memory[ResetVectorAddr + 1] << 8 ) | memory[ResetVectorAddr];
+
+	}
+	else
+	{
+		cpu.resetVector = static_cast< half >( resetVectorManual & 0xFFFF );
 	}
 
-	bool Run()
-	{
-		while ( true )
-		{
-			cpu.Step();
-		}
-
-		return true;
-	}
-
-	void LoadProgram( const NesCart& cart )
-	{
-		memset( cpu.memory, 0, VirtualMemorySize );
-
-		memcpy( cpu.memory + cpu.Bank0, cart.rom, cpu.BankSize );
-
-		assert( cart.header.prgRomBanks <= 2 );
-
-		if ( cart.header.prgRomBanks == 1 )
-		{
-			memcpy( cpu.memory + cpu.Bank1, cart.rom, cpu.BankSize );
-		}
-		else
-		{
-			memcpy( cpu.memory + cpu.Bank1, cart.rom + cpu.Bank1, cpu.BankSize );
-		}
-
-		cpu.resetVector = ( memory[cpu.ResetVectorAddr + 1] << 8 ) | memory[cpu.ResetVectorAddr];
-
-		cpu.Reset();
-	}
-
-private:
-	byte ram[VirtualMemorySize];
-};
+	cpu.interruptTriggered = false;
+	cpu.resetTriggered = false;
+	cpu.system = this;
+	cpu.Reset();
+}

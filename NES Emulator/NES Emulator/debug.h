@@ -47,6 +47,9 @@
 #define DEBUG_ADDR_JSR { debugAddr.str( std::string() ); \
 	debugAddr << uppercase << "$" << setfill( '0' ) << setw( 2 ) << hex << PC; }
 
+#define DEBUG_ADDR_BRANCH { debugAddr.str( std::string() ); \
+	debugAddr << uppercase << "$" << setfill( '0' ) << setw( 2 ) << hex << branchedPC; }
+
 #define DEBUG_CPU_LOG if ( enablePrinting ) { \
 	int disassemblyBytes[6] = { curByte, params.param0, params.param1,'\0' }; \
 	stringstream hexString; \
@@ -57,7 +60,7 @@
 		hexString << uppercase << setfill( '0' ) << setw( 2 ) << hex << disassemblyBytes[0] << " " << setw( 2 ) << disassemblyBytes[1] << " " << setw( 2 ) << disassemblyBytes[2]; \
 	else \
 		hexString << uppercase << setfill( '0' ) << setw( 2 ) << hex << disassemblyBytes[0]; \
-	logLine << uppercase << setfill( '0' ) << setw( 4 ) << hex << instrBegin << setfill( ' ' ) << "  " << setw( 10 ) << left << hexString.str() << disassemblerMap[curByte].opCode << " " << setw( 28 ) << left << debugAddr.str() << right << regStr; \
+	logLine << uppercase << setfill( '0' ) << setw( 4 ) << hex << instrBegin << setfill( ' ' ) << "  " << setw( 10 ) << left << hexString.str() << pair.mnemonic << " " << setw( 28 ) << left << debugAddr.str() << right << regStr; \
 	logFile << logLine.str() << endl; \
 	}
 
@@ -73,5 +76,6 @@
 #define DEBUG_ADDR_JMP 0;
 #define DEBUG_ADDR_JMPI 0;
 #define DEBUG_ADDR_JSR 0;
+#define DEBUG_ADDR_BRANCH 0;
 #define DEBUG_CPU_LOG 0;
 #endif // #else // #if DEBUG_ADDR == 1

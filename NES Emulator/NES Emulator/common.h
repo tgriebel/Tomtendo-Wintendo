@@ -1,13 +1,19 @@
 #ifndef __COMMONTYPES__
 #define __COMMONTYPES__
 
-#include <fstream>
 #include <string>
+#include <chrono>
+#include <assert.h>
+#include <sstream>
+#include <fstream>
+#include <iostream>
+#include <map>
+#include <iomanip>
 
 #define NES_MODE 1
 #define DEBUG_MODE 1
 #define DEBUG_ADDR 1
-#define DEBUG_MEM 1
+#define DEBUG_MEM 0
 
 typedef unsigned short	ushort;
 typedef unsigned int	uint;
@@ -17,6 +23,14 @@ typedef signed char		byte_signed;
 typedef ushort			half;
 typedef uint			word;
 
+const uint64_t MasterClockHz	= 21477272;
+const uint64_t CpuClockDivide	= 12;
+const uint64_t PpuClockDivide	= 4;
+
+using masterCycles_t = std::chrono::duration< uint64_t, std::ratio<1, MasterClockHz> >;
+using ppuCycle_t = std::chrono::duration< uint64_t, std::ratio<4, MasterClockHz> >;
+using cpuCycle_t = std::chrono::duration< uint64_t, std::ratio<12, MasterClockHz> >;
+using frameRate_t = std::chrono::duration< uint64_t, std::ratio<1, 60> >;
 
 struct iNesHeader
 {
@@ -79,5 +93,4 @@ inline half Combine( const byte lsb, const byte msb )
 {
 	return ( ( ( msb << 8 ) | lsb ) & 0xFFFF );
 }
-
 #endif // __COMMONTYPES__
