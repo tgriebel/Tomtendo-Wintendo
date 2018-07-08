@@ -1,0 +1,207 @@
+F4EF  29 02     AND #$02                        A:00 X:FF Y:0B P:26 SP:FD
+F4F1  85 00     STA $00 = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F4F3  A5 19     LDA $19 = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F4F5  29 02     AND #$02                        A:00 X:FF Y:0B P:26 SP:FD
+F4F7  45 00     EOR $00 = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F4F9  18        CLC                             A:00 X:FF Y:0B P:26 SP:FD
+F4FA  F0 01     BEQ $F4FD                       A:00 X:FF Y:0B P:26 SP:FD
+F4FD  66 18     ROR $18 = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F4FF  66 19     ROR $19 = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F501  66 1A     ROR $1A = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F503  66 1B     ROR $1B = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F505  66 1C     ROR $1C = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F507  66 1D     ROR $1D = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F509  66 1E     ROR $1E = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F50B  66 1F     ROR $1F = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F50D  60        RTS                             A:00 X:FF Y:0B P:26 SP:FD
+C7E4  4C E1 C7  JMP $C7E1                       A:00 X:FF Y:0B P:26 SP:FF
+C7E1  20 ED F4  JSR $F4ED                       A:00 X:FF Y:0B P:26 SP:FF
+F4ED  A5 18     LDA $18 = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F4EF  29 02     AND #$02                        A:00 X:FF Y:0B P:26 SP:FD
+F4F1  85 00     STA $00 = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F4F3  A5 19     LDA $19 = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F4F5  29 02     AND #$02                        A:00 X:FF Y:0B P:26 SP:FD
+F4F7  45 00     EOR $00 = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F4F9  18        CLC                             A:00 X:FF Y:0B P:26 SP:FD
+F4FA  F0 01     BEQ $F4FD                       A:00 X:FF Y:0B P:26 SP:FD
+F4FD  66 18     ROR $18 = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F4FF  66 19     ROR $19 = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F501  66 1A     ROR $1A = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F503  66 1B     ROR $1B = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F505  66 1C     ROR $1C = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F507  66 1D     ROR $1D = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F509  66 1E     ROR $1E = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F50B  66 1F     ROR $1F = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F50D  60        RTS                             A:00 X:FF Y:0B P:26 SP:FD
+C7E4  4C E1 C7  JMP $C7E1                       A:00 X:FF Y:0B P:26 SP:FF
+C7E1  20 ED F4  JSR $F4ED                       A:00 X:FF Y:0B P:26 SP:FF
+F4ED  A5 18     LDA $18 = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F4EF  29 02     AND #$02                        A:00 X:FF Y:0B P:26 SP:FD
+F4F1  85 00     STA $00 = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F4F3  A5 19     LDA $19 = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F4F5  29 02     AND #$02                        A:00 X:FF Y:0B P:26 SP:FD
+F4F7  45 00     EOR $00 = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F4F9  18        CLC                             A:00 X:FF Y:0B P:26 SP:FD
+F4FA  F0 01     BEQ $F4FD                       A:00 X:FF Y:0B P:26 SP:FD
+F4FD  66 18     ROR $18 = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F4FF  66 19     ROR $19 = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F501  66 1A     ROR $1A = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F503  66 1B     ROR $1B = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F505  66 1C     ROR $1C = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F507  66 1D     ROR $1D = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F509  66 1E     ROR $1E = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F50B  66 1F     ROR $1F = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F50D  60        RTS                             A:00 X:FF Y:0B P:26 SP:FD
+C7E4  4C E1 C7  JMP $C7E1                       A:00 X:FF Y:0B P:26 SP:FF
+C7E1  20 ED F4  JSR $F4ED                       A:00 X:FF Y:0B P:26 SP:FF
+F4ED  A5 18     LDA $18 = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F4EF  29 02     AND #$02                        A:00 X:FF Y:0B P:26 SP:FD
+F4F1  85 00     STA $00 = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F4F3  A5 19     LDA $19 = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F4F5  29 02     AND #$02                        A:00 X:FF Y:0B P:26 SP:FD
+F4F7  45 00     EOR $00 = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F4F9  18        CLC                             A:00 X:FF Y:0B P:26 SP:FD
+F4FA  F0 01     BEQ $F4FD                       A:00 X:FF Y:0B P:26 SP:FD
+F4FD  66 18     ROR $18 = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F4FF  66 19     ROR $19 = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F501  66 1A     ROR $1A = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F503  66 1B     ROR $1B = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F505  66 1C     ROR $1C = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F507  66 1D     ROR $1D = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F509  66 1E     ROR $1E = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F50B  66 1F     ROR $1F = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F50D  60        RTS                             A:00 X:FF Y:0B P:26 SP:FD
+C7E4  4C E1 C7  JMP $C7E1                       A:00 X:FF Y:0B P:26 SP:FF
+C7E1  20 ED F4  JSR $F4ED                       A:00 X:FF Y:0B P:26 SP:FF
+F4ED  A5 18     LDA $18 = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F4EF  29 02     AND #$02                        A:00 X:FF Y:0B P:26 SP:FD
+F4F1  85 00     STA $00 = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F4F3  A5 19     LDA $19 = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F4F5  29 02     AND #$02                        A:00 X:FF Y:0B P:26 SP:FD
+F4F7  45 00     EOR $00 = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F4F9  18        CLC                             A:00 X:FF Y:0B P:26 SP:FD
+F4FA  F0 01     BEQ $F4FD                       A:00 X:FF Y:0B P:26 SP:FD
+F4FD  66 18     ROR $18 = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F4FF  66 19     ROR $19 = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F501  66 1A     ROR $1A = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F503  66 1B     ROR $1B = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F505  66 1C     ROR $1C = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F507  66 1D     ROR $1D = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F509  66 1E     ROR $1E = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F50B  66 1F     ROR $1F = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F50D  60        RTS                             A:00 X:FF Y:0B P:26 SP:FD
+C7E4  4C E1 C7  JMP $C7E1                       A:00 X:FF Y:0B P:26 SP:FF
+C7E1  20 ED F4  JSR $F4ED                       A:00 X:FF Y:0B P:26 SP:FF
+F4ED  A5 18     LDA $18 = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F4EF  29 02     AND #$02                        A:00 X:FF Y:0B P:26 SP:FD
+F4F1  85 00     STA $00 = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F4F3  A5 19     LDA $19 = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F4F5  29 02     AND #$02                        A:00 X:FF Y:0B P:26 SP:FD
+F4F7  45 00     EOR $00 = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F4F9  18        CLC                             A:00 X:FF Y:0B P:26 SP:FD
+F4FA  F0 01     BEQ $F4FD                       A:00 X:FF Y:0B P:26 SP:FD
+F4FD  66 18     ROR $18 = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F4FF  66 19     ROR $19 = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F501  66 1A     ROR $1A = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F503  66 1B     ROR $1B = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F505  66 1C     ROR $1C = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F507  66 1D     ROR $1D = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F509  66 1E     ROR $1E = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F50B  66 1F     ROR $1F = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F50D  60        RTS                             A:00 X:FF Y:0B P:26 SP:FD
+C7E4  4C E1 C7  JMP $C7E1                       A:00 X:FF Y:0B P:26 SP:FF
+C7E1  20 ED F4  JSR $F4ED                       A:00 X:FF Y:0B P:26 SP:FF
+F4ED  A5 18     LDA $18 = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F4EF  29 02     AND #$02                        A:00 X:FF Y:0B P:26 SP:FD
+F4F1  85 00     STA $00 = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F4F3  A5 19     LDA $19 = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F4F5  29 02     AND #$02                        A:00 X:FF Y:0B P:26 SP:FD
+F4F7  45 00     EOR $00 = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F4F9  18        CLC                             A:00 X:FF Y:0B P:26 SP:FD
+F4FA  F0 01     BEQ $F4FD                       A:00 X:FF Y:0B P:26 SP:FD
+F4FD  66 18     ROR $18 = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F4FF  66 19     ROR $19 = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F501  66 1A     ROR $1A = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F503  66 1B     ROR $1B = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F505  66 1C     ROR $1C = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F507  66 1D     ROR $1D = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F509  66 1E     ROR $1E = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F50B  66 1F     ROR $1F = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F50D  60        RTS                             A:00 X:FF Y:0B P:26 SP:FD
+C7E4  4C E1 C7  JMP $C7E1                       A:00 X:FF Y:0B P:26 SP:FF
+C7E1  20 ED F4  JSR $F4ED                       A:00 X:FF Y:0B P:26 SP:FF
+F4ED  A5 18     LDA $18 = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F4EF  29 02     AND #$02                        A:00 X:FF Y:0B P:26 SP:FD
+F4F1  85 00     STA $00 = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F4F3  A5 19     LDA $19 = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F4F5  29 02     AND #$02                        A:00 X:FF Y:0B P:26 SP:FD
+F4F7  45 00     EOR $00 = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F4F9  18        CLC                             A:00 X:FF Y:0B P:26 SP:FD
+F4FA  F0 01     BEQ $F4FD                       A:00 X:FF Y:0B P:26 SP:FD
+F4FD  66 18     ROR $18 = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F4FF  66 19     ROR $19 = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F501  66 1A     ROR $1A = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F503  66 1B     ROR $1B = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F505  66 1C     ROR $1C = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F507  66 1D     ROR $1D = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F509  66 1E     ROR $1E = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F50B  66 1F     ROR $1F = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F50D  60        RTS                             A:00 X:FF Y:0B P:26 SP:FD
+C7E4  4C E1 C7  JMP $C7E1                       A:00 X:FF Y:0B P:26 SP:FF
+C7E1  20 ED F4  JSR $F4ED                       A:00 X:FF Y:0B P:26 SP:FF
+F4ED  A5 18     LDA $18 = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F4EF  29 02     AND #$02                        A:00 X:FF Y:0B P:26 SP:FD
+F4F1  85 00     STA $00 = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F4F3  A5 19     LDA $19 = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F4F5  29 02     AND #$02                        A:00 X:FF Y:0B P:26 SP:FD
+F4F7  45 00     EOR $00 = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F4F9  18        CLC                             A:00 X:FF Y:0B P:26 SP:FD
+F4FA  F0 01     BEQ $F4FD                       A:00 X:FF Y:0B P:26 SP:FD
+F4FD  66 18     ROR $18 = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F4FF  66 19     ROR $19 = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F501  66 1A     ROR $1A = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F503  66 1B     ROR $1B = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F505  66 1C     ROR $1C = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F507  66 1D     ROR $1D = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F509  66 1E     ROR $1E = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F50B  66 1F     ROR $1F = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F50D  60        RTS                             A:00 X:FF Y:0B P:26 SP:FD
+C7E4  4C E1 C7  JMP $C7E1                       A:00 X:FF Y:0B P:26 SP:FF
+C7E1  20 ED F4  JSR $F4ED                       A:00 X:FF Y:0B P:26 SP:FF
+F4ED  A5 18     LDA $18 = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F4EF  29 02     AND #$02                        A:00 X:FF Y:0B P:26 SP:FD
+F4F1  85 00     STA $00 = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F4F3  A5 19     LDA $19 = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F4F5  29 02     AND #$02                        A:00 X:FF Y:0B P:26 SP:FD
+F4F7  45 00     EOR $00 = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F4F9  18        CLC                             A:00 X:FF Y:0B P:26 SP:FD
+F4FA  F0 01     BEQ $F4FD                       A:00 X:FF Y:0B P:26 SP:FD
+F4FD  66 18     ROR $18 = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F4FF  66 19     ROR $19 = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F501  66 1A     ROR $1A = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F503  66 1B     ROR $1B = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F505  66 1C     ROR $1C = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F507  66 1D     ROR $1D = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F509  66 1E     ROR $1E = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F50B  66 1F     ROR $1F = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F50D  60        RTS                             A:00 X:FF Y:0B P:26 SP:FD
+C7E4  4C E1 C7  JMP $C7E1                       A:00 X:FF Y:0B P:26 SP:FF
+C7E1  20 ED F4  JSR $F4ED                       A:00 X:FF Y:0B P:26 SP:FF
+F4ED  A5 18     LDA $18 = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F4EF  29 02     AND #$02                        A:00 X:FF Y:0B P:26 SP:FD
+F4F1  85 00     STA $00 = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F4F3  A5 19     LDA $19 = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F4F5  29 02     AND #$02                        A:00 X:FF Y:0B P:26 SP:FD
+F4F7  45 00     EOR $00 = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F4F9  18        CLC                             A:00 X:FF Y:0B P:26 SP:FD
+F4FA  F0 01     BEQ $F4FD                       A:00 X:FF Y:0B P:26 SP:FD
+F4FD  66 18     ROR $18 = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F4FF  66 19     ROR $19 = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F501  66 1A     ROR $1A = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F503  66 1B     ROR $1B = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F505  66 1C     ROR $1C = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F507  66 1D     ROR $1D = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F509  66 1E     ROR $1E = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F50B  66 1F     ROR $1F = 00                    A:00 X:FF Y:0B P:26 SP:FD
+F50D  60        RTS                             A:00 X:FF Y:0B P:26 SP:FD
+C7E4  4C E1 C7  JMP $C7E1                       A:00 X:FF Y:0B P:26 SP:FF

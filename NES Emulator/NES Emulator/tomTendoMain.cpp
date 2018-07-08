@@ -168,6 +168,34 @@ void TileRowToPixels( const byte*const bitPlane0, const byte*const bitPlane1, co
 }
 
 
+void DrawTile( NesCart& cart, Bitmap& image, const uint tableIx, const int tileIx, uint colorIndex[], const uint cornerX, const uint cornerY )
+{
+	const byte tilebytes = 16;
+
+	const half baseAddr = cart.header.prgRomBanks * 0x4000 + tableIx * 0x1000;
+
+	const half chrRomBase = baseAddr + tileIx * tilebytes;
+
+	for ( int y = 0; y < 8; ++y )
+	{
+		for ( int x = 0; x < 8; ++x )
+		{
+			const byte chrRom0 = cart.rom[chrRomBase + y];
+			const byte chrRom1 = cart.rom[chrRomBase + ( tilebytes / 2 ) + y];
+
+			const half xBitMask = ( 0x80 >> x );
+
+			const byte lowerBits = ( ( chrRom0 & xBitMask ) >> ( 7 - x ) ) | ( ( ( chrRom1 & xBitMask ) >> ( 7 - x ) ) << 1 );
+
+			const uint imageX = cornerX + x;
+			const uint imageY = cornerY + y;
+
+			image.setPixel( imageX, 239 - imageY, colorIndex[lowerBits] );
+		}
+	}
+}
+
+
 int main()
 {
 	NesSystem system;
@@ -178,43 +206,34 @@ int main()
 
 	std::chrono::seconds sec( 1 );
 
-	cpuCycle_t ppuc(1);
-	masterCycles_t  mc = chrono::duration_cast<masterCycles_t>( ppuc );
-
-	masterCycles_t master( masterCycles_t( 40*sec ).count() );
-	cpuCycle_t cpuCyc = chrono::duration_cast<cpuCycle_t>( master );
-
 	frameRate_t frame( 1 );
+	frameRate_t frameDelta( 1 );
 	chrono::milliseconds frameTime = chrono::duration_cast<chrono::milliseconds>( frame );
 
-	masterCycles_t tick( 24 );
+	masterCycles_t tick = chrono::duration_cast<masterCycles_t>( sec );
 
 	masterCycles_t cyclesPerFrame = chrono::duration_cast<masterCycles_t>( frame );
 
 	cpuCycle_t cyclesPerMaster= chrono::duration_cast<cpuCycle_t>( tick );
 	ppuCycle_t ppucyclesPerMaster = chrono::duration_cast<cpuCycle_t>( tick );
 
-	std::chrono::seconds cycleSeconds = chrono::duration_cast<std::chrono::seconds>( tick );
-
-	cout << cycleSeconds.count() << endl;
 	cout << tick.count() << endl;
 	cout << cyclesPerMaster.count() << endl;
 	cout << ppucyclesPerMaster.count() << endl;
-	cout << cpuCyc.count() << endl;
 	cout << cyclesPerFrame.count() << endl;
 
 #if NES_MODE == 1
 	NesCart cart;
-	//LoadNesFile( "nestest.nes", cart );
-	//system.LoadProgram( cart, 0xC000 );
-	//system.cpu.forceStopAddr = 0xC6BD;
-
+	/*LoadNesFile( "nestest.nes", cart );
+	system.LoadProgram( cart, 0xC000 );
+	system.cpu.forceStopAddr = 0xC6BD;
+	*/
 	LoadNesFile( "Donkey Kong.nes", cart );
 	system.LoadProgram( cart );
 
 #if NES_MODE == 1
 	uint colorIndex[] = { 0x000000FF, 0xFF0000FF,	0x880000FF, 0xAAFFEEFF };
-
+	/*
 	Bitmap image( 128, 256, 0x00 );
 
 	int tileIx = 0;
@@ -223,40 +242,56 @@ int main()
 
 	for ( int tileIx = 0; tileIx < 512; ++tileIx )
 	{
-		const half baseAddr = cart.header.prgRomBanks * 0x4000;
+		const uint cornerX = static_cast< uint >( ( tileIx % 16 ) * 8 );
+		const uint cornerY = static_cast< uint >( 8 * floor( tileIx / 16.0f ) );
 
-		const half chrRomBase = baseAddr + tileIx * tilebytes;
-
-		for ( int y = 0; y < 8; ++y )
-		{
-			for ( int x = 0; x < 8; ++x )
-			{
-				const byte chrRom0 = cart.rom[chrRomBase + y];
-				const byte chrRom1 = cart.rom[chrRomBase + ( tilebytes / 2 ) + y];
-
-				const half xBitMask = ( 0x80 >> x );
-
-				const byte lowerBits = ( ( chrRom0 & xBitMask ) >> ( 7 - x ) ) | ( ( ( chrRom1 & xBitMask ) >> ( 7 - x ) ) << 1 );
-
-				const uint imageX = static_cast< uint >( x + ( tileIx % 16 ) * 8 );
-				const uint imageY = static_cast< uint >( y + 8 * floor( tileIx / 16.0f ) );
-
-				image.setPixel( imageX, 255 - imageY, colorIndex[lowerBits] );
-			}
-		}
+		DrawTile( cart, image, 0x01, 0x62, colorIndex, cornerX, cornerY );
 	}
 
-
 	image.write( "chrRom.bmp" );
+	*/
 #endif // #if NES_MODE == 1
-
-	const uint64_t cyclesPerSecond = cyclesPerFrame.count();
 
 	bool isRunning = true;
 
+
 	while( isRunning )
 	{
-		isRunning = system.Run( cyclesPerFrame );
+		//if( frame.count() == 2 )
+		{
+			// print nametable
+
+			Bitmap nametable( 256, 240, 0x00 );
+			
+			for ( int tileY = 0; tileY < 30; ++tileY )
+			{
+				for ( int tileX = 0; tileX < 32; ++tileX )
+				{
+					const uint cornerX = static_cast< uint >( tileX * 8 );
+					const uint cornerY = static_cast< uint >( 8 * tileY );
+
+					DrawTile( cart, nametable, 0x01, system.ppu.vram[ /*0x2083*/0x2000 + tileX + tileY * 32 ], colorIndex, cornerX, cornerY );
+				}
+			}
+
+			stringstream nametableName;
+
+			nametableName << "nametable" << frame.count() << ".bmp";
+
+			nametable.write( nametableName.str() );
+		}
+
+		masterCycles_t nextCycle = chrono::duration_cast<masterCycles_t>( frameRate_t( 1 ) );
+
+		isRunning = system.Run( nextCycle );
+
+		++frame;
+
+//		if( (frame % 60).count() == 0 )
+		{
+//			cout << "CPU Cycles per Second:" << system.cpu.iterationCycle << endl;
+//			system.cpu.iterationCycle = 0;
+		}
 	}
 #else
 	const float passedPercent = RunTests( cpu );

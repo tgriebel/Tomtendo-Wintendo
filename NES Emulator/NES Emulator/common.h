@@ -28,8 +28,8 @@ const uint64_t CpuClockDivide	= 12;
 const uint64_t PpuClockDivide	= 4;
 
 using masterCycles_t = std::chrono::duration< uint64_t, std::ratio<1, MasterClockHz> >;
-using ppuCycle_t = std::chrono::duration< uint64_t, std::ratio<4, MasterClockHz> >;
-using cpuCycle_t = std::chrono::duration< uint64_t, std::ratio<12, MasterClockHz> >;
+using ppuCycle_t = std::chrono::duration< uint64_t, std::ratio<PpuClockDivide, MasterClockHz> >;
+using cpuCycle_t = std::chrono::duration< uint64_t, std::ratio<CpuClockDivide, MasterClockHz> >;
 using frameRate_t = std::chrono::duration< uint64_t, std::ratio<1, 60> >;
 
 struct iNesHeader

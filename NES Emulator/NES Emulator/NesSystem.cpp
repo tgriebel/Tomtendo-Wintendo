@@ -9,20 +9,6 @@
 #include "6502.h"
 
 
-inline void NesSystem::SetMemory( const half address, byte value )
-{
-#if DEBUG_MODE == 1
-	if ( ( address == 0x4014 || address == 0x2003 ) || ( ( address >= 0x2000 ) && ( address <= 0x2008 ) ) )
-	{
-		std::cout << "DMA/PPU Registers Address Hit" << std::endl;
-	}
-#endif // #if DEBUG_MODE == 1
-
-	// TODO: Implement mirroring, etc
-	memory[MirrorAddress( address )] = value;
-}
-
-
 void NesSystem::LoadProgram( const NesCart& cart, const uint resetVectorManual )
 {
 	memset( memory, 0, VirtualMemorySize );
@@ -43,12 +29,14 @@ void NesSystem::LoadProgram( const NesCart& cart, const uint resetVectorManual )
 	if ( resetVectorManual == 0x10000 )
 	{
 		cpu.resetVector = ( memory[ResetVectorAddr + 1] << 8 ) | memory[ResetVectorAddr];
-
 	}
 	else
 	{
 		cpu.resetVector = static_cast< half >( resetVectorManual & 0xFFFF );
 	}
+
+	cpu.nmiVector = Combine( memory[NmiVectorAddr], memory[NmiVectorAddr + 1] );
+	cpu.irqVector = Combine( memory[IrqVectorAddr], memory[IrqVectorAddr + 1] );
 
 	cpu.interruptTriggered = false;
 	cpu.resetTriggered = false;

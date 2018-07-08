@@ -62,6 +62,7 @@
 		hexString << uppercase << setfill( '0' ) << setw( 2 ) << hex << disassemblyBytes[0]; \
 	logLine << uppercase << setfill( '0' ) << setw( 4 ) << hex << instrBegin << setfill( ' ' ) << "  " << setw( 10 ) << left << hexString.str() << pair.mnemonic << " " << setw( 28 ) << left << debugAddr.str() << right << regStr; \
 	logFile << logLine.str() << endl; \
+	if( printToOutput ){ std::cout << logLine.str() << endl; } \
 	}
 
 #else //  #if DEBUG_ADDR == 1

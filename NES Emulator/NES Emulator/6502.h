@@ -43,15 +43,17 @@ const StatusBit	STATUS_OVERFLOW		= ( 1 << BIT_OVERFLOW );
 const StatusBit	STATUS_NEGATIVE		= ( 1 << BIT_NEGATIVE );
 
 
-enum RegisterIndex : byte
+struct ProcessorStatus
 {
-	iX = 0,
-	iY = 1,
-	iA = 2,
-	iSP = 3,
-	iP = 4,
-	iNil,
-	regCount = iNil,
+	byte c : 1;
+	byte z : 1;
+	byte i : 1;
+	byte d : 1;
+
+	byte u : 1;
+	byte b : 1;
+	byte v : 1;
+	byte n : 1;
 };
 
 
@@ -147,10 +149,9 @@ struct InstrParams
 {
 	byte			param0;
 	byte			param1;
-	byte			cycles;
 	AddrFunction	getAddr;
 
-	InstrParams() : cycles( 0 ), getAddr( NULL ), param0( 0 ), param1( 0 ) {}
+	InstrParams() : getAddr( NULL ), param0( 0 ), param1( 0 ) {}
 };
 
 
@@ -168,6 +169,8 @@ struct InstructionMapTuple
 
 struct Cpu6502
 {
+	static const word InvalidAddress = ~0x00;
+
 	half nmiVector;
 	half irqVector;
 	half resetVector;
@@ -175,10 +178,12 @@ struct Cpu6502
 	NesSystem* system;
 
 	cpuCycle_t cycle;
+	cpuCycle_t instructionCycles;
 
 #if DEBUG_ADDR == 1
 	std::stringstream debugAddr;
 	std::ofstream logFile;
+	bool printToOutput;
 #endif
 
 	bool forceStop;
@@ -186,14 +191,13 @@ struct Cpu6502
 
 	bool resetTriggered;
 	bool interruptTriggered;
+	bool oamInProcess;
 
-	byte regs[regCount];
-
-	byte& X		= regs[iX];
-	byte& Y		= regs[iY];
-	byte& A		= regs[iA];
-	byte& SP	= regs[iSP];
-	byte& P		= regs[iP];
+	byte X;
+	byte Y;
+	byte A;
+	byte SP;
+	byte P;
 	half PC;
 
 	void Reset()
@@ -211,7 +215,7 @@ struct Cpu6502
 	}
 
 	cpuCycle_t Cpu6502::Exec();
-	bool Step( const cpuCycle_t targetCycles );
+	bool Step( const cpuCycle_t nextCycle );
 	void SetFlags( const StatusBit bit, const bool toggleOn );
 	void Push( const byte value );
 	byte Pull();
@@ -310,7 +314,8 @@ private:
 
 	half CombineIndirect( const byte lsb, const byte msb, const word wrap );
 
-	void Branch( const InstrParams& params, const bool takeBranch );
+	byte AddPageCrossCycles( const half address );
+	byte Branch( const InstrParams& params, const bool takeBranch );
 	byte& Read( const InstrParams& params );
 	void Write( const InstrParams& params, const byte value );
 };
