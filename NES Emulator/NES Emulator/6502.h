@@ -4,7 +4,7 @@
 #include <sstream>
 #include "common.h"
 
-typedef byte StatusBit;
+typedef uint8_t StatusBit;
 
 struct InstrParams;
 struct Cpu6502;
@@ -14,8 +14,8 @@ struct InstructionMapTuple;
 struct DisassemblerMapTuple;
 class NesSystem;
 
-typedef byte( Cpu6502::* Instruction )( const InstrParams& params );
-typedef byte&( Cpu6502::* AddrFunction )( const InstrParams& params, word& outValue );
+typedef uint8_t( Cpu6502::* Instruction )( const InstrParams& params );
+typedef uint8_t&( Cpu6502::* AddrFunction )( const InstrParams& params, uint32_t& outValue );
 
 
 enum StatusBitIndex
@@ -45,19 +45,19 @@ const StatusBit	STATUS_NEGATIVE		= ( 1 << BIT_NEGATIVE );
 
 struct ProcessorStatus
 {
-	byte c : 1;
-	byte z : 1;
-	byte i : 1;
-	byte d : 1;
+	uint8_t c : 1;
+	uint8_t z : 1;
+	uint8_t i : 1;
+	uint8_t d : 1;
 
-	byte u : 1;
-	byte b : 1;
-	byte v : 1;
-	byte n : 1;
+	uint8_t u : 1;
+	uint8_t b : 1;
+	uint8_t v : 1;
+	uint8_t n : 1;
 };
 
 
-enum OpCode : byte
+enum OpCode : uint8_t
 {
 	BRK = 0x00,
 	JSR = 0x20,
@@ -147,8 +147,8 @@ enum FormatCode
 
 struct InstrParams
 {
-	byte			param0;
-	byte			param1;
+	uint8_t			param0;
+	uint8_t			param1;
 	AddrFunction	getAddr;
 
 	InstrParams() : getAddr( NULL ), param0( 0 ), param1( 0 ) {}
@@ -158,22 +158,22 @@ struct InstrParams
 struct InstructionMapTuple
 {
 	char			mnemonic[16];
-	byte			byteCode;
+	uint8_t			uint8_tCode;
 	FormatCode		format;
 	Instruction		instr;
 	AddrFunction	addrFunc;
-	byte			operands;
-	byte			cycles;
+	uint8_t			operands;
+	uint8_t			cycles;
 };
 
 
 struct Cpu6502
 {
-	static const word InvalidAddress = ~0x00;
+	static const uint32_t InvalidAddress = ~0x00;
 
-	half nmiVector;
-	half irqVector;
-	half resetVector;
+	uint16_t nmiVector;
+	uint16_t irqVector;
+	uint16_t resetVector;
 
 	NesSystem* system;
 
@@ -187,18 +187,18 @@ struct Cpu6502
 #endif
 
 	bool forceStop;
-	half forceStopAddr;
+	uint16_t forceStopAddr;
 
 	bool resetTriggered;
 	bool interruptTriggered;
 	bool oamInProcess;
 
-	byte X;
-	byte Y;
-	byte A;
-	byte SP;
-	byte P;
-	half PC;
+	uint8_t X;
+	uint8_t Y;
+	uint8_t A;
+	uint8_t SP;
+	uint8_t P;
+	uint16_t PC;
 
 	void Reset()
 	{
@@ -217,111 +217,111 @@ struct Cpu6502
 	cpuCycle_t Cpu6502::Exec();
 	bool Step( const cpuCycle_t nextCycle );
 	void SetFlags( const StatusBit bit, const bool toggleOn );
-	void Push( const byte value );
-	byte Pull();
-	void PushHalf( const half value );
-	half PullHalf();
+	void Push( const uint8_t value );
+	uint8_t Pull();
+	void Pushuint16_t( const uint16_t value );
+	uint16_t Pulluint16_t();
 
-	byte Illegal( const InstrParams& params );
-	byte STA( const InstrParams& params );
-	byte STX( const InstrParams& params );
-	byte STY( const InstrParams& params );
-	byte LDA( const InstrParams& params );
-	byte LDX( const InstrParams& params );
-	byte LDY( const InstrParams& params );
-	byte TXS( const InstrParams& params );
-	byte TAX( const InstrParams& params );
-	byte TAY( const InstrParams& params );
-	byte TSX( const InstrParams& params );
-	byte TYA( const InstrParams& params );
-	byte TXA( const InstrParams& params );
-	byte INX( const InstrParams& params );
-	byte INY( const InstrParams& params );
-	byte DEX( const InstrParams& params );
-	byte DEY( const InstrParams& params );
-	byte INC( const InstrParams& params );
-	byte DEC( const InstrParams& params );
-	byte ADC( const InstrParams& params );
-	byte SBC( const InstrParams& params );
-	byte CMP( const InstrParams& params );
-	byte CPX( const InstrParams& params );
-	byte CPY( const InstrParams& params );
-	byte PHP( const InstrParams& params );
-	byte PHA( const InstrParams& params );
-	byte PLA( const InstrParams& params );
-	byte PLP( const InstrParams& params );
-	byte SEC( const InstrParams& params );
-	byte SEI( const InstrParams& params );
-	byte SED( const InstrParams& params );
-	byte CLI( const InstrParams& params );
-	byte CLC( const InstrParams& params );
-	byte CLV( const InstrParams& params );
-	byte CLD( const InstrParams& params );
+	uint8_t Illegal( const InstrParams& params );
+	uint8_t STA( const InstrParams& params );
+	uint8_t STX( const InstrParams& params );
+	uint8_t STY( const InstrParams& params );
+	uint8_t LDA( const InstrParams& params );
+	uint8_t LDX( const InstrParams& params );
+	uint8_t LDY( const InstrParams& params );
+	uint8_t TXS( const InstrParams& params );
+	uint8_t TAX( const InstrParams& params );
+	uint8_t TAY( const InstrParams& params );
+	uint8_t TSX( const InstrParams& params );
+	uint8_t TYA( const InstrParams& params );
+	uint8_t TXA( const InstrParams& params );
+	uint8_t INX( const InstrParams& params );
+	uint8_t INY( const InstrParams& params );
+	uint8_t DEX( const InstrParams& params );
+	uint8_t DEY( const InstrParams& params );
+	uint8_t INC( const InstrParams& params );
+	uint8_t DEC( const InstrParams& params );
+	uint8_t ADC( const InstrParams& params );
+	uint8_t SBC( const InstrParams& params );
+	uint8_t CMP( const InstrParams& params );
+	uint8_t CPX( const InstrParams& params );
+	uint8_t CPY( const InstrParams& params );
+	uint8_t PHP( const InstrParams& params );
+	uint8_t PHA( const InstrParams& params );
+	uint8_t PLA( const InstrParams& params );
+	uint8_t PLP( const InstrParams& params );
+	uint8_t SEC( const InstrParams& params );
+	uint8_t SEI( const InstrParams& params );
+	uint8_t SED( const InstrParams& params );
+	uint8_t CLI( const InstrParams& params );
+	uint8_t CLC( const InstrParams& params );
+	uint8_t CLV( const InstrParams& params );
+	uint8_t CLD( const InstrParams& params );
 
-	byte ASL( const InstrParams& params );
-	byte AND( const InstrParams& params );
-	byte BIT( const InstrParams& params );
-	byte EOR( const InstrParams& params );
-	byte LSR( const InstrParams& params );
-	byte ORA( const InstrParams& params );
-	byte ROL( const InstrParams& params );
-	byte ROR( const InstrParams& params );
+	uint8_t ASL( const InstrParams& params );
+	uint8_t AND( const InstrParams& params );
+	uint8_t BIT( const InstrParams& params );
+	uint8_t EOR( const InstrParams& params );
+	uint8_t LSR( const InstrParams& params );
+	uint8_t ORA( const InstrParams& params );
+	uint8_t ROL( const InstrParams& params );
+	uint8_t ROR( const InstrParams& params );
 
-	byte BRK( const InstrParams& params );
-	byte JMP( const InstrParams& params );
-	byte JMPI( const InstrParams& params );
-	byte JSR( const InstrParams& params );
-	byte RTS( const InstrParams& params );
-	byte RTI( const InstrParams& params );
+	uint8_t BRK( const InstrParams& params );
+	uint8_t JMP( const InstrParams& params );
+	uint8_t JMPI( const InstrParams& params );
+	uint8_t JSR( const InstrParams& params );
+	uint8_t RTS( const InstrParams& params );
+	uint8_t RTI( const InstrParams& params );
 
-	byte BMI( const InstrParams& params );
-	byte BVS( const InstrParams& params );
-	byte BCS( const InstrParams& params );
-	byte BEQ( const InstrParams& params );
-	byte BPL( const InstrParams& params );
-	byte BVC( const InstrParams& params );
-	byte BCC( const InstrParams& params );
-	byte BNE( const InstrParams& params );
+	uint8_t BMI( const InstrParams& params );
+	uint8_t BVS( const InstrParams& params );
+	uint8_t BCS( const InstrParams& params );
+	uint8_t BEQ( const InstrParams& params );
+	uint8_t BPL( const InstrParams& params );
+	uint8_t BVC( const InstrParams& params );
+	uint8_t BCC( const InstrParams& params );
+	uint8_t BNE( const InstrParams& params );
 
-	byte NMI( const InstrParams& params );
-	byte IRQ( const InstrParams& params );
+	uint8_t NMI( const InstrParams& params );
+	uint8_t IRQ( const InstrParams& params );
 
-	byte NOP( const InstrParams& params );
+	uint8_t NOP( const InstrParams& params );
 	 
-	byte& Absolute( const InstrParams& params, word& outValue );
-	byte& Zero( const InstrParams& params, word& outValue );
-	byte& Immediate( const InstrParams& params, word& outValue );
-	byte& IndexedIndirect( const InstrParams& params, word& address );
-	byte& IndirectIndexed( const InstrParams& params, word& outValue );
-	byte& Accumulator( const InstrParams& params, word& outValue );
+	uint8_t& Absolute( const InstrParams& params, uint32_t& outValue );
+	uint8_t& Zero( const InstrParams& params, uint32_t& outValue );
+	uint8_t& Immediate( const InstrParams& params, uint32_t& outValue );
+	uint8_t& IndexedIndirect( const InstrParams& params, uint32_t& address );
+	uint8_t& IndirectIndexed( const InstrParams& params, uint32_t& outValue );
+	uint8_t& Accumulator( const InstrParams& params, uint32_t& outValue );
 
-	byte& IndexedAbsolute( const InstrParams& params, word& address, const byte& reg );
-	byte& IndexedAbsoluteX( const InstrParams& params, word& address );
-	byte& IndexedAbsoluteY( const InstrParams& params, word& address );
+	uint8_t& IndexedAbsolute( const InstrParams& params, uint32_t& address, const uint8_t& reg );
+	uint8_t& IndexedAbsoluteX( const InstrParams& params, uint32_t& address );
+	uint8_t& IndexedAbsoluteY( const InstrParams& params, uint32_t& address );
 
-	byte& IndexedZero( const InstrParams& params, word& address, const byte& reg );
-	byte& IndexedZeroX( const InstrParams& params, word& address );
-	byte& IndexedZeroY( const InstrParams& params, word& address );
+	uint8_t& IndexedZero( const InstrParams& params, uint32_t& address, const uint8_t& reg );
+	uint8_t& IndexedZeroX( const InstrParams& params, uint32_t& address );
+	uint8_t& IndexedZeroY( const InstrParams& params, uint32_t& address );
 
 private:
-	static bool CheckSign( const half checkValue );
-	static bool CheckCarry( const half checkValue );
-	static bool CheckZero( const half checkValue );
-	static bool CheckOverflow( const half src, const half temp, const byte finalValue );
-	static bool IsIllegalOp( const byte opCode );
+	static bool CheckSign( const uint16_t checkValue );
+	static bool CheckCarry( const uint16_t checkValue );
+	static bool CheckZero( const uint16_t checkValue );
+	static bool CheckOverflow( const uint16_t src, const uint16_t temp, const uint8_t finalValue );
+	static bool IsIllegalOp( const uint8_t opCode );
 
-	void SetAluFlags( const half value );
+	void SetAluFlags( const uint16_t value );
 
-	half CombineIndirect( const byte lsb, const byte msb, const word wrap );
+	uint16_t CombineIndirect( const uint8_t lsb, const uint8_t msb, const uint32_t wrap );
 
-	byte AddPageCrossCycles( const half address );
-	byte Branch( const InstrParams& params, const bool takeBranch );
-	byte& Read( const InstrParams& params );
-	void Write( const InstrParams& params, const byte value );
+	uint8_t AddPageCrossCycles( const uint16_t address );
+	uint8_t Branch( const InstrParams& params, const bool takeBranch );
+	uint8_t& Read( const InstrParams& params );
+	void Write( const InstrParams& params, const uint8_t value );
 };
 
 
-const half NumInstructions = 256;
+const uint16_t NumInstructions = 256;
 static const InstructionMapTuple InstructionMap[NumInstructions] =
 {
 	{ "BRK",	BRK,	SYSTEM_OP,	&Cpu6502::BRK,		nullptr,					0, 7 },	//	00

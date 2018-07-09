@@ -5,34 +5,34 @@
 	debugAddr << uppercase << "$" << setw( 2 ) << hex << targetAddresss << ","; \
 	debugAddr << ( ( &reg == &X ) ? "X" : "Y" ); \
 	debugAddr << setfill( '0' ) << " @ " << setw( 2 ) << hex << address; \
-	debugAddr << " = " << setw( 2 ) << hex << static_cast< uint >( value ); }
+	debugAddr << " = " << setw( 2 ) << hex << static_cast< uint32_t >( value ); }
 
 #define DEBUG_ADDR_INDEXED_ABS { debugAddr.str( std::string() ); \
 	debugAddr << uppercase << "$" << setw( 4 ) << hex << targetAddresss << ","; \
 	debugAddr << ( ( &reg == &X ) ? "X" : "Y" ); \
 	debugAddr << setfill( '0' ) << " @ " << setw( 4 ) << hex << address; \
-	debugAddr << " = " << setw( 2 ) << hex << static_cast< uint >( value ); }
+	debugAddr << " = " << setw( 2 ) << hex << static_cast< uint32_t >( value ); }
 
 #define DEBUG_ADDR_ZERO { debugAddr.str( std::string() ); \
 	debugAddr << uppercase << "$" << setfill( '0' ) << setw( 2 ) << address; \
-	debugAddr << " = " << setfill( '0' ) << setw( 2 ) << hex << static_cast< uint >( value ); }
+	debugAddr << " = " << setfill( '0' ) << setw( 2 ) << hex << static_cast< uint32_t >( value ); }
 
 #define DEBUG_ADDR_ABS { debugAddr.str( std::string() ); \
 	debugAddr << uppercase << "$" << setfill( '0' ) << setw( 4 ) << address; \
-	debugAddr << " = " << setfill( '0' ) << setw( 2 ) << hex << static_cast< uint >( value ); }
+	debugAddr << " = " << setfill( '0' ) << setw( 2 ) << hex << static_cast< uint32_t >( value ); }
 
 #define DEBUG_ADDR_IMMEDIATE { debugAddr.str( std::string() ); \
-	debugAddr << uppercase << "#$" << setfill( '0' ) << setw( 2 ) << hex << static_cast< uint >( value ); }
+	debugAddr << uppercase << "#$" << setfill( '0' ) << setw( 2 ) << hex << static_cast< uint32_t >( value ); }
 
 #define DEBUG_ADDR_INDIRECT_INDEXED { debugAddr.str( std::string() ); \
-	debugAddr << uppercase << "($" << setfill( '0' ) << setw( 2 ) << static_cast< uint >( params.param0 ) << "),Y = "; \
+	debugAddr << uppercase << "($" << setfill( '0' ) << setw( 2 ) << static_cast< uint32_t >( params.param0 ) << "),Y = "; \
 	debugAddr << setw( 4 ) << hex << address; \
-	debugAddr << " @ " << setw( 4 ) << hex << offset << " = " << setw( 2 ) << hex << static_cast< uint >( value ); }
+	debugAddr << " @ " << setw( 4 ) << hex << offset << " = " << setw( 2 ) << hex << static_cast< uint32_t >( value ); }
 
 #define DEBUG_ADDR_INDEXED_INDIRECT { debugAddr.str( std::string() ); \
-	debugAddr << uppercase << "($" << setfill( '0' ) << setw( 2 ) << static_cast< uint >( params.param0 ) << ",X) @ "; \
-	debugAddr << setw( 2 ) << static_cast< uint >( targetAddress ); \
-	debugAddr << " = " << setw( 4 ) << address << " = " << setw( 2 ) << static_cast< uint >( value ); }
+	debugAddr << uppercase << "($" << setfill( '0' ) << setw( 2 ) << static_cast< uint32_t >( params.param0 ) << ",X) @ "; \
+	debugAddr << setw( 2 ) << static_cast< uint32_t >( targetAddress ); \
+	debugAddr << " = " << setw( 4 ) << address << " = " << setw( 2 ) << static_cast< uint32_t >( value ); }
 
 #define DEBUG_ADDR_ACCUMULATOR { debugAddr.str( std::string() ); \
 	debugAddr << "A"; }
@@ -51,7 +51,7 @@
 	debugAddr << uppercase << "$" << setfill( '0' ) << setw( 2 ) << hex << branchedPC; }
 
 #define DEBUG_CPU_LOG if ( enablePrinting ) { \
-	int disassemblyBytes[6] = { curByte, params.param0, params.param1,'\0' }; \
+	int disassemblyBytes[6] = { curbyte, params.param0, params.param1,'\0' }; \
 	stringstream hexString; \
 	stringstream logLine; \
 	if ( operands == 1 ) \

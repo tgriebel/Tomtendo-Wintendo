@@ -11,54 +11,52 @@
 #include <iomanip>
 
 #define NES_MODE 1
-#define DEBUG_MODE 1
-#define DEBUG_ADDR 1
+#define DEBUG_MODE 0
+#define DEBUG_ADDR 0
 #define DEBUG_MEM 0
 
-typedef unsigned short	ushort;
-typedef unsigned int	uint;
-
-typedef unsigned char	byte;
-typedef signed char		byte_signed;
-typedef ushort			half;
-typedef uint			word;
+inline constexpr uint8_t operator "" _b( uint64_t arg ) noexcept
+{
+	return static_cast< uint8_t >( arg & 0xFF );
+}
 
 const uint64_t MasterClockHz	= 21477272;
 const uint64_t CpuClockDivide	= 12;
 const uint64_t PpuClockDivide	= 4;
+const uint64_t FPS = 60;
 
 using masterCycles_t = std::chrono::duration< uint64_t, std::ratio<1, MasterClockHz> >;
 using ppuCycle_t = std::chrono::duration< uint64_t, std::ratio<PpuClockDivide, MasterClockHz> >;
 using cpuCycle_t = std::chrono::duration< uint64_t, std::ratio<CpuClockDivide, MasterClockHz> >;
-using frameRate_t = std::chrono::duration< uint64_t, std::ratio<1, 60> >;
+using frameRate_t = std::chrono::duration< uint64_t, std::ratio<1, FPS> >;
 
 struct iNesHeader
 {
-	byte type[3];
-	byte magic;
-	byte prgRomBanks;
-	byte chrRomBanks;
+	uint8_t type[3];
+	uint8_t magic;
+	uint8_t prgRomBanks;
+	uint8_t chrRomBanks;
 	struct
 	{
-		byte mirror : 1;
-		byte usesBattery : 1;
-		byte usesTrainer : 1;
-		byte fourScreenMirror : 1;
-		byte mapperNumberLower : 4;
+		uint8_t mirror : 1;
+		uint8_t usesBattery : 1;
+		uint8_t usesTrainer : 1;
+		uint8_t fourScreenMirror : 1;
+		uint8_t mapperNumberLower : 4;
 	} controlBits0;
 	struct
 	{
-		byte reserved0 : 4;
-		byte mappedNumberUpper : 4;
+		uint8_t reserved0 : 4;
+		uint8_t mappedNumberUpper : 4;
 	} controlBits1;
-	byte reserved[8];
+	uint8_t reserved[8];
 };
 
 
 struct NesCart
 {
 	iNesHeader	header;
-	byte		rom[524288];
+	uint8_t		rom[524288];
 	size_t		size;
 };
 
@@ -89,7 +87,7 @@ static void LoadNesFile( const std::string& fileName, NesCart& outCart )
 }
 
 
-inline half Combine( const byte lsb, const byte msb )
+inline uint16_t Combine( const uint8_t lsb, const uint8_t msb )
 {
 	return ( ( ( msb << 8 ) | lsb ) & 0xFFFF );
 }

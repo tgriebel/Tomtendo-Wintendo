@@ -9,7 +9,7 @@
 #include "6502.h"
 
 
-void NesSystem::LoadProgram( const NesCart& cart, const uint resetVectorManual )
+void NesSystem::LoadProgram( const NesCart& cart, const uint32_t resetVectorManual )
 {
 	memset( memory, 0, VirtualMemorySize );
 
@@ -32,7 +32,7 @@ void NesSystem::LoadProgram( const NesCart& cart, const uint resetVectorManual )
 	}
 	else
 	{
-		cpu.resetVector = static_cast< half >( resetVectorManual & 0xFFFF );
+		cpu.resetVector = static_cast< uint16_t >( resetVectorManual & 0xFFFF );
 	}
 
 	cpu.nmiVector = Combine( memory[NmiVectorAddr], memory[NmiVectorAddr + 1] );

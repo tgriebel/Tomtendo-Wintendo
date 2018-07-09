@@ -2,26 +2,26 @@
 
 struct PPU;
 
-typedef byte&( PPU::* PpuRegWriteFunc )( const byte value );
-typedef byte&( PPU::* PpuRegReadFunc )();
+typedef uint8_t&( PPU::* PpuRegWriteFunc )( const uint8_t value );
+typedef uint8_t&( PPU::* PpuRegReadFunc )();
 
 
 // TODO: Enums overkill?
-enum PatternTable : byte
+enum PatternTable : uint8_t
 {
 	PATTERN_TABLE_0 = 0X00,
 	PATTERN_TABLE_1 = 0X01,
 };
 
 
-enum SpriteMode : byte
+enum SpriteMode : uint8_t
 {
 	SPRITE_MODE_8x8 = 0X00,
 	SPRITE_MODE_8x16 = 0X01,
 };
 
 
-enum Nametable : byte
+enum Nametable : uint8_t
 {
 	NAMETABLE_0 = 0X00,
 	NAMETABLE_1 = 0X01,
@@ -30,27 +30,27 @@ enum Nametable : byte
 };
 
 
-enum VramInc : byte
+enum VramInc : uint8_t
 {
 	VRAM_INC_0 = 0x00,
 	VRAM_INC_1 = 0x01,
 };
 
 
-enum MasterSlaveMode : byte
+enum MasterSlaveMode : uint8_t
 {
 	MASTER_SLAVE_READ_EXT	= 0x00,
 	MASTER_SLAVE_WRITE_EXT	= 0x01,
 };
 
-enum NmiVblank : byte
+enum NmiVblank : uint8_t
 {
 	NMI_VBLANK_OFF	= 0X00,
 	NMI_VBLANK_ON	= 0X01,
 };
 
 
-enum PpuReg : byte
+enum PpuReg : uint8_t
 {
 	PPUREG_CTRL,
 	PPUREG_MASK,
@@ -78,7 +78,7 @@ union PpuCtrl
 		NmiVblank		nmiVblank		: 1;
 	} sem;
 
-	byte raw;
+	uint8_t raw;
 };
 
 
@@ -87,18 +87,18 @@ union PpuMask
 {
 	struct PpuMaskSemantic
 	{
-		byte	greyscale	: 1;
-		byte	bgLeft		: 1;
-		byte	sprtLeft	: 1;
-		byte	showBg		: 1;
+		uint8_t	greyscale	: 1;
+		uint8_t	bgLeft		: 1;
+		uint8_t	sprtLeft	: 1;
+		uint8_t	showBg		: 1;
 
-		byte	showSprt	: 1;
-		byte	emphazieR	: 1;
-		byte	emphazieG	: 1;
-		byte	emphazieB	: 1;
+		uint8_t	showSprt	: 1;
+		uint8_t	emphazieR	: 1;
+		uint8_t	emphazieG	: 1;
+		uint8_t	emphazieB	: 1;
 	} sem;
 
-	byte raw;
+	uint8_t raw;
 };
 
 
@@ -106,14 +106,14 @@ union PpuStatusLatch
 {
 	struct PpuStatusSemantic
 	{
-		byte	lastReadLsb : 5;
-		byte	o : 1;
-		byte	s : 1;
-		byte	v : 1;
+		uint8_t	lastReadLsb : 5;
+		uint8_t	o : 1;
+		uint8_t	s : 1;
+		uint8_t	v : 1;
 
 	} sem;
 
-	byte raw;
+	uint8_t raw;
 };
 
 
@@ -128,9 +128,9 @@ struct PpuStatus
 
 struct PPU
 {
-	static const half VirtualMemorySize = 0xFFFF;
-	static const half PhysicalMemorySize = 0x3FFF;
-	static const byte RegisterCount = 0x08;
+	static const uint16_t VirtualMemorySize = 0xFFFF;
+	static const uint16_t PhysicalMemorySize = 0x3FFF;
+	static const uint8_t RegisterCount = 0x08;
 	//static const ppuCycle_t VBlankCycles = ppuCycle_t( 20 * 341 * 5 );
 
 	PatternTable bgPatternTbl;
@@ -153,15 +153,15 @@ struct PPU
 
 	NesSystem* system;
 
-	half vramAddr;
+	uint16_t vramAddr;
 
-	byte vram[VirtualMemorySize];
-	byte primaryOAM[256];
-	byte secondaryOAM[32];
+	uint8_t vram[VirtualMemorySize];
+	uint8_t primaryOAM[256];
+	uint8_t secondaryOAM[32];
 
-	byte registers[8]; // no need?
+	uint8_t registers[8]; // no need?
 
-	inline byte& PPUCTRL( const byte value )
+	inline uint8_t& PPUCTRL( const uint8_t value )
 	{
 		regCtrl.raw = value;
 		regStatus.current.sem.lastReadLsb = ( value & 0x1F );
@@ -170,13 +170,13 @@ struct PPU
 	}
 
 
-	inline byte& PPUCTRL()
+	inline uint8_t& PPUCTRL()
 	{
 		return regCtrl.raw;
 	}
 
 
-	inline byte& PPUMASK( const byte value )
+	inline uint8_t& PPUMASK( const uint8_t value )
 	{
 		regMask.raw = value;
 		regStatus.current.sem.lastReadLsb = ( value & 0x1F );
@@ -185,13 +185,13 @@ struct PPU
 	}
 
 
-	inline byte& PPUMASK()
+	inline uint8_t& PPUMASK()
 	{
 		return regMask.raw;
 	}
 
 
-	inline byte& PPUSTATUS( const byte value )
+	inline uint8_t& PPUSTATUS( const uint8_t value )
 	{
 	// TODO: need to redesign to not return reference
 		assert( value == 0 );
@@ -204,17 +204,11 @@ struct PPU
 		registers[PPUREG_DATA] = 0;
 		vramAddr = 0;
 
-		if ( regStatus.current.raw > 0x10 )
-		{
-			std::cout << "Register is: " << std::hex << (int)regStatus.current.raw << std::endl;
-		//	EnablePrinting();
-		}
-
 		return regStatus.current.raw;
 	}
 
 
-	inline byte& PPUSTATUS()
+	inline uint8_t& PPUSTATUS()
 	{
 		regStatus.latched = regStatus.current;
 		regStatus.latched.sem.v = 0;
@@ -224,19 +218,14 @@ struct PPU
 		registers[PPUREG_DATA] = 0;
 		vramAddr = 0;
 
-		if ( regStatus.current.raw > 0x10 )
-		{
-			std::cout << "Register is: " << std::hex << (int)regStatus.current.raw << std::endl;
-		//	EnablePrinting();
-		}
-
-
 		return regStatus.current.raw;
 	}
 
 
-	inline byte& OAMADDR( const byte value )
+	inline uint8_t& OAMADDR( const uint8_t value )
 	{
+		assert( value == 0x00 ); // TODO: implement other modes
+
 		registers[PPUREG_OAMADDR] = value;
 
 		regStatus.current.sem.lastReadLsb = ( value & 0x1F );
@@ -245,14 +234,16 @@ struct PPU
 	}
 
 
-	inline byte& OAMADDR()
+	inline uint8_t& OAMADDR()
 	{
 		return registers[PPUREG_OAMADDR];
 	}
 
 
-	inline byte& OAMDATA( const byte value )
+	inline uint8_t& OAMDATA( const uint8_t value )
 	{
+		assert(0);
+
 		registers[PPUREG_OAMDATA] = value;
 
 		regStatus.current.sem.lastReadLsb = ( value & 0x1F );
@@ -261,14 +252,15 @@ struct PPU
 	}
 
 
-	inline byte& OAMDATA()
+	inline uint8_t& OAMDATA()
 	{
 		return registers[PPUREG_OAMDATA];
 	}
 
 
-	inline byte& PPUSCROLL( const byte value )
+	inline uint8_t& PPUSCROLL( const uint8_t value )
 	{
+		assert( value == 0 );
 		registers[PPUREG_SCROLL] = value;
 
 		regStatus.current.sem.lastReadLsb = ( value & 0x1F );
@@ -277,13 +269,13 @@ struct PPU
 	}
 
 
-	inline byte& PPUSCROLL()
+	inline uint8_t& PPUSCROLL()
 	{
 		return registers[PPUREG_SCROLL];
 	}
 
 
-	inline byte& PPUADDR( const byte value )
+	inline uint8_t& PPUADDR( const uint8_t value )
 	{
 		registers[PPUREG_ADDR] = value;
 
@@ -295,13 +287,13 @@ struct PPU
 	}
 
 
-	inline byte& PPUADDR()
+	inline uint8_t& PPUADDR()
 	{
 		return registers[PPUREG_ADDR];
 	}
 
 
-	inline byte& PPUDATA( const byte value )
+	inline uint8_t& PPUDATA( const uint8_t value )
 	{
 		if( value == 0x62 )
 		{
@@ -317,15 +309,15 @@ struct PPU
 	}
 
 
-	inline byte& PPUDATA()
+	inline uint8_t& PPUDATA()
 	{
 		return registers[PPUREG_DATA];
 	}
 
-	byte DoDMA( const half address );
+	uint8_t DoDMA( const uint16_t address );
 	void EnablePrinting();
 
-	inline byte& OAMDMA( const byte value )
+	inline uint8_t& OAMDMA( const uint8_t value )
 	{
 		GenerateDMA();
 		DoDMA( value );
@@ -334,7 +326,7 @@ struct PPU
 	}
 
 
-	inline byte& OAMDMA()
+	inline uint8_t& OAMDMA()
 	{
 		GenerateDMA();
 		return registers[PPUREG_OAMDMA];
@@ -346,8 +338,8 @@ struct PPU
 		/*
 		Memory fetch phase 1 thru 128
 		---------------------------- -
-		1. Name table byte
-		2. Attribute table byte
+		1. Name table uint8_t
+		2. Attribute table uint8_t
 		3. Pattern table bitmap #0
 		4. Pattern table bitmap #1
 		*/
@@ -490,8 +482,8 @@ struct PPU
 	}*/
 
 
-	byte& Reg( half address, byte value );
-	byte& Reg( half address );
+	uint8_t& Reg( uint16_t address, uint8_t value );
+	uint8_t& Reg( uint16_t address );
 };
 
 static const PpuRegWriteFunc PpuRegWriteMap[PPU::RegisterCount] =

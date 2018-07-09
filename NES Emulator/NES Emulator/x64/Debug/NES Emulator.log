@@ -1,2 +1,4 @@
-﻿  tomTendo.cpp
+﻿  tomTendoMain.cpp
+  6502.cpp
+  Generating Code...
   NES Emulator.vcxproj -> C:\Users\Thomas\source\repos\NES Emulator\NES Emulator\x64\Debug\NES Emulator.exe
