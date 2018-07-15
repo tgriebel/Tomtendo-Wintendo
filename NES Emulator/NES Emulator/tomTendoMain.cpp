@@ -322,13 +322,14 @@ int main()
 
 #if NES_MODE == 1
 	NesCart cart;
-	/*LoadNesFile( "nestest.nes", cart );
+	/*
+	LoadNesFile( "nestest.nes", cart );
 	system.LoadProgram( cart, 0xC000 );
 	system.cpu.forceStopAddr = 0xC6BD;
 	*/
+	
 	LoadNesFile( "Donkey Kong.nes", cart );
 	system.LoadProgram( cart );
-
 #if NES_MODE == 1
 	RGBA colorIndex[] = { { 0x00_b, 0x00_b,0x00_b, 0xFF_b }, { 0x33_b, 0x33b_b, 0x33_b, 0xFF_b }, { 0x88_b, 0x88_b, 0x88_b, 0xFF_b }, { 0xBB_b, 0xBB_b, 0xBB_b, 0xFF_b } };
 	/*

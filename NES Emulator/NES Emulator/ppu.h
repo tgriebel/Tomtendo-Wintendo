@@ -338,8 +338,8 @@ struct PPU
 		/*
 		Memory fetch phase 1 thru 128
 		---------------------------- -
-		1. Name table uint8_t
-		2. Attribute table uint8_t
+		1. Name table byte
+		2. Attribute table byte
 		3. Pattern table bitmap #0
 		4. Pattern table bitmap #1
 		*/
@@ -354,6 +354,7 @@ struct PPU
 	{
 		if( vramWritePending )
 		{
+			//std::cout << "Writing: " << std::hex << vramAddr << " " << std::hex << (uint32_t) registers[PPUREG_DATA] << std::endl;
 			vram[vramAddr] = registers[PPUREG_DATA];
 			vramAddr += regCtrl.sem.vramInc ? 32 : 1;
 
@@ -398,6 +399,7 @@ struct PPU
 			// must only exec once!
 				// set vblank flag at second tick, cycle=1
 				regStatus.current.sem.v = 1;
+				//EnablePrinting();
 				// Gen NMI
 				if( regCtrl.sem.nmiVblank )
 					GenerateNMI();

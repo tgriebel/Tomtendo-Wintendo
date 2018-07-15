@@ -1,35 +1,41 @@
 #pragma once
 
 #if DEBUG_ADDR == 1
-#define DEBUG_ADDR_INDEXED_ZERO { debugAddr.str( std::string() ); \
+#define DEBUG_ADDR_INDEXED_ZERO { uint8_t& value = system->GetMemory( address ); \
+	debugAddr.str( std::string() ); \
 	debugAddr << uppercase << "$" << setw( 2 ) << hex << targetAddresss << ","; \
 	debugAddr << ( ( &reg == &X ) ? "X" : "Y" ); \
 	debugAddr << setfill( '0' ) << " @ " << setw( 2 ) << hex << address; \
 	debugAddr << " = " << setw( 2 ) << hex << static_cast< uint32_t >( value ); }
 
-#define DEBUG_ADDR_INDEXED_ABS { debugAddr.str( std::string() ); \
+#define DEBUG_ADDR_INDEXED_ABS { uint8_t& value = system->GetMemory( address ); \
+	debugAddr.str( std::string() ); \
 	debugAddr << uppercase << "$" << setw( 4 ) << hex << targetAddresss << ","; \
 	debugAddr << ( ( &reg == &X ) ? "X" : "Y" ); \
 	debugAddr << setfill( '0' ) << " @ " << setw( 4 ) << hex << address; \
 	debugAddr << " = " << setw( 2 ) << hex << static_cast< uint32_t >( value ); }
 
-#define DEBUG_ADDR_ZERO { debugAddr.str( std::string() ); \
+#define DEBUG_ADDR_ZERO { uint8_t& value = system->GetMemory( address ); \
+	debugAddr.str( std::string() ); \
 	debugAddr << uppercase << "$" << setfill( '0' ) << setw( 2 ) << address; \
 	debugAddr << " = " << setfill( '0' ) << setw( 2 ) << hex << static_cast< uint32_t >( value ); }
 
-#define DEBUG_ADDR_ABS { debugAddr.str( std::string() ); \
+#define DEBUG_ADDR_ABS { uint8_t& value = system->GetMemory( address ); \
+	debugAddr.str( std::string() ); \
 	debugAddr << uppercase << "$" << setfill( '0' ) << setw( 4 ) << address; \
 	debugAddr << " = " << setfill( '0' ) << setw( 2 ) << hex << static_cast< uint32_t >( value ); }
 
 #define DEBUG_ADDR_IMMEDIATE { debugAddr.str( std::string() ); \
 	debugAddr << uppercase << "#$" << setfill( '0' ) << setw( 2 ) << hex << static_cast< uint32_t >( value ); }
 
-#define DEBUG_ADDR_INDIRECT_INDEXED { debugAddr.str( std::string() ); \
+#define DEBUG_ADDR_INDIRECT_INDEXED { uint8_t& value = system->GetMemory( offset ); \
+	debugAddr.str( std::string() ); \
 	debugAddr << uppercase << "($" << setfill( '0' ) << setw( 2 ) << static_cast< uint32_t >( params.param0 ) << "),Y = "; \
 	debugAddr << setw( 4 ) << hex << address; \
 	debugAddr << " @ " << setw( 4 ) << hex << offset << " = " << setw( 2 ) << hex << static_cast< uint32_t >( value ); }
 
-#define DEBUG_ADDR_INDEXED_INDIRECT { debugAddr.str( std::string() ); \
+#define DEBUG_ADDR_INDEXED_INDIRECT { uint8_t& value = system->GetMemory( address ); \
+	debugAddr.str( std::string() ); \
 	debugAddr << uppercase << "($" << setfill( '0' ) << setw( 2 ) << static_cast< uint32_t >( params.param0 ) << ",X) @ "; \
 	debugAddr << setw( 2 ) << static_cast< uint32_t >( targetAddress ); \
 	debugAddr << " = " << setw( 4 ) << address << " = " << setw( 2 ) << static_cast< uint32_t >( value ); }
@@ -64,7 +70,6 @@
 	logFile << logLine.str() << endl; \
 	if( printToOutput ){ std::cout << logLine.str() << endl; } \
 	}
-
 #else //  #if DEBUG_ADDR == 1
 #define DEBUG_ADDR_INDEXED_ZERO 0;
 #define DEBUG_ADDR_INDEXED_ABS 0;
