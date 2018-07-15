@@ -1,42 +1,87 @@
 #pragma once
 
-#include <iostream>
-#include <bitset>
-#include <map>
-#include "types_common.h"
-#include "6502.h"
-using namespace std;
+#if DEBUG_ADDR == 1
+#define DEBUG_ADDR_INDEXED_ZERO { uint8_t& value = system->GetMemory( address ); \
+	debugAddr.str( std::string() ); \
+	debugAddr << uppercase << "$" << setw( 2 ) << hex << targetAddresss << ","; \
+	debugAddr << ( ( &reg == &X ) ? "X" : "Y" ); \
+	debugAddr << setfill( '0' ) << " @ " << setw( 2 ) << hex << address; \
+	debugAddr << " = " << setw( 2 ) << hex << static_cast< uint32_t >( value ); }
 
-std::map<half, byte> memoryDebug;
+#define DEBUG_ADDR_INDEXED_ABS { uint8_t& value = system->GetMemory( address ); \
+	debugAddr.str( std::string() ); \
+	debugAddr << uppercase << "$" << setw( 4 ) << hex << targetAddresss << ","; \
+	debugAddr << ( ( &reg == &X ) ? "X" : "Y" ); \
+	debugAddr << setfill( '0' ) << " @ " << setw( 4 ) << hex << address; \
+	debugAddr << " = " << setw( 2 ) << hex << static_cast< uint32_t >( value ); }
 
-void RecordMemoryWrite( const half address, const byte value )
-{
-	memoryDebug[address] = value;
-}
+#define DEBUG_ADDR_ZERO { uint8_t& value = system->GetMemory( address ); \
+	debugAddr.str( std::string() ); \
+	debugAddr << uppercase << "$" << setfill( '0' ) << setw( 2 ) << address; \
+	debugAddr << " = " << setfill( '0' ) << setw( 2 ) << hex << static_cast< uint32_t >( value ); }
 
-void PrintRegisters( const Cpu6502& cpu )
-{
-	cout << "A: " << hex << static_cast<int>( cpu.A ) << "\t";
-	cout << "X: " << hex << static_cast<int>( cpu.X ) << "\t";
-	cout << "Y: " << hex << static_cast<int>( cpu.Y ) << "\t";
-	cout << "SP: " << hex << static_cast<int>( cpu.SP ) << "\t";
-	cout << "PC: " << hex << static_cast<int>( cpu.PC ) << "\t";
+#define DEBUG_ADDR_ABS { uint8_t& value = system->GetMemory( address ); \
+	debugAddr.str( std::string() ); \
+	debugAddr << uppercase << "$" << setfill( '0' ) << setw( 4 ) << address; \
+	debugAddr << " = " << setfill( '0' ) << setw( 2 ) << hex << static_cast< uint32_t >( value ); }
 
-	bitset<8> p( cpu.P );
+#define DEBUG_ADDR_IMMEDIATE { debugAddr.str( std::string() ); \
+	debugAddr << uppercase << "#$" << setfill( '0' ) << setw( 2 ) << hex << static_cast< uint32_t >( value ); }
 
-	cout << "\tP: NV-BDIZC" << "\t" << p;
-}
+#define DEBUG_ADDR_INDIRECT_INDEXED { uint8_t& value = system->GetMemory( offset ); \
+	debugAddr.str( std::string() ); \
+	debugAddr << uppercase << "($" << setfill( '0' ) << setw( 2 ) << static_cast< uint32_t >( params.param0 ) << "),Y = "; \
+	debugAddr << setw( 4 ) << hex << address; \
+	debugAddr << " @ " << setw( 4 ) << hex << offset << " = " << setw( 2 ) << hex << static_cast< uint32_t >( value ); }
 
+#define DEBUG_ADDR_INDEXED_INDIRECT { uint8_t& value = system->GetMemory( address ); \
+	debugAddr.str( std::string() ); \
+	debugAddr << uppercase << "($" << setfill( '0' ) << setw( 2 ) << static_cast< uint32_t >( params.param0 ) << ",X) @ "; \
+	debugAddr << setw( 2 ) << static_cast< uint32_t >( targetAddress ); \
+	debugAddr << " = " << setw( 4 ) << address << " = " << setw( 2 ) << static_cast< uint32_t >( value ); }
 
-void PrintInstructionMap( const InstructionMapTuple instructionMap[] )
-{
-	cout << "Instruction | Opcode | Address Mode | Cycles " << endl;
+#define DEBUG_ADDR_ACCUMULATOR { debugAddr.str( std::string() ); \
+	debugAddr << "A"; }
 
-	for ( int instr = 0; instr < 256; ++instr )
-	{
-		if ( instructionMap[instr].mnemonic[0] )
-			cout << hex << instr << " " << instructionMap[instr].mnemonic << " " << instructionMap[instr].descriptor << " " << (int)instructionMap[instr].cycles << endl;
-		else
-			cout << hex << instr << endl;
+#define DEBUG_ADDR_JMP { debugAddr.str( std::string() ); \
+	debugAddr << uppercase << setfill( '0' ) << "$" << setw( 2 ) << hex << PC; }
+
+#define DEBUG_ADDR_JMPI { debugAddr.str( std::string() ); \
+	debugAddr << uppercase << setfill( '0' ) << "($" << setw( 4 ) << hex << addr0; \
+	debugAddr << ") = " << setw( 4 ) << hex << PC; }
+
+#define DEBUG_ADDR_JSR { debugAddr.str( std::string() ); \
+	debugAddr << uppercase << "$" << setfill( '0' ) << setw( 2 ) << hex << PC; }
+
+#define DEBUG_ADDR_BRANCH { debugAddr.str( std::string() ); \
+	debugAddr << uppercase << "$" << setfill( '0' ) << setw( 2 ) << hex << branchedPC; }
+
+#define DEBUG_CPU_LOG if ( enablePrinting ) { \
+	int disassemblyBytes[6] = { curbyte, params.param0, params.param1,'\0' }; \
+	stringstream hexString; \
+	stringstream logLine; \
+	if ( operands == 1 ) \
+		hexString << uppercase << setfill( '0' ) << setw( 2 ) << hex << disassemblyBytes[0] << " " << setw( 2 ) << disassemblyBytes[1]; \
+	else if ( operands == 2 ) \
+		hexString << uppercase << setfill( '0' ) << setw( 2 ) << hex << disassemblyBytes[0] << " " << setw( 2 ) << disassemblyBytes[1] << " " << setw( 2 ) << disassemblyBytes[2]; \
+	else \
+		hexString << uppercase << setfill( '0' ) << setw( 2 ) << hex << disassemblyBytes[0]; \
+	logLine << uppercase << setfill( '0' ) << setw( 4 ) << hex << instrBegin << setfill( ' ' ) << "  " << setw( 10 ) << left << hexString.str() << pair.mnemonic << " " << setw( 28 ) << left << debugAddr.str() << right << regStr; \
+	logFile << logLine.str() << endl; \
+	if( printToOutput ){ std::cout << logLine.str() << endl; } \
 	}
-}
+#else //  #if DEBUG_ADDR == 1
+#define DEBUG_ADDR_INDEXED_ZERO 0;
+#define DEBUG_ADDR_INDEXED_ABS 0;
+#define DEBUG_ADDR_ZERO 0;
+#define DEBUG_ADDR_ABS 0;
+#define DEBUG_ADDR_IMMEDIATE 0;
+#define DEBUG_ADDR_INDIRECT_INDEXED 0;
+#define DEBUG_ADDR_INDEXED_INDIRECT  0;
+#define DEBUG_ADDR_ACCUMULATOR 0;
+#define DEBUG_ADDR_JMP 0;
+#define DEBUG_ADDR_JMPI 0;
+#define DEBUG_ADDR_JSR 0;
+#define DEBUG_ADDR_BRANCH 0;
+#define DEBUG_CPU_LOG 0;
+#endif // #else // #if DEBUG_ADDR == 1

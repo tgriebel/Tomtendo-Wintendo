@@ -1,7 +1,8 @@
 //////////////////////////////////////////////////////////
 //
 //
-//Last Modified:January 30 2012
+// Creation: October 2009
+// Modified: July 2018
 //
 //
 //
@@ -13,39 +14,52 @@
 #include<fstream>
 using namespace std;
 
-namespace libBitmap
+
+struct RGBA
 {
-	typedef char BYTE;
+	uint8_t red;
+	uint8_t green;
+	uint8_t blue;
+	uint8_t alpha;
 };
 
 typedef unsigned int uint32;
 typedef unsigned short uint16;
 
-class Bitmap  {
+union Pixel
+{
+	uint8_t vec[4]; // ABGR format
+	uint32 raw;
+};
+
+
+class Bitmap
+{
 	public:
 		Bitmap(){}
-		Bitmap(const string& filename){
-			load(filename);
-			//Bitmap_Loader loader = new Bitmap_Loader();
-			//mapdata = loader.load();
-			//delete loader;
 
+		Bitmap(const string& filename)
+		{
+			load(filename);
 		}
-		Bitmap(Bitmap& bitmap){
-		
+
+		Bitmap(Bitmap& bitmap)
+		{
 			bh	= bitmap.bh;
 			bhi = bitmap.bhi;
 			bmg	= bitmap.bmg;
 			pixel_n = bitmap.pixel_n;
 
 			mapdata = new RGBA[pixel_n];
-			for(size_t i(0); i < pixel_n; ++i){
 
+			for(size_t i = 0; i < pixel_n; ++i )
+			{
 				mapdata[i] = bitmap.mapdata[i];
 			}
-		
 		}
-		Bitmap(size_t width, size_t height, unsigned int color = 0xFFFFFFFF){
+
+		Bitmap( unsigned int width, unsigned int height, unsigned int color = 0xFFFFFFFF )
+		{
 			pixel_n = width * height;
 
 			//finsih
@@ -69,102 +83,128 @@ class Bitmap  {
 			bhi.colors = 0;
 			bhi.iColors = 0;
 			
-			for(size_t i(0); i < pixel_n; ++i){
-				
-				mapdata[i].alpha	= (libBitmap::BYTE)(color & 0x000000FF);
-				mapdata[i].blue		= (libBitmap::BYTE)((color & 0x0000FF00) >> 8);
-				mapdata[i].green	= (libBitmap::BYTE)((color & 0x00FF0000) >> 16);
-				mapdata[i].red		= (libBitmap::BYTE)((color & 0xFF000000) >> 24);
+			for( size_t i(0); i < pixel_n; ++i )
+			{
+				mapdata[i].alpha	= (uint8_t)(color & 0x000000FF);
+				mapdata[i].blue		= (uint8_t)((color & 0x0000FF00) >> 8);
+				mapdata[i].green	= (uint8_t)((color & 0x00FF0000) >> 16);
+				mapdata[i].red		= (uint8_t)((color & 0xFF000000) >> 24);
 			}
 		}
-		~Bitmap(){
+
+		~Bitmap()
+		{
 			delete[] mapdata;
 		}
-		Bitmap& operator=(const Bitmap& bitmap){
-		
-			return *this;
-		
+
+		Bitmap& operator=(const Bitmap& bitmap)
+		{
+			return *this;	
+		}
+
+		static inline void CopyToPixel( RGBA& rgba, Pixel& pixel )
+		{
+			pixel.vec[0] = rgba.alpha;
+			pixel.vec[1] = rgba.blue;
+			pixel.vec[2] = rgba.green;
+			pixel.vec[3] = rgba.red;
 		}
 	
 		void load(const string& filename);
 		void write(const string& filename);
 		void printDataFile();
-		inline uint32 getSize(){
+
+		inline uint32 getSize()
+		{
 			return bhi.imageSize;
 		}
-		inline uint32 getWidth(){
+
+		inline uint32 getWidth()
+		{
 			return bhi.width;
 		}
-		inline uint32 getHeight(){
+
+		inline uint32 getHeight()
+		{
 			return bhi.height;
 		}
-		void deleteRow(uint32 row){
-			int col(bhi.width*row);
-			for(uint32 i(0); i<bhi.width; ++i){
+
+		void deleteRow( uint32 row )
+		{
+			int col = bhi.width * row;
+
+			for( uint32 i = 0; i<bhi.width; ++i )
+			{
 				mapdata[i+col].red = '\0';
 				mapdata[i+col].green = '\0';
 				mapdata[i+col].blue = '\0';
 			} 
 		}
-		void invert(){
-			for(uint32 i(0); i< bhi.imageSize; ++i){
+
+		void invert()
+		{
+			for( uint32 i = 0; i< bhi.imageSize; ++i )
+			{
 				mapdata[i].red = ~mapdata[i].red;
 				mapdata[i].green = ~mapdata[i].green;
 				mapdata[i].blue = ~mapdata[i].blue;
 			}
 		}
-		void clearImage(){
-			for(register uint32 i(0); i< bhi.imageSize; ++i){
+
+		void clearImage()
+		{
+			for( uint32 i = 0; i < bhi.imageSize; ++i )
+			{
 				mapdata[i].red = '\0';
 				mapdata[i].green = '\0';
 				mapdata[i].blue = '\0';
 			}
-		
 		}
-		inline void deleteColume(){
+
+		inline void deleteColumn()
+		{
 		}
-		uint32 getPixel(uint32 x, uint32 y);
-		bool setPixel(uint32 x, uint32 y, uint32 color);
+
+		uint32 getPixel( uint32 x, uint32 y );
+		bool setPixel( uint32 x, uint32 y, uint32 color );
 
 	private:
 
-		struct BITMAP_MagicNum{
-			libBitmap::BYTE magic_num[2];//2
-		}bmg;
-		struct BITMAP_Header{
-			uint32 size;//4 bytes in file
-			uint16 reserve1;//2
-			uint16 reserve2;//2
-			uint32 offset;//4
+		struct BITMAP_MagicNum
+		{
+			uint8_t magic_num[2];
+		} bmg;
 
+		struct BITMAP_Header
+		{
+			uint32 size;
+			uint16 reserve1;
+			uint16 reserve2;
+			uint32 offset;
 		}bh;
-		struct BITMAP_Header_Info{
-			uint32 hSize;//header size, 4
-			uint32 width;//image width, 4
-			uint32 height;//image height, 4
-			uint16 cPlanes; //color planes, 2
-			uint16 bpPixels;//bits per pixel, 2
-			uint32 compression;//4
-			uint32 imageSize;//4
-			uint32 hRes;//4
-			uint32 vRes;//4
-			uint32 colors;//4
-			uint32 iColors;//4
-		}bhi;
-		struct RGBA{
-			libBitmap::BYTE blue;
-			libBitmap::BYTE green;
-			libBitmap::BYTE red;
-			libBitmap::BYTE alpha;
 
-		}*mapdata;//actual bitmap data
+		struct BITMAP_Header_Info
+		{
+			uint32 hSize;
+			uint32 width;
+			uint32 height;
+			uint16 cPlanes;
+			uint16 bpPixels;
+			uint32 compression;
+			uint32 imageSize;
+			uint32 hRes;
+			uint32 vRes;
+			uint32 colors;
+			uint32 iColors;
+		}bhi;
+
+		RGBA* mapdata;
 		//
 		ifstream instream;
 		ofstream outstream;
-		size_t pixel_n;
-		uint32 readInt(uint32 bytes);
-		void writeInt(uint32, int length);
-		
+		uint32 pixel_n;
+		uint32 readInt( uint32 bytes );
+		void writeInt( uint32, int length );
 };
 
 #endif
