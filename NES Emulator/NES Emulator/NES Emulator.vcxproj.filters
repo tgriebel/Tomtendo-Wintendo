@@ -39,6 +39,9 @@
     <ClInclude Include="ppu.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="nesMemory.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -63,6 +66,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="tomTendoMain.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="nesMemory.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
