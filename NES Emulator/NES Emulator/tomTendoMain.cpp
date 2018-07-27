@@ -10,117 +10,10 @@
 #include <map>
 #include <sstream>
 #include "common.h"
-#include "6502.h"
+#include "mos6502.h"
 #include "NesSystem.h"
 #include "debug.h"
 #include "bitmap.h"
-
-/*
-bool Load6502Program( NesSystem& system, const string fileName, const uint16_t loadAddr, const uint16_t resetVector )
-{
-	ifstream programFile;
-	programFile.open( fileName, ios::binary );
-	std::string str( ( istreambuf_iterator< char >( programFile ) ), istreambuf_iterator< char >() );
-	programFile.close();
-
-	memset( system.memory, 0, Cpu6502::VirtualMemorySize );
-	memcpy( system.memory + loadAddr, str.c_str(), str.size() );
-
-	system.cpu.resetVector = resetVector;
-
-	system.cpu.Reset();
-
-	return true;
-}
-
-
-inline bool TestRegisters( const Cpu6502& cpu, const uint8_t A, const uint8_t X, const uint8_t Y, const uint8_t SP, const uint16_t PC, const uint8_t P )
-{
-	return ( cpu.A == A ) && ( cpu.X == X ) && ( cpu.Y == Y ) && ( cpu.SP == SP ) && ( cpu.PC == PC ) && ( cpu.P == P );
-}
-
-
-bool Easy6502Tests( NesSystem& system )
-{
-	Load6502Program( system, "Program1.bin", 0x0600, 0x0600 );
-	system.Run();
-	const bool passed1 = TestRegisters( cpu, 0x08, 0x00, 0x00, 0xFF, 0x0610, 0x30 );
-
-	Load6502Program( system, "Program2.bin", 0x0600, 0x0600 );
-	system.Run();
-	const bool passed2 = TestRegisters( cpu, 0x84, 0xC1, 0x00, 0xFF, 0x0607, 0xB1 );
-
-	Load6502Program( system, "Program3.bin", 0x0600, 0x0600 );
-	system.Run();
-	const bool passed3 = TestRegisters( cpu, 0x00, 0x03, 0x00, 0xFF, 0x060E, 0x33 );
-
-	Load6502Program( system, "Program4.bin", 0x0600, 0x0600 );
-	system.Run();
-	const bool passed4 = TestRegisters( cpu, 0x01, 0x00, 0x00, 0xFF, 0x0609, 0xB0 );
-
-	Load6502Program( system, "Program5.bin", 0x0600, 0x0600 );
-	system.Run();
-	const bool passed5 = TestRegisters( cpu, 0xCC, 0x00, 0x00, 0xFF, 0xCC02, 0xB0 );
-
-	Load6502Program( system, "Program6.bin", 0x0600, 0x0600 );
-	system.Run();
-	const bool passed6 = TestRegisters( cpu, 0x0A, 0x01, 0x0A, 0xFF, 0x0612, 0x30 );
-
-	Load6502Program( system, "Program7.bin", 0x0600, 0x0600 );
-	system.Run();
-	const bool passed7 = TestRegisters( cpu, 0x0A, 0x0A, 0x01, 0xFF, 0x0612, 0x30 );
-
-	Load6502Program( system, "Program8.bin", 0x0600, 0x0600 );
-	system.Run();
-
-	const uint8_t memCheckValues[48] = {	0x0f, 0x0e, 0x0d, 0x0c, 0x0b, 0x0a, 0x09, 0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01, 0x00,
-										0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
-										0x0f, 0x0e, 0x0d, 0x0c, 0x0b, 0x0a, 0x09, 0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01, 0x00 };
-
-	bool memCheck = true;
-
-	for ( uint16_t i = 0x00; i < 0x0F; ++i )
-	{
-		if ( cpu.memory[0x01f0 + i] != memCheckValues[i] )
-		{
-			memCheck = false;
-			break;
-		}
-	}
-
-	const bool passed8 = memCheck && TestRegisters( cpu, 0x00, 0x10, 0x20, 0xFF, 0x0619, 0x33 );
-
-	Load6502Program( system, "Program9.bin", 0x0600, 0x0600 );
-	system.Run();
-	const bool passed9 = TestRegisters( cpu, 0x03, 0x00, 0x00, 0xFF, 0x060C, 0x30 );
-
-	Load6502Program( system, "Program10.bin", 0x0600, 0x0600 );
-	system.Run();
-	const bool passed10 = TestRegisters( cpu, 0x00, 0x05, 0x00, 0xFD, 0x0613, 0x33 );
-
-	return passed1 && passed2 && passed3 && passed4 && passed5 && passed6 && passed7 && passed8 && passed9 && passed10;
-}
-
-
-bool KlausTests( Cpu6502& cpu )
-{
-	Load6502Program( cpu, "6502_functional_test.bin", 0x0000, 0x0400 );
-
-	cpu.Run();
-
-	return ( cpu.A == 0x42 ) && ( cpu.X == 0x52 ) && ( cpu.Y == 0x4B ) && ( cpu.SP == 0xFF ) && ( cpu.PC == 0x09D0 ) && ( cpu.P == 0x30 );
-}
-
-
-float RunTests( Cpu6502& cpu )
-{
-	uint passedTests = Easy6502Tests( cpu ) ? 1 : 0;
-
-	passedTests += KlausTests( cpu ) ? 1 : 0;
-
-	return ( passedTests / 2.0f );
-}
-*/
 
 
 RGBA Palette[0x40] =
@@ -144,15 +37,15 @@ RGBA Palette[0x40] =
 };
 
 
-const uint8_t BitPlaneuint8_ts = 8;
+const uint8_t BitPlaneBytes = 8;
 
 
 inline const uint16_t CalcTileOffset( const uint16_t tileIx )
 {
-	const uint8_t tileuint8_ts = 2 * BitPlaneuint8_ts;
-	const uint16_t tileOffset =  tileIx * tileuint8_ts;
+	const uint8_t tileBytes = 2 * BitPlaneBytes;
+	const uint16_t tileOffset =  tileIx * tileBytes;
 
-	return tileOffset;
+	return tileBytes;
 }
 
 
@@ -164,7 +57,7 @@ const uint8_t* FetchBitPlane0( const uint8_t*const tileMem )
 
 const uint8_t* FetchBitPlane1( const uint8_t*const tileMem )
 {
-	return &tileMem[BitPlaneuint8_ts];
+	return &tileMem[BitPlaneBytes];
 }
 
 
@@ -231,7 +124,7 @@ void DrawTile( NesSystem& system, NesCart& cart, Bitmap& image, const uint16_t n
 
 			Bitmap::CopyToPixel( Palette[colorIx], pixelColor );
 
-			image.setPixel( imageX, 239 - imageY, pixelColor.raw );
+			image.SetPixel( imageX, 239 - imageY, pixelColor.raw );
 		}
 	}
 }
@@ -287,7 +180,7 @@ void DrawSprite( NesSystem& system, NesCart& cart, Bitmap& image, const uint32_t
 
 				Bitmap::CopyToPixel( Palette[colorIx], pixelColor );
 
-				image.setPixel( spriteX + tileCol, 239 - spriteY + tileRow - 8, pixelColor.raw );
+				image.SetPixel( spriteX + tileCol, 239 - spriteY + tileRow - 8, pixelColor.raw );
 			}
 		}
 	}
@@ -323,12 +216,12 @@ int main()
 #if NES_MODE == 1
 	NesCart cart;
 	
-	LoadNesFile( "nestest.nes", cart );
-	system.LoadProgram( cart, 0xC000 );
-	system.cpu.forceStopAddr = 0xC6BD;
+	//LoadNesFile( "nestest.nes", cart );
+	//system.LoadProgram( cart, 0xC000 );
+	//system.cpu.forceStopAddr = 0xC6BD;
 	
-	//LoadNesFile( "Donkey Kong.nes", cart );
-	//system.LoadProgram( cart );
+	LoadNesFile( "Games/Donkey Kong.nes", cart );
+	system.LoadProgram( cart );
 #if NES_MODE == 1
 	RGBA colorIndex[] = { { 0x00_b, 0x00_b,0x00_b, 0xFF_b }, { 0x33_b, 0x33b_b, 0x33_b, 0xFF_b }, { 0x88_b, 0x88_b, 0x88_b, 0xFF_b }, { 0xBB_b, 0xBB_b, 0xBB_b, 0xFF_b } };
 	/*
@@ -355,13 +248,12 @@ int main()
 
 		Bitmap::CopyToPixel( Palette[colorIx], pixel );
 
-		paletteDebug.setPixel( colorIx, 0, pixel.raw );
+		paletteDebug.SetPixel( colorIx, 0, pixel.raw );
 	}
-	paletteDebug.write( "paletteDebug.bmp" );
+	paletteDebug.Write( "paletteDebug.bmp" );
 #endif // #if NES_MODE == 1
 
 	bool isRunning = true;
-
 
 	while( isRunning )
 	{
@@ -387,10 +279,10 @@ int main()
 			stringstream nametableName;
 			stringstream palettesName;
 
-			nametableName << "nametable" << frame.count() << ".bmp";
+			nametableName << "Render Dumps/" << "nt_" << frame.count() << ".bmp";
 			palettesName << "palettes" << frame.count() << ".bmp";
 
-			nametable.write( nametableName.str() );
+			nametable.Write( nametableName.str() );
 			/*
 			Bitmap framePalette( 0x10, 2, 0x00 );
 			for ( int colorIx = 0; colorIx <= 0x0F; ++colorIx )

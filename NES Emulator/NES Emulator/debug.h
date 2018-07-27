@@ -30,13 +30,13 @@
 
 #define DEBUG_ADDR_INDIRECT_INDEXED { uint8_t& value = system->GetMemory( offset ); \
 	debugAddr.str( std::string() ); \
-	debugAddr << uppercase << "($" << setfill( '0' ) << setw( 2 ) << static_cast< uint32_t >( params.param0 ) << "),Y = "; \
+	debugAddr << uppercase << "($" << setfill( '0' ) << setw( 2 ) << static_cast< uint32_t >( ReadOperand(0) ) << "),Y = "; \
 	debugAddr << setw( 4 ) << hex << address; \
 	debugAddr << " @ " << setw( 4 ) << hex << offset << " = " << setw( 2 ) << hex << static_cast< uint32_t >( value ); }
 
 #define DEBUG_ADDR_INDEXED_INDIRECT { uint8_t& value = system->GetMemory( address ); \
 	debugAddr.str( std::string() ); \
-	debugAddr << uppercase << "($" << setfill( '0' ) << setw( 2 ) << static_cast< uint32_t >( params.param0 ) << ",X) @ "; \
+	debugAddr << uppercase << "($" << setfill( '0' ) << setw( 2 ) << static_cast< uint32_t >( ReadOperand(0) ) << ",X) @ "; \
 	debugAddr << setw( 2 ) << static_cast< uint32_t >( targetAddress ); \
 	debugAddr << " = " << setw( 4 ) << address << " = " << setw( 2 ) << static_cast< uint32_t >( value ); }
 
@@ -57,7 +57,7 @@
 	debugAddr << uppercase << "$" << setfill( '0' ) << setw( 2 ) << hex << branchedPC; }
 
 #define DEBUG_CPU_LOG if ( enablePrinting ) { \
-	int disassemblyBytes[6] = { curbyte, params.param0, params.param1,'\0' }; \
+	int disassemblyBytes[6] = { byteCode, system->GetMemory( instrBegin + 1 ), system->GetMemory( instrBegin + 2 ),'\0' }; \
 	stringstream hexString; \
 	stringstream logLine; \
 	if ( operands == 1 ) \
@@ -66,7 +66,7 @@
 		hexString << uppercase << setfill( '0' ) << setw( 2 ) << hex << disassemblyBytes[0] << " " << setw( 2 ) << disassemblyBytes[1] << " " << setw( 2 ) << disassemblyBytes[2]; \
 	else \
 		hexString << uppercase << setfill( '0' ) << setw( 2 ) << hex << disassemblyBytes[0]; \
-	logLine << uppercase << setfill( '0' ) << setw( 4 ) << hex << instrBegin << setfill( ' ' ) << "  " << setw( 10 ) << left << hexString.str() << pair.mnemonic << " " << setw( 28 ) << left << debugAddr.str() << right << regStr; \
+	logLine << uppercase << setfill( '0' ) << setw( 4 ) << hex << instrBegin << setfill( ' ' ) << "  " << setw( 10 ) << left << hexString.str() << mnemonic << " " << setw( 28 ) << left << debugAddr.str() << right << regStr; \
 	logFile << logLine.str() << endl; \
 	if( printToOutput ){ std::cout << logLine.str() << endl; } \
 	}

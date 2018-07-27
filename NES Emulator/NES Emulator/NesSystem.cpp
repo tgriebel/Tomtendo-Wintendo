@@ -7,7 +7,7 @@
 #include <chrono>
 #include "common.h"
 #include "NesSystem.h"
-#include "6502.h"
+#include "mos6502.h"
 
 using namespace std;
 

@@ -9,7 +9,7 @@
 #include <map>
 #include <iomanip>
 #include "common.h"
-#include "6502.h"
+#include "mos6502.h"
 #include "ppu.h"
 
 

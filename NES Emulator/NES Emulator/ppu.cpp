@@ -12,7 +12,7 @@
 #include <bitset>
 #include "common.h"
 #include "debug.h"
-#include "6502.h"
+#include "mos6502.h"
 #include "NesSystem.h"
 
 
