@@ -48,9 +48,21 @@ void NesSystem::LoadProgram( const NesCart& cart, const uint32_t resetVectorManu
 }
 
 
+bool NesSystem::IsInputRegister( const uint16_t address )
+{
+	return ( ( address == InputRegister0 ) || ( address == InputRegister1 ) );
+}
+
+
 bool NesSystem::IsPpuRegister( const uint16_t address )
 {
 	return ( address >= PpuRegisterBase ) && ( address < PpuRegisterEnd );
+}
+
+
+bool NesSystem::IsApuRegister( const uint16_t address )
+{
+	return ( address >= ApuRegisterBase ) && ( address < ApuRegisterEnd );
 }
 
 
@@ -95,6 +107,16 @@ uint8_t& NesSystem::GetMemory( const uint16_t address )
 	{
 		return ppu.Reg( address );
 	}
+	else if ( IsInputRegister( address ) )
+	{
+		controllerBuffer0 = 0;
+
+		return controllerBuffer0;
+	}
+	else if( IsApuRegister( address ) )
+	{
+		return apuDummyRegister;
+	}
 	else if ( IsDMA( address ) )
 	{
 		return memory[MirrorAddress( address )];
@@ -103,6 +125,12 @@ uint8_t& NesSystem::GetMemory( const uint16_t address )
 	{
 		return memory[MirrorAddress( address )];
 	}
+}
+
+
+void NesSystem::GetFrameBuffer( uint32_t frameBuffer[] )
+{
+	frameImage->GetBuffer( frameBuffer );
 }
 
 

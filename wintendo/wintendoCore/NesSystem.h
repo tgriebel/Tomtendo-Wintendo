@@ -11,6 +11,7 @@
 #include "common.h"
 #include "mos6502.h"
 #include "ppu.h"
+#include "bitmap.h"
 
 
 class NesSystem
@@ -31,6 +32,10 @@ public:
 	static const uint16_t PpuRegisterBase = 0x2000;
 	static const uint16_t PpuRegisterEnd = 0x4000;
 	static const uint16_t PpuOamDma = 0x4014;
+	static const uint16_t InputRegister0 = 0x4016;
+	static const uint16_t InputRegister1 = 0x4017;
+	static const uint16_t ApuRegisterBase = 0x4000;
+	static const uint16_t ApuRegisterEnd = 0x4014;
 	static const uint16_t PageSize = 0xFF;
 
 	uint8_t& GetStack();
@@ -39,6 +44,14 @@ public:
 
 	PPU ppu;
 	Cpu6502 cpu;
+
+	Bitmap* frameImage;
+	uint32_t frameBuffer[256*240];
+
+	uint8_t controllerBuffer0;
+	uint8_t controllerBuffer1;
+
+	uint8_t apuDummyRegister;
 
 	masterCycles_t sysCycles;
 
@@ -69,12 +82,17 @@ public:
 		ppu.vramWritePending = false;
 
 		ppu.system = this;
+
+		frameImage = new Bitmap( 256, 240, 0x00 ); // TODO: fix, doesn't need dynamic mem, mem leak
 	}
 
 	void LoadProgram( const NesCart& cart, const uint32_t resetVectorManual = 0x10000 );
 	bool Run( const masterCycles_t nextCycle );
+	bool IsInputRegister( const uint16_t address );
 	bool IsPpuRegister( const uint16_t address );
+	bool IsApuRegister( const uint16_t address );
 	bool IsDMA( const uint16_t address );
+	void GetFrameBuffer( uint32_t frameBuffer[] );
 
 	//private:
 	uint8_t memory[VirtualMemorySize];

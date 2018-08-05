@@ -122,9 +122,9 @@ void DrawTile( NesSystem& system, NesCart& cart, Bitmap& image, const uint16_t n
 
 			Pixel pixelColor;
 
-			Bitmap::CopyToPixel( Palette[colorIx], pixelColor );
+			Bitmap::CopyToPixel( Palette[colorIx], pixelColor, BITMAP_ABGR );
 
-			image.SetPixel( imageX, 239 - imageY, pixelColor.raw );
+			image.SetPixel( imageX, /*239 -*/ imageY, pixelColor.raw );
 		}
 	}
 }
@@ -161,7 +161,7 @@ void DrawSprite( NesSystem& system, NesCart& cart, Bitmap& image, const uint32_t
 		{
 			for ( int x = 0; x < 8; ++x )
 			{
-				const uint8_t tileRow = flippedVert ? y : ( 7 - y );
+				const uint8_t tileRow = flippedVert ? ( 7 - y ) : y;
 				const uint8_t tileCol = flippedHor ? ( 7 - x ) : x;
 
 				const uint8_t chrRom0 = cart.rom[chrRomBase + y];
@@ -178,190 +178,137 @@ void DrawSprite( NesSystem& system, NesCart& cart, Bitmap& image, const uint32_t
 
 				Pixel pixelColor;
 
-				Bitmap::CopyToPixel( Palette[colorIx], pixelColor );
+				Bitmap::CopyToPixel( Palette[colorIx], pixelColor, BITMAP_ABGR );
 
-				image.SetPixel( spriteX + tileCol, 239 - spriteY + tileRow - 8, pixelColor.raw );
+				image.SetPixel( spriteX + tileCol, /*239 -*/ spriteY + tileRow /*- 8*/, pixelColor.raw );
 			}
 		}
 	}
 }
 
 
-int main()
+NesSystem nesSystem;
+frameRate_t frame( 1 );
+NesCart cart;
+
+
+int InitSystem()
 {
-	NesSystem system;
-
-	Cpu6502 cpu;
-
-	cpu.Reset();
-
-	std::chrono::seconds sec( 1 );
-
-	frameRate_t frame( 1 );
-	frameRate_t frameDelta( 1 );
-	chrono::milliseconds frameTime = chrono::duration_cast<chrono::milliseconds>( frame );
-
-	masterCycles_t tick = chrono::duration_cast<masterCycles_t>( sec );
-
-	masterCycles_t cyclesPerFrame = chrono::duration_cast<masterCycles_t>( frame );
-
-	cpuCycle_t cyclesPerMaster= chrono::duration_cast<cpuCycle_t>( tick );
-	ppuCycle_t ppucyclesPerMaster = chrono::duration_cast<cpuCycle_t>( tick );
-
-	cout << tick.count() << endl;
-	cout << cyclesPerMaster.count() << endl;
-	cout << ppucyclesPerMaster.count() << endl;
-	cout << cyclesPerFrame.count() << endl;
-
-#if NES_MODE == 1
-	NesCart cart;
-	
 	//LoadNesFile( "nestest.nes", cart );
 	//system.LoadProgram( cart, 0xC000 );
 	//system.cpu.forceStopAddr = 0xC6BD;
-	
-	LoadNesFile( "Games/Donkey Kong.nes", cart );
-	system.LoadProgram( cart );
-#if NES_MODE == 1
-	RGBA colorIndex[] = { { 0x00_b, 0x00_b,0x00_b, 0xFF_b }, { 0x33_b, 0x33b_b, 0x33_b, 0xFF_b }, { 0x88_b, 0x88_b, 0x88_b, 0xFF_b }, { 0xBB_b, 0xBB_b, 0xBB_b, 0xFF_b } };
-	/*
-	Bitmap image( 128, 256, 0x00 );
 
-	int tileIx = 0;
-
-	const uint8_t tileuint8_ts = 16;
-
-	for ( int tileIx = 0; tileIx < 512; ++tileIx )
-	{
-		const uint cornerX = static_cast< uint >( ( tileIx % 16 ) * 8 );
-		const uint cornerY = static_cast< uint >( 8 * floor( tileIx / 16.0f ) );
-
-		DrawTile( cart, image, 0x01, 0x62, colorIndex, cornerX, cornerY );
-	}
-
-	image.write( "chrRom.bmp" );
-	*/
-	Bitmap paletteDebug( 0x40, 1, 0x00 );
-	for ( int colorIx = 0; colorIx < 0x40; ++colorIx )
-	{
-		Pixel pixel;
-
-		Bitmap::CopyToPixel( Palette[colorIx], pixel );
-
-		paletteDebug.SetPixel( colorIx, 0, pixel.raw );
-	}
-	paletteDebug.Write( "paletteDebug.bmp" );
-#endif // #if NES_MODE == 1
-
-	bool isRunning = true;
-
-	while( isRunning )
-	{
-		if( ( frame.count() % 60 ) == 0 )
-		{
-			// print nametable
-
-			Bitmap nametable( 256, 240, 0x00 );
-
-			for ( int tileY = 0; tileY < 30; ++tileY )
-			{
-				for ( int tileX = 0; tileX < 32; ++tileX )
-				{
-					const uint32_t cornerX = static_cast< uint32_t >( tileX * 8 );
-					const uint32_t cornerY = static_cast< uint32_t >( 8 * tileY );
-
-					DrawTile( system, cart, nametable, tileX, tileY, 0x01, system.ppu.vram[ /*0x2083*/0x2000 + tileX + tileY * 32 ], Palette, cornerX, cornerY );
-				}
-			}
-
-			DrawSprite( system, cart, nametable, 0x00, Palette );
-
-			stringstream nametableName;
-			stringstream palettesName;
-
-			nametableName << "Render Dumps/" << "nt_" << frame.count() << ".bmp";
-			palettesName << "palettes" << frame.count() << ".bmp";
-
-			nametable.Write( nametableName.str() );
-			/*
-			Bitmap framePalette( 0x10, 2, 0x00 );
-			for ( int colorIx = 0; colorIx <= 0x0F; ++colorIx )
-			{
-				Pixel pixel;
-
-				const uint16_t paletteAddr = 0x3F00;
-				const uint16_t spritePaletteAddr = 0x3F10;
-
-				Bitmap::CopyToPixel( Palette[ system.ppu.vram[ paletteAddr + colorIx ] ], pixel );
-				framePalette.setPixel( colorIx, 0, pixel.raw );
-
-				Bitmap::CopyToPixel( Palette[system.ppu.vram[spritePaletteAddr + colorIx]], pixel );
-				framePalette.setPixel( colorIx, 1, pixel.raw );
-			}
-			framePalette.write( palettesName.str() );
-			
-			cout << "Frame: " << frame.count() << endl;
-
-			const uint16_t attribAddr = 0x23C0;
-
-			for ( int attribY = 0; attribY < 8; ++attribY )
-			{
-				for ( int attribX = 0; attribX < 8; ++attribX )
-				{
-					const uint16_t attribTable = system.ppu.vram[attribAddr + attribY*8 + attribX];
-					const uint16_t tL = ( attribTable >> 6 ) & 0x03;
-					const uint16_t tR = ( attribTable >> 4 ) & 0x03;
-					const uint16_t bL = ( attribTable >> 2 ) & 0x03;
-					const uint16_t bR = ( attribTable >> 0 ) & 0x03;
-
-					cout << "[" << setfill( '0' ) << hex << setw( 2 ) << tL << " " << setw( 2 ) << tR << " " << setw( 2 ) << bL << " " << setw( 2 ) << bR << "]";
-				}
-
-				cout << endl;
-			}
-
-			cout << endl;
-			*/
-		}
-
-		masterCycles_t nextCycle = chrono::duration_cast<masterCycles_t>( frameRate_t( 1 ) );
-
-		isRunning = system.Run( nextCycle );
-
-		++frame;
-
-//		if( (frame % 60).count() == 0 )
-		{
-//			cout << "CPU Cycles per Second:" << system.cpu.iterationCycle << endl;
-//			system.cpu.iterationCycle = 0;
-		}
-	}
-#else
-	const float passedPercent = RunTests( cpu );
-
-	cout << "Passed Tests %" << ( passedPercent * 100.0f ) << endl;
-#endif
-
-#if DEBUG_MEM
-	/*
-	uint colorIndex[] = { 0x000000FF, 0xFFFFFFFF,	0x880000FF, 0xAAFFEEFF,
-		0xCC44CCFF, 0x00CC55FF, 0x0000AAFF, 0xEEEE77FF,
-		0xDD8855FF, 0x664400FF, 0xFF7777FF, 0x333333FF,
-		0x777777FF, 0xAAFF66FF, 0x0088FFFF, 0xBBBBBBFF };
-	/*
-	for ( std::map< uint16_t, uint8_t>::iterator it = memoryDebug.begin(); it != memoryDebug.end(); ++it )
-	{
-		const uint x = ( it->first - 0x200 ) % 32;
-		const uint y = ( it->first - 0x200 ) / 32;
-
-		image.setPixel( x, 31 - y, colorIndex[it->second % 16] );
-	}
-	*/	
-#endif // #if DEBUG_MEM
-
-	char end;
-	cin >> end;
+	LoadNesFile( "Games/nestest.nes", cart );
+	//LoadNesFile( "Games/Excitebike.nes", cart );
+	//LoadNesFile( "Games/Donkey Kong.nes", cart );
+	nesSystem.LoadProgram( cart );
 
 	return 0;
 }
 
+
+typedef std::chrono::time_point<std::chrono::steady_clock> timePoint_t;
+timePoint_t previousTime;
+
+
+int RunFrame( uint32_t frameBuffer[] )
+{
+	chrono::milliseconds frameTime = chrono::duration_cast<chrono::milliseconds>( frameRate_t( 1 ) );
+
+	auto targetTime = previousTime + frameTime;
+	auto currentTime = chrono::steady_clock::now();
+
+	auto elapsed = targetTime - currentTime;
+	auto dur = chrono::duration <double, nano>( elapsed ).count();
+
+	if( elapsed.count() > 0 )
+		std::this_thread::sleep_for( std::chrono::nanoseconds( elapsed ) );
+
+	previousTime = chrono::steady_clock::now();
+
+	masterCycles_t cyclesPerFrame = chrono::duration_cast<masterCycles_t>( frameTime );
+
+	RGBA colorIndex[] = { { 0x00_b, 0x00_b,0x00_b, 0xFF_b }, { 0x33_b, 0x33b_b, 0x33_b, 0xFF_b }, { 0x88_b, 0x88_b, 0x88_b, 0xFF_b }, { 0xBB_b, 0xBB_b, 0xBB_b, 0xFF_b } };
+
+	bool isRunning = true;
+
+	for ( int tileY = 0; tileY < 30; ++tileY )
+	{
+		for ( int tileX = 0; tileX < 32; ++tileX )
+		{
+			const uint32_t cornerX = static_cast< uint32_t >( tileX * 8 );
+			const uint32_t cornerY = static_cast< uint32_t >( 8 * tileY );
+
+			DrawTile( nesSystem, cart, *nesSystem.frameImage, tileX, tileY, 0x01, nesSystem.ppu.vram[ /*0x2083*/0x2000 + tileX + tileY * 32 ], Palette, cornerX, cornerY );
+		}
+	}
+
+	DrawSprite( nesSystem, cart, *nesSystem.frameImage, 0x00, Palette );
+
+	stringstream nametableName;
+
+	nametableName << "Render Dumps/" << "nt_" << frame.count() << ".bmp";
+		
+	// nesSystem.frameImage->Write( nametableName.str() );
+
+	/*
+	stringstream palettesName;
+	palettesName << "Palettes/" << "plt_" << frame.count() << ".bmp";
+
+	Bitmap framePalette( 0x10, 2, 0x00 );
+	for ( int colorIx = 0; colorIx <= 0x0F; ++colorIx )
+	{
+		Pixel pixel;
+
+		const uint16_t paletteAddr = 0x3F00;
+		const uint16_t spritePaletteAddr = 0x3F10;
+
+		Bitmap::CopyToPixel( Palette[nesSystem.ppu.vram[ paletteAddr + colorIx ] ], pixel, BITMAP_ABGR );
+		framePalette.SetPixel( colorIx, 0, pixel.raw );
+
+		Bitmap::CopyToPixel( Palette[nesSystem.ppu.vram[spritePaletteAddr + colorIx]], pixel, BITMAP_ABGR );
+		framePalette.SetPixel( colorIx, 1, pixel.raw );
+	}
+	framePalette.Write( palettesName.str() );
+			
+	cout << "Frame: " << frame.count() << endl;
+
+	const uint16_t attribAddr = 0x23C0;
+
+	for ( int attribY = 0; attribY < 8; ++attribY )
+	{
+		for ( int attribX = 0; attribX < 8; ++attribX )
+		{
+			const uint16_t attribTable = system.ppu.vram[attribAddr + attribY*8 + attribX];
+			const uint16_t tL = ( attribTable >> 6 ) & 0x03;
+			const uint16_t tR = ( attribTable >> 4 ) & 0x03;
+			const uint16_t bL = ( attribTable >> 2 ) & 0x03;
+			const uint16_t bR = ( attribTable >> 0 ) & 0x03;
+
+			cout << "[" << setfill( '0' ) << hex << setw( 2 ) << tL << " " << setw( 2 ) << tR << " " << setw( 2 ) << bL << " " << setw( 2 ) << bR << "]";
+		}
+
+		cout << endl;
+	}
+
+	cout << endl;
+	*/
+		
+	masterCycles_t nextCycle = chrono::duration_cast<masterCycles_t>( frameRate_t( 1 ) );
+
+	isRunning = nesSystem.Run( nextCycle );
+
+	++frame;
+
+	nesSystem.GetFrameBuffer( frameBuffer );
+
+	return 0;
+}
+
+
+
+int main()
+{
+	uint32_t frameBuffer[0xFFFF];
+	RunFrame( frameBuffer );
+}

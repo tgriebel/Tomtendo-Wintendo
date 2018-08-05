@@ -28,7 +28,7 @@ const uint64_t FPS = 60;
 using masterCycles_t = std::chrono::duration< uint64_t, std::ratio<1, MasterClockHz> >;
 using ppuCycle_t = std::chrono::duration< uint64_t, std::ratio<PpuClockDivide, MasterClockHz> >;
 using cpuCycle_t = std::chrono::duration< uint64_t, std::ratio<CpuClockDivide, MasterClockHz> >;
-using frameRate_t = std::chrono::duration< uint64_t, std::ratio<1, FPS> >;
+using frameRate_t = std::chrono::duration< float, std::ratio<1, FPS> >;
 
 struct iNesHeader
 {
@@ -65,8 +65,11 @@ static void LoadNesFile( const std::string& fileName, NesCart& outCart )
 {
 	std::ifstream nesFile;
 	nesFile.open( fileName, std::ios::binary );
+
+	assert( nesFile.good() );
+
 	nesFile.seekg( 0, std::ios::end );
-	size_t len = nesFile.tellg();
+	size_t len = static_cast<size_t>( nesFile.tellg() );
 
 	nesFile.seekg( 0, std::ios::beg );
 	nesFile.read( reinterpret_cast<char*>( &outCart ), len );
@@ -76,7 +79,7 @@ static void LoadNesFile( const std::string& fileName, NesCart& outCart )
 	assert( outCart.header.type[1] == 'E' );
 	assert( outCart.header.type[2] == 'S' );
 	assert( outCart.header.magic == 0x1A );
-
+	
 	std::ofstream checkFile;
 	checkFile.open( "checkFile.nes", std::ios::binary );
 	checkFile.write( reinterpret_cast<char*>( &outCart ), len );
