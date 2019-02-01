@@ -106,10 +106,10 @@ union PpuStatusLatch
 {
 	struct PpuStatusSemantic
 	{
-		uint8_t	lastReadLsb : 5;
-		uint8_t	o : 1;
-		uint8_t	s : 1;
-		uint8_t	v : 1;
+		uint8_t	lastReadLsb		: 5;
+		uint8_t	spriteOverflow	: 1;
+		uint8_t	spriteHit		: 1;
+		uint8_t	vBlank			: 1;
 
 	} sem;
 
@@ -130,7 +130,15 @@ struct PPU
 {
 	static const uint16_t VirtualMemorySize = 0xFFFF;
 	static const uint16_t PhysicalMemorySize = 0x3FFF;
-	static const uint8_t RegisterCount = 0x08;
+	static const uint16_t NametableMemorySize = 0x03C0;
+	static const uint16_t AttributeTableMemorySize = 0x0040;
+	static const uint16_t NameTableAttribMemorySize = NametableMemorySize + AttributeTableMemorySize;
+	static const uint16_t NameTable0BaseAddr = 0x2000;
+	static const uint16_t PaletteBaseAddr = 0x3F00;
+	static const uint16_t NameTableWidthTiles = 32;
+	static const uint16_t NameTableHeightTiles = 30;
+	static const uint16_t NameTableTilePixels = 8;
+	static const uint8_t RegisterCount = 8;
 	//static const ppuCycle_t VBlankCycles = ppuCycle_t( 20 * 341 * 5 );
 
 	PatternTable bgPatternTbl;
@@ -197,7 +205,7 @@ struct PPU
 		assert( value == 0 );
 
 		regStatus.latched = regStatus.current;
-		regStatus.latched.sem.v = 0;
+		regStatus.latched.sem.vBlank = 0;
 		regStatus.latched.sem.lastReadLsb = 0;
 		regStatus.hasLatch = true;
 		registers[PPUREG_ADDR] = 0;
@@ -211,7 +219,7 @@ struct PPU
 	inline uint8_t& PPUSTATUS()
 	{
 		regStatus.latched = regStatus.current;
-		regStatus.latched.sem.v = 0;
+		regStatus.latched.sem.vBlank = 0;
 		regStatus.latched.sem.lastReadLsb = 0;
 		regStatus.hasLatch = true;
 		registers[PPUREG_ADDR] = 0;
@@ -314,13 +322,13 @@ struct PPU
 		return registers[PPUREG_DATA];
 	}
 
-	uint8_t DoDMA( const uint16_t address );
+	uint8_t DMA( const uint16_t address );
 	void EnablePrinting();
 
 	inline uint8_t& OAMDMA( const uint8_t value )
 	{
 		GenerateDMA();
-		DoDMA( value );
+		DMA( value );
 
 		return registers[PPUREG_OAMDMA];
 	}
@@ -384,7 +392,7 @@ struct PPU
 		{
 			if ( currentScanline < 0 )
 			{
-				regStatus.current.sem.v = 0;
+				regStatus.current.sem.vBlank = 0;
 				regStatus.latched.raw = 0;
 				regStatus.hasLatch = false;
 			}
@@ -398,7 +406,7 @@ struct PPU
 			{
 			// must only exec once!
 				// set vblank flag at second tick, cycle=1
-				regStatus.current.sem.v = 1;
+				regStatus.current.sem.vBlank = 1;
 				//EnablePrinting();
 				// Gen NMI
 				if( regCtrl.sem.nmiVblank )

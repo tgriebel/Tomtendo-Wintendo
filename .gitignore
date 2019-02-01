@@ -30,3 +30,23 @@
 *.exe
 *.out
 *.app
+/.vs
+/wintendo/.vs/wintendo/v15
+/wintendo/Debug
+/wintendo/Release
+/wintendo/wintendoApp/Debug
+/wintendo/wintendoApp/Games
+/wintendo/wintendoApp/Release
+/wintendo/wintendoApp/Render Dumps
+/wintendo/wintendoApp/x64/Debug
+/wintendo/wintendoApp/x64/Release
+/wintendo/wintendoCore/.vs/wintendo/v15
+/wintendo/wintendoCore/Debug
+/wintendo/wintendoCore/Games
+/wintendo/wintendoCore/Images
+/wintendo/wintendoCore/Palettes
+/wintendo/wintendoCore/Release
+/wintendo/wintendoCore/Render Dumps
+/wintendo/wintendoCore/x64/Debug
+/wintendo/wintendoCore/x64/Release
+/wintendo/x64

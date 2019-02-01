@@ -5,28 +5,31 @@
 #include <iostream>
 #include <iomanip>
 #include <chrono>
+#include <atomic>
 #include "common.h"
 #include "NesSystem.h"
 #include "mos6502.h"
+#include "input.h"
 
 using namespace std;
 
+ButtonFlags keyBuffer = BUTTON_NONE;
 
-void NesSystem::LoadProgram( const NesCart& cart, const uint32_t resetVectorManual )
+void NesSystem::LoadProgram( const NesCart& loadCart, const uint32_t resetVectorManual )
 {
 	memset( memory, 0, VirtualMemorySize );
 
-	memcpy( memory + Bank0, cart.rom, BankSize );
+	memcpy( memory + Bank0, loadCart.rom, BankSize );
 
-	assert( cart.header.prgRomBanks <= 2 );
+	assert( loadCart.header.prgRomBanks <= 2 );
 
-	if ( cart.header.prgRomBanks == 1 )
+	if ( loadCart.header.prgRomBanks == 1 )
 	{
-		memcpy( memory + Bank1, cart.rom, BankSize );
+		memcpy( memory + Bank1, loadCart.rom, BankSize );
 	}
 	else
 	{
-		memcpy( memory + Bank1, cart.rom + Bank1, BankSize );
+		memcpy( memory + Bank1, loadCart.rom + Bank1, BankSize );
 	}
 
 	if ( resetVectorManual == 0x10000 )
@@ -109,7 +112,20 @@ uint8_t& NesSystem::GetMemory( const uint16_t address )
 	}
 	else if ( IsInputRegister( address ) )
 	{
-		controllerBuffer0 = 0;
+		controllerBuffer0 = 0; // FIXME: this register is a hack to get around bad GetMemory func design
+
+		if ( strobeOn )
+		{
+			// TEMP, strobe returns value of 'A'
+			// GetBuffer is only a single button for now
+			controllerBuffer0 = GetKeyBuffer() & ((ButtonFlags)0X80);
+			btnShift = 0;
+
+			return controllerBuffer0;
+		}
+
+		controllerBuffer0 = ( GetKeyBuffer() >> ( 7 - btnShift ) ) & 0x01;
+		++btnShift;
 
 		return controllerBuffer0;
 	}
@@ -128,9 +144,15 @@ uint8_t& NesSystem::GetMemory( const uint16_t address )
 }
 
 
-void NesSystem::GetFrameBuffer( uint32_t frameBuffer[] )
+void NesSystem::WriteInput( const uint8_t value )
 {
-	frameImage->GetBuffer( frameBuffer );
+
+}
+
+
+void NesSystem::CaptureInput( const Controller keys )
+{
+	controller.exchange( keys );
 }
 
 

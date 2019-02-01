@@ -29,7 +29,24 @@ enum ControllerId : uint8_t
 };
 
 
-uint8_t ReadControllerInput( const ControllerId controllerId )
+extern ButtonFlags keyBuffer;
+
+
+inline ButtonFlags GetKeyBuffer()
 {
-	return 0;
+	return keyBuffer;
+}
+
+
+// TODO: make thread safe -- look at CaptureKey function I started
+// keyBuffer is only written by store key so it's guaranteed read only elsewhere
+inline void StoreKey( uint8_t key )
+{
+	keyBuffer = static_cast<ButtonFlags>( keyBuffer | key);
+}
+
+
+inline void ReleaseKey( uint8_t key )
+{
+	keyBuffer = static_cast<ButtonFlags>( keyBuffer & ~key );
 }

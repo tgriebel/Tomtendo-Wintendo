@@ -55,7 +55,7 @@ void PPU::GenerateDMA()
 }
 
 
-uint8_t PPU::DoDMA( const uint16_t address )
+uint8_t PPU::DMA( const uint16_t address )
 {
 	//	assert( address == 0 ); // need to handle other case
 	memcpy( primaryOAM, &system->GetMemory( Combine( 0x00, static_cast<uint8_t>( address ) ) ), 256 );

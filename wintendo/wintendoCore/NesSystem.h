@@ -8,10 +8,19 @@
 #include <iostream>
 #include <map>
 #include <iomanip>
+#include <atomic>
 #include "common.h"
 #include "mos6502.h"
 #include "ppu.h"
 #include "bitmap.h"
+
+
+struct Controller
+{
+
+
+};
+
 
 
 class NesSystem
@@ -21,6 +30,7 @@ public:
 	static const uint16_t Bank0 = 0x8000;
 	static const uint16_t Bank1 = 0xC000;
 	static const uint16_t BankSize = 0x4000;
+	static const uint16_t ChrRomSize = 0x1000;
 	static const uint16_t ResetVectorAddr = 0xFFFC;
 	static const uint16_t NmiVectorAddr = 0xFFFA;
 	static const uint16_t IrqVectorAddr = 0xFFFE;
@@ -36,7 +46,11 @@ public:
 	static const uint16_t InputRegister1 = 0x4017;
 	static const uint16_t ApuRegisterBase = 0x4000;
 	static const uint16_t ApuRegisterEnd = 0x4014;
-	static const uint16_t PageSize = 0xFF;
+	static const uint16_t PageSize = 0x00FF;
+
+	// Move this and framebuffer to PPU?
+	static const uint32_t ScreenWidth = 256;
+	static const uint32_t ScreenHeight = 240;
 
 	uint8_t& GetStack();
 	uint8_t& GetMemory( const uint16_t address );
@@ -45,15 +59,24 @@ public:
 	PPU ppu;
 	Cpu6502 cpu;
 
-	Bitmap* frameImage;
-	uint32_t frameBuffer[256*240];
+	const NesCart* cart;
+	const RGBA* palette;
+
+	uint32_t frameBuffer[ScreenWidth * ScreenHeight];
+	uint32_t nameTableSheet[4 * ScreenWidth * ScreenHeight];
 
 	uint8_t controllerBuffer0;
 	uint8_t controllerBuffer1;
 
 	uint8_t apuDummyRegister;
 
+	std::atomic<Controller> controller;
+
 	masterCycles_t sysCycles;
+
+	bool strobeOn;
+	// TODO: Need to support two controllers
+	uint8_t btnShift;
 
 #if DEBUG_ADDR == 1
 	std::map<uint16_t, uint8_t> memoryDebug;
@@ -83,7 +106,8 @@ public:
 
 		ppu.system = this;
 
-		frameImage = new Bitmap( 256, 240, 0x00 ); // TODO: fix, doesn't need dynamic mem, mem leak
+		strobeOn = false;
+		btnShift = 0;
 	}
 
 	void LoadProgram( const NesCart& cart, const uint32_t resetVectorManual = 0x10000 );
@@ -92,7 +116,8 @@ public:
 	bool IsPpuRegister( const uint16_t address );
 	bool IsApuRegister( const uint16_t address );
 	bool IsDMA( const uint16_t address );
-	void GetFrameBuffer( uint32_t frameBuffer[] );
+	void CaptureInput( const Controller keys );
+	void WriteInput( const uint8_t value );
 
 	//private:
 	uint8_t memory[VirtualMemorySize];

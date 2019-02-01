@@ -16,7 +16,7 @@
 #include "bitmap.h"
 
 
-RGBA Palette[0x40] =
+const RGBA Palette[64] =
 {
 	{ 0x75, 0x75, 0x75, 0xFF },	{ 0x27, 0x1B, 0x8F, 0xFF },	{ 0x00, 0x00, 0xAB, 0xFF },	{ 0x47, 0x00, 0x9F, 0xFF },
 	{ 0x8F, 0x00, 0x77, 0xFF },	{ 0xAB, 0x00, 0x13, 0xFF },	{ 0xA7, 0x00, 0x00, 0xFF },	{ 0x7F, 0x0B, 0x00, 0xFF },
@@ -38,6 +38,20 @@ RGBA Palette[0x40] =
 
 
 const uint8_t BitPlaneBytes = 8;
+
+NesSystem nesSystem;
+frameRate_t frame( 1 );
+NesCart cart;
+
+typedef std::chrono::time_point<std::chrono::steady_clock> timePoint_t;
+timePoint_t previousTime;
+bool lockFps = true;
+
+
+inline void FrameBufferWritePixel( NesSystem& system, const uint32_t x, const uint32_t y, const Pixel pixel )
+{
+	system.frameBuffer[ x + y * NesSystem::ScreenWidth ] = pixel.raw;
+}
 
 
 inline const uint16_t CalcTileOffset( const uint16_t tileIx )
@@ -82,22 +96,25 @@ void TileRowToPixels( const uint8_t*const bitPlane0, const uint8_t*const bitPlan
 	}
 }
 
-
-void DrawTile( NesSystem& system, NesCart& cart, Bitmap& image, const uint16_t nametableX, const uint16_t nametableY, const uint32_t tableIx, const int tileIx, RGBA colorPalette[], const uint32_t cornerX, const uint32_t cornerY )
+// TODO: system should own palette
+void DrawTile( NesSystem& system, uint32_t imageBuffer[], const WtRect& imageRect, const WtPoint& nametableTile, const uint32_t ntId, const uint32_t ptrnTableId )
 {
 	const uint8_t tileBytes = 16;
 
-	const uint16_t baseAddr = cart.header.prgRomBanks * 0x4000 + tableIx * 0x1000;
-	const uint16_t attribAddr = 0x23C0;
-	const uint16_t paletteAddr = 0x3F00;
+	const uint32_t ntBaseAddr = ( PPU::NameTable0BaseAddr + ntId * PPU::NameTableAttribMemorySize );
+	const uint32_t tileIx = system.ppu.vram[ntBaseAddr + nametableTile.x + nametableTile.y * PPU::NameTableWidthTiles];
+
+	const uint16_t baseAddr = system.cart->header.prgRomBanks * NesSystem::BankSize + ptrnTableId * NesSystem::ChrRomSize;
+	const uint16_t attribAddr = ntBaseAddr + PPU::NametableMemorySize;
+	const uint16_t paletteAddr = PPU::PaletteBaseAddr;
 
 	const uint8_t attribWidth = 8;
-	const uint8_t attribXoffset = (uint8_t)( nametableX / 4 );
-	const uint8_t attribYoffset = (uint8_t)( nametableY / 4 );
+	const uint8_t attribXoffset = (uint8_t)( nametableTile.x / 4 );
+	const uint8_t attribYoffset = (uint8_t)( nametableTile.y / 4 );
 	const uint8_t attribTable = system.ppu.vram[attribAddr + attribXoffset + attribYoffset * attribWidth];
 
-	const uint8_t attribSectionRow = (uint8_t)floor( ( nametableX % 4 ) / 2.0f ); // 2 is to convert from nametable to attrib tile
-	const uint8_t attribSectionCol = (uint8_t)floor( ( nametableY % 4 ) / 2.0f );
+	const uint8_t attribSectionRow = (uint8_t)floor( ( nametableTile.x % 4 ) / 2.0f ); // 2 is to convert from nametable to attrib tile
+	const uint8_t attribSectionCol = (uint8_t)floor( ( nametableTile.y % 4 ) / 2.0f );
 	const uint8_t attribShift = 2 * ( attribSectionRow + 2 * attribSectionCol );
 	
 	const uint8_t paleteIx = 4 * ( ( attribTable >> attribShift ) & 0x03 );
@@ -108,29 +125,29 @@ void DrawTile( NesSystem& system, NesCart& cart, Bitmap& image, const uint16_t n
 	{
 		for ( int x = 0; x < 8; ++x )
 		{
-			const uint8_t chrRom0 = cart.rom[chrRomBase + y];
-			const uint8_t chrRom1 = cart.rom[chrRomBase + ( tileBytes / 2 ) + y];
+			const uint8_t chrRom0 = system.cart->rom[chrRomBase + y];
+			const uint8_t chrRom1 = system.cart->rom[chrRomBase + ( tileBytes / 2 ) + y];
 
 			const uint16_t xBitMask = ( 0x80 >> x );
 
 			const uint8_t lowerBits = ( ( chrRom0 & xBitMask ) >> ( 7 - x ) ) | ( ( ( chrRom1 & xBitMask ) >> ( 7 - x ) ) << 1 );
 
-			const uint32_t imageX = cornerX + x;
-			const uint32_t imageY = cornerY + y;
+			const uint32_t imageX = imageRect.x + x;
+			const uint32_t imageY = imageRect.y + y;
 
 			const uint8_t colorIx = system.ppu.vram[paletteAddr + paleteIx + lowerBits];
 
 			Pixel pixelColor;
 
-			Bitmap::CopyToPixel( Palette[colorIx], pixelColor, BITMAP_ABGR );
+			Bitmap::CopyToPixel( system.palette[colorIx], pixelColor, BITMAP_BGRA );
 
-			image.SetPixel( imageX, /*239 -*/ imageY, pixelColor.raw );
+			imageBuffer[ imageX + imageY * imageRect.width ] = pixelColor.raw;
 		}
 	}
 }
 
 
-void DrawSprite( NesSystem& system, NesCart& cart, Bitmap& image, const uint32_t tableIx, RGBA colorPalette[] )
+void DrawSprite( NesSystem& system, const uint32_t tableId )
 {
 	const uint8_t tileBytes = 16;
 
@@ -149,7 +166,7 @@ void DrawSprite( NesSystem& system, NesCart& cart, Bitmap& image, const uint32_t
 		const uint8_t flippedHor = ( attrib & 0x40 ) >> 6;
 		const uint8_t flippedVert = ( attrib & 0x80 ) >> 7;
 
-		const uint16_t baseAddr = cart.header.prgRomBanks * 0x4000 + tableIx * 0x1000;
+		const uint16_t baseAddr = system.cart->header.prgRomBanks * 0x4000 + tableId * 0x1000;
 		const uint16_t chrRomBase = baseAddr + tileId * tileBytes;
 
 		if ( spriteY < 8 || spriteY > 232 )
@@ -164,8 +181,8 @@ void DrawSprite( NesSystem& system, NesCart& cart, Bitmap& image, const uint32_t
 				const uint8_t tileRow = flippedVert ? ( 7 - y ) : y;
 				const uint8_t tileCol = flippedHor ? ( 7 - x ) : x;
 
-				const uint8_t chrRom0 = cart.rom[chrRomBase + y];
-				const uint8_t chrRom1 = cart.rom[chrRomBase + ( tileBytes / 2 ) + y];
+				const uint8_t chrRom0 = system.cart->rom[chrRomBase + y];
+				const uint8_t chrRom1 = system.cart->rom[chrRomBase + ( tileBytes / 2 ) + y];
 
 				const uint16_t xBitMask = ( 0x80 >> x );
 
@@ -174,22 +191,23 @@ void DrawSprite( NesSystem& system, NesCart& cart, Bitmap& image, const uint32_t
 				if( lowerBits == 0x00 )
 					continue;
 
+				//if( spriteZeroHit )
+				{
+				//	system.ppu.regStatus.current.sem.spriteHit = true;
+				}
+
 				const uint8_t colorIx = system.ppu.vram[spritePaletteAddr + attribPal + lowerBits];
 
 				Pixel pixelColor;
 
-				Bitmap::CopyToPixel( Palette[colorIx], pixelColor, BITMAP_ABGR );
-
-				image.SetPixel( spriteX + tileCol, /*239 -*/ spriteY + tileRow /*- 8*/, pixelColor.raw );
+				Bitmap::CopyToPixel( system.palette[colorIx], pixelColor, BITMAP_BGRA );
+				FrameBufferWritePixel( system, spriteX + tileCol, spriteY + tileRow, pixelColor );
 			}
 		}
 	}
 }
 
 
-NesSystem nesSystem;
-frameRate_t frame( 1 );
-NesCart cart;
 
 
 int InitSystem()
@@ -198,20 +216,35 @@ int InitSystem()
 	//system.LoadProgram( cart, 0xC000 );
 	//system.cpu.forceStopAddr = 0xC6BD;
 
-	LoadNesFile( "Games/nestest.nes", cart );
-	//LoadNesFile( "Games/Excitebike.nes", cart );
-	//LoadNesFile( "Games/Donkey Kong.nes", cart );
+	//LoadNesFile( "Games/Super Mario Bros.nes", cart );
+	//LoadNesFile( "Games/Mario Bros.nes", cart ); // works, no collision (0 sprite?)
+	//LoadNesFile( "Games/Balloon Fight.nes", cart ); // grey screen
+	//LoadNesFile( "Games/Tennis.nes", cart ); // works
+	//LoadNesFile( "Games/Ice Climber.nes", cart ); // grey screen
+	//LoadNesFile( "Games/nestest.nes", cart );
+	//LoadNesFile( "Games/Excitebike.nes", cart ); // works, no scroll
+	LoadNesFile( "Games/Donkey Kong.nes", cart ); // works, completed game
 	nesSystem.LoadProgram( cart );
+	nesSystem.palette = &Palette[0];
+	nesSystem.cart = &cart;
 
 	return 0;
 }
 
 
-typedef std::chrono::time_point<std::chrono::steady_clock> timePoint_t;
-timePoint_t previousTime;
+void CopyFrameBuffer( uint32_t destBuffer[], const size_t destSize )
+{
+	memcpy( destBuffer, nesSystem.frameBuffer, destSize );
+}
 
 
-int RunFrame( uint32_t frameBuffer[] )
+void CopyNametable( uint32_t destBuffer[], const size_t destSize )
+{
+	memcpy( destBuffer, nesSystem.nameTableSheet, destSize );
+}
+
+
+int RunFrame()
 {
 	chrono::milliseconds frameTime = chrono::duration_cast<chrono::milliseconds>( frameRate_t( 1 ) );
 
@@ -221,7 +254,7 @@ int RunFrame( uint32_t frameBuffer[] )
 	auto elapsed = targetTime - currentTime;
 	auto dur = chrono::duration <double, nano>( elapsed ).count();
 
-	if( elapsed.count() > 0 )
+	if( lockFps && (  elapsed.count() > 0 ) )
 		std::this_thread::sleep_for( std::chrono::nanoseconds( elapsed ) );
 
 	previousTime = chrono::steady_clock::now();
@@ -232,24 +265,52 @@ int RunFrame( uint32_t frameBuffer[] )
 
 	bool isRunning = true;
 
-	for ( int tileY = 0; tileY < 30; ++tileY )
-	{
-		for ( int tileX = 0; tileX < 32; ++tileX )
-		{
-			const uint32_t cornerX = static_cast< uint32_t >( tileX * 8 );
-			const uint32_t cornerY = static_cast< uint32_t >( 8 * tileY );
+	WtRect imageRect = { 0, 0, NesSystem::ScreenWidth, NesSystem::ScreenHeight };
 
-			DrawTile( nesSystem, cart, *nesSystem.frameImage, tileX, tileY, 0x01, nesSystem.ppu.vram[ /*0x2083*/0x2000 + tileX + tileY * 32 ], Palette, cornerX, cornerY );
+	for ( uint32_t tileY = 0; tileY < 30; ++tileY )
+	{
+		for ( uint32_t tileX = 0; tileX < 32; ++tileX )
+		{
+			DrawTile( nesSystem, nesSystem.frameBuffer, imageRect, WtPoint{ tileX, tileY }, 0x00, 0x01 );
+
+			imageRect.x += static_cast< uint32_t >( PPU::NameTableTilePixels );
+		}
+
+		imageRect.x = 0;
+		imageRect.y += static_cast< uint32_t >( PPU::NameTableTilePixels );
+	}
+
+	WtRect ntRects[4] = {	{ 0,						0,							2 * NesSystem::ScreenWidth,	2 * NesSystem::ScreenHeight },
+							{ NesSystem::ScreenWidth,	0,							2 * NesSystem::ScreenWidth,	2 * NesSystem::ScreenHeight },
+							{ 0,						NesSystem::ScreenHeight,	2 * NesSystem::ScreenWidth, 2 * NesSystem::ScreenHeight },
+							{ NesSystem::ScreenWidth,	NesSystem::ScreenHeight,	2 * NesSystem::ScreenWidth, 2 * NesSystem::ScreenHeight }, };
+
+	WtPoint ntCorners[4] = {	{0,							0 },
+								{ NesSystem::ScreenWidth,	0 },
+								{ 0,						NesSystem::ScreenHeight },
+								{ NesSystem::ScreenWidth,	NesSystem::ScreenHeight },};
+
+	for ( uint32_t ntId = 0; ntId < 4; ++ntId )
+	{
+		for ( uint32_t tileY = 0; tileY < PPU::NameTableHeightTiles; ++tileY )
+		{
+			for ( uint32_t tileX = 0; tileX < PPU::NameTableWidthTiles; ++tileX )
+			{
+				DrawTile( nesSystem, nesSystem.nameTableSheet, ntRects[ntId], WtPoint{ tileX, tileY }, ntId, 0x01 );
+
+				ntRects[ntId].x += static_cast< uint32_t >( PPU::NameTableTilePixels );
+			}
+
+			ntRects[ntId].x = ntCorners[ntId].x;
+			ntRects[ntId].y += static_cast< uint32_t >( PPU::NameTableTilePixels );
 		}
 	}
 
-	DrawSprite( nesSystem, cart, *nesSystem.frameImage, 0x00, Palette );
+	DrawSprite( nesSystem, 0x00 );
 
 	stringstream nametableName;
 
 	nametableName << "Render Dumps/" << "nt_" << frame.count() << ".bmp";
-		
-	// nesSystem.frameImage->Write( nametableName.str() );
 
 	/*
 	stringstream palettesName;
@@ -300,8 +361,6 @@ int RunFrame( uint32_t frameBuffer[] )
 
 	++frame;
 
-	nesSystem.GetFrameBuffer( frameBuffer );
-
 	return 0;
 }
 
@@ -309,6 +368,5 @@ int RunFrame( uint32_t frameBuffer[] )
 
 int main()
 {
-	uint32_t frameBuffer[0xFFFF];
-	RunFrame( frameBuffer );
+	RunFrame();
 }

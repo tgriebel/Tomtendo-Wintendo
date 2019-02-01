@@ -23,7 +23,7 @@ inline constexpr uint8_t operator "" _b( uint64_t arg ) noexcept
 const uint64_t MasterClockHz	= 21477272;
 const uint64_t CpuClockDivide	= 12;
 const uint64_t PpuClockDivide	= 4;
-const uint64_t FPS = 60;
+const uint64_t FPS = 30;
 
 using masterCycles_t = std::chrono::duration< uint64_t, std::ratio<1, MasterClockHz> >;
 using ppuCycle_t = std::chrono::duration< uint64_t, std::ratio<PpuClockDivide, MasterClockHz> >;
@@ -58,6 +58,22 @@ struct NesCart
 	iNesHeader	header;
 	uint8_t		rom[524288];
 	size_t		size;
+};
+
+
+struct WtPoint
+{
+	uint32_t x;
+	uint32_t y;
+};
+
+
+struct WtRect
+{
+	uint32_t x;
+	uint32_t y;
+	uint32_t width;
+	uint32_t height;
 };
 
 
