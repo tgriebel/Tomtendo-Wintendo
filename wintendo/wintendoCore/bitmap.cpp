@@ -217,7 +217,7 @@ void Bitmap::Write( const string& filename )
 	uint8_t pad[4] = { '\0','\0', '\0','\0' };
 
 	uint32 pixelBytes = ( bhi.bpPixels / 8 );
-	uint32 lineBytes = ( pixelBytes * bhi.width ); // bytes per line, w/o padding
+	uint32 lineBytes = ( pixelBytes * bhi.width ) + 1; // bytes per line, w/o padding
 
 	uint8_t* buffer = new uint8_t[lineBytes];
 
@@ -231,7 +231,7 @@ void Bitmap::Write( const string& filename )
 			buffer[buffer_i + 2]	=  mapdata[ pix_num + ( i * bhi.width ) ].red;
 		}
 
-		outstream.write( reinterpret_cast<char*>( buffer ), lineBytes );
+		outstream.write( reinterpret_cast<char*>( buffer ), lineBytes - 1 );
 		outstream.write( reinterpret_cast<char*>( pad ), padding);
 	}
 

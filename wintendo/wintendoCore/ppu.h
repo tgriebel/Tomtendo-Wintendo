@@ -5,6 +5,8 @@ struct PPU;
 typedef uint8_t&( PPU::* PpuRegWriteFunc )( const uint8_t value );
 typedef uint8_t&( PPU::* PpuRegReadFunc )();
 
+union Pixel;
+struct RGBA;
 
 // TODO: Enums overkill?
 enum PatternTable : uint8_t
@@ -68,11 +70,11 @@ union PpuCtrl
 {
 	struct PpuCtrlSemantic
 	{
-		Nametable		nameTableAddr	: 2;
+		Nametable		nameTableId		: 2;
 		VramInc			vramInc			: 1;
-		PatternTable	spriteTableAddr	: 1;
+		PatternTable	spriteTableId	: 1;
 	
-		PatternTable	bgTableAddr		: 1;
+		PatternTable	bgTableId		: 1;
 		SpriteMode		spriteSize		: 1;
 		MasterSlaveMode	masterSlaveMode	: 1;
 		NmiVblank		nmiVblank		: 1;
@@ -128,17 +130,24 @@ struct PpuStatus
 
 struct PPU
 {
-	static const uint16_t VirtualMemorySize = 0xFFFF;
-	static const uint16_t PhysicalMemorySize = 0x3FFF;
-	static const uint16_t NametableMemorySize = 0x03C0;
-	static const uint16_t AttributeTableMemorySize = 0x0040;
-	static const uint16_t NameTableAttribMemorySize = NametableMemorySize + AttributeTableMemorySize;
-	static const uint16_t NameTable0BaseAddr = 0x2000;
-	static const uint16_t PaletteBaseAddr = 0x3F00;
-	static const uint16_t NameTableWidthTiles = 32;
-	static const uint16_t NameTableHeightTiles = 30;
-	static const uint16_t NameTableTilePixels = 8;
-	static const uint8_t RegisterCount = 8;
+	static const uint32_t VirtualMemorySize			= 0x10000;
+	static const uint32_t PhysicalMemorySize		= 0x4000;
+	static const uint32_t OamSize					= 0x0100;
+	static const uint32_t OamSecondSize				= 0x0020;
+	static const uint32_t NametableMemorySize		= 0x03C0;
+	static const uint32_t AttributeTableMemorySize	= 0x0040;
+	static const uint32_t NameTableAttribMemorySize	= NametableMemorySize + AttributeTableMemorySize;
+	static const uint16_t NameTable0BaseAddr		= 0x2000;
+	static const uint16_t PaletteBaseAddr			= 0x3F00;
+	static const uint32_t NameTableWidthTiles		= 32;
+	static const uint32_t NameTableHeightTiles		= 30;
+	static const uint32_t AttribTableWidthTiles		= 8;
+	static const uint32_t AttribTableWHeightTiles	= 8;
+	static const uint32_t NtTilesPerAttribute		= 4;
+	static const uint32_t NameTableTilePixels		= 8;
+	static const uint32_t NameTableWidthPixels		= NameTableWidthTiles * NameTableTilePixels;
+	static const uint32_t NameTableHeightPixels		= NameTableHeightTiles * NameTableTilePixels;
+	static const uint32_t RegisterCount				= 8;
 	//static const ppuCycle_t VBlankCycles = ppuCycle_t( 20 * 341 * 5 );
 
 	PatternTable bgPatternTbl;
@@ -160,331 +169,76 @@ struct PPU
 	ppuCycle_t cycle;
 
 	NesSystem* system;
+	const RGBA* palette;
 
 	uint16_t vramAddr;
 
 	uint8_t vram[VirtualMemorySize];
-	uint8_t primaryOAM[256];
-	uint8_t secondaryOAM[32];
+	uint8_t primaryOAM[OamSize];
+	uint8_t secondaryOAM[OamSecondSize];
 
-	uint8_t registers[8]; // no need?
+	uint8_t scrollPosition[2];
+	uint8_t scrollReg = 0x00;
 
-	inline uint8_t& PPUCTRL( const uint8_t value )
-	{
-		regCtrl.raw = value;
-		regStatus.current.sem.lastReadLsb = ( value & 0x1F );
+	uint8_t registers[9]; // no need?
 
-		return regCtrl.raw;
-	}
+	uint8_t& PPUCTRL( const uint8_t value );
+	uint8_t& PPUCTRL();
 
+	uint8_t& PPUMASK( const uint8_t value );
+	uint8_t& PPUMASK();
 
-	inline uint8_t& PPUCTRL()
-	{
-		return regCtrl.raw;
-	}
+	uint8_t& PPUSTATUS( const uint8_t value );
+	uint8_t& PPUSTATUS();
 
+	uint8_t& OAMADDR( const uint8_t value );
+	uint8_t& OAMADDR();
 
-	inline uint8_t& PPUMASK( const uint8_t value )
-	{
-		regMask.raw = value;
-		regStatus.current.sem.lastReadLsb = ( value & 0x1F );
+	uint8_t& OAMDATA( const uint8_t value );
+	uint8_t& OAMDATA();
 
-		return regMask.raw;
-	}
+	uint8_t& PPUSCROLL( const uint8_t value );
+	uint8_t& PPUSCROLL();
 
+	uint8_t& PPUADDR( const uint8_t value );
+	uint8_t& PPUADDR();
 
-	inline uint8_t& PPUMASK()
-	{
-		return regMask.raw;
-	}
+	uint8_t& PPUDATA( const uint8_t value );
+	uint8_t& PPUDATA();
 
+	uint8_t& OAMDMA( const uint8_t value );
+	uint8_t& OAMDMA();
 
-	inline uint8_t& PPUSTATUS( const uint8_t value )
-	{
-	// TODO: need to redesign to not return reference
-		assert( value == 0 );
+	void RenderScanline();
 
-		regStatus.latched = regStatus.current;
-		regStatus.latched.sem.vBlank = 0;
-		regStatus.latched.sem.lastReadLsb = 0;
-		regStatus.hasLatch = true;
-		registers[PPUREG_ADDR] = 0;
-		registers[PPUREG_DATA] = 0;
-		vramAddr = 0;
+	uint8_t GetBgPatternTableId();
+	uint8_t GetSpritePatternTableId();
+	uint8_t GetNameTableId();
 
-		return regStatus.current.raw;
-	}
-
-
-	inline uint8_t& PPUSTATUS()
-	{
-		regStatus.latched = regStatus.current;
-		regStatus.latched.sem.vBlank = 0;
-		regStatus.latched.sem.lastReadLsb = 0;
-		regStatus.hasLatch = true;
-		registers[PPUREG_ADDR] = 0;
-		registers[PPUREG_DATA] = 0;
-		vramAddr = 0;
-
-		return regStatus.current.raw;
-	}
-
-
-	inline uint8_t& OAMADDR( const uint8_t value )
-	{
-		assert( value == 0x00 ); // TODO: implement other modes
-
-		registers[PPUREG_OAMADDR] = value;
-
-		regStatus.current.sem.lastReadLsb = ( value & 0x1F );
-
-		return registers[PPUREG_OAMADDR];
-	}
-
-
-	inline uint8_t& OAMADDR()
-	{
-		return registers[PPUREG_OAMADDR];
-	}
-
-
-	inline uint8_t& OAMDATA( const uint8_t value )
-	{
-		assert(0);
-
-		registers[PPUREG_OAMDATA] = value;
-
-		regStatus.current.sem.lastReadLsb = ( value & 0x1F );
-
-		return registers[PPUREG_OAMDATA];
-	}
-
-
-	inline uint8_t& OAMDATA()
-	{
-		return registers[PPUREG_OAMDATA];
-	}
-
-
-	inline uint8_t& PPUSCROLL( const uint8_t value )
-	{
-		assert( value == 0 );
-		registers[PPUREG_SCROLL] = value;
-
-		regStatus.current.sem.lastReadLsb = ( value & 0x1F );
-
-		return registers[PPUREG_SCROLL];
-	}
-
-
-	inline uint8_t& PPUSCROLL()
-	{
-		return registers[PPUREG_SCROLL];
-	}
-
-
-	inline uint8_t& PPUADDR( const uint8_t value )
-	{
-		registers[PPUREG_ADDR] = value;
-
-		regStatus.current.sem.lastReadLsb = ( value & 0x1F );
-
-		vramAddr = ( vramAddr << 8 ) | ( value );
-
-		return registers[PPUREG_ADDR];
-	}
-
-
-	inline uint8_t& PPUADDR()
-	{
-		return registers[PPUREG_ADDR];
-	}
-
-
-	inline uint8_t& PPUDATA( const uint8_t value )
-	{
-		if( value == 0x62 )
-		{
-		//	EnablePrinting();
-		}
-		registers[PPUREG_DATA] = value;
-
-		regStatus.current.sem.lastReadLsb = ( value & 0x1F );
-
-		vramWritePending = true;
-
-		return registers[PPUREG_DATA];
-	}
-
-
-	inline uint8_t& PPUDATA()
-	{
-		return registers[PPUREG_DATA];
-	}
-
-	uint8_t DMA( const uint16_t address );
-	void EnablePrinting();
-
-	inline uint8_t& OAMDMA( const uint8_t value )
-	{
-		GenerateDMA();
-		DMA( value );
-
-		return registers[PPUREG_OAMDMA];
-	}
-
-
-	inline uint8_t& OAMDMA()
-	{
-		GenerateDMA();
-		return registers[PPUREG_OAMDMA];
-	}
-
-
-	inline void RenderScanline()
-	{
-		/*
-		Memory fetch phase 1 thru 128
-		---------------------------- -
-		1. Name table byte
-		2. Attribute table byte
-		3. Pattern table bitmap #0
-		4. Pattern table bitmap #1
-		*/
-	}
+	void FrameBufferWritePixel( const uint32_t x, const uint32_t y, const Pixel pixel );
+	void DrawTile( uint32_t imageBuffer[], const WtRect& imageRect, const WtPoint& nametableTile, const uint32_t ntId, const uint32_t ptrnTableId, bool scroll );
+	void DrawSprite( const uint32_t tableId );
 
 	void GenerateNMI();
 	void GenerateDMA();
+	uint8_t DMA( const uint16_t address );
+
+	void EnablePrinting();
 
 	bool vramWritePending;
 
-	void WriteVram()
-	{
-		if( vramWritePending )
-		{
-			//std::cout << "Writing: " << std::hex << vramAddr << " " << std::hex << (uint32_t) registers[PPUREG_DATA] << std::endl;
-			vram[vramAddr] = registers[PPUREG_DATA];
-			vramAddr += regCtrl.sem.vramInc ? 32 : 1;
+	uint16_t MirrorVramAddr( uint16_t addr );
+	uint8_t ReadMem( const uint16_t addr );
+	uint8_t GetNtTileForPoint( const uint32_t ntId, WtPoint point );
+	uint8_t GetNtTile( const uint32_t ntId, const WtPoint& tileCoord );
+	uint8_t GetArribute( const uint32_t ntId, const WtPoint& tileCoord );
+	uint8_t GetTilePaletteId( const uint32_t ntId, const WtPoint& tileCoord );
 
-			vramWritePending = false;
-		}
-	}
+	void WriteVram();
 
-	inline const ppuCycle_t Exec()
-	{
-		ppuCycle_t cycles = ppuCycle_t(0);
+	const ppuCycle_t Exec();
+	bool Step( const ppuCycle_t& nextCycle );
 
-		// Cycle timing
-		const uint64_t cycleCount = scanelineCycle.count();
-
-		if ( regStatus.hasLatch )
-		{
-			regStatus.current = regStatus.latched;
-			regStatus.latched.raw = 0;
-			regStatus.hasLatch = false;
-		}
-
-		WriteVram();
-
-		// Scanline Work
-		// Scanlines take multiple cycles
-		if( cycleCount == 0 )
-		{
-			if ( currentScanline < 0 )
-			{
-				regStatus.current.sem.vBlank = 0;
-				regStatus.latched.raw = 0;
-				regStatus.hasLatch = false;
-			}
-			else if ( currentScanline < 240 )
-			{		
-			}
-			else if ( currentScanline == 240 )
-			{
-			}
-			else if ( currentScanline == 241 )
-			{
-			// must only exec once!
-				// set vblank flag at second tick, cycle=1
-				regStatus.current.sem.vBlank = 1;
-				//EnablePrinting();
-				// Gen NMI
-				if( regCtrl.sem.nmiVblank )
-					GenerateNMI();
-			}
-			else if ( currentScanline < 260 )
-			{
-			}
-			else
-			{
-			}
-		}
-
-		if( cycleCount == 0 )
-		{
-			// Idle cycle
-			cycles++;
-			scanelineCycle++;
-		}
-		else if ( cycleCount <= 256 )
-		{
-			// Scanline render
-			cycles += ppuCycle_t(8);
-			scanelineCycle += ppuCycle_t( 8 );
-		}
-		else if ( cycleCount <= 320 )
-		{
-			// Prefetch the 8 sprites on next scanline
-			cycles += ppuCycle_t( 8 );
-			scanelineCycle += ppuCycle_t( 8 );
-		}
-		else if ( cycleCount <= 336 )
-		{
-			// Prefetch first two tiles on next scanline
-			cycles++;
-			scanelineCycle++;
-		}
-		else if ( cycleCount <= 340 )
-		{
-			// Unused fetch
-			cycles += ppuCycle_t( 8 );
-			scanelineCycle += ppuCycle_t( 8 );
-		}
-		else
-		{
-			if ( currentScanline >= 260 )
-			{
-				currentScanline = -1;
-			}
-			else
-			{
-				++currentScanline;
-			}
-
-			scanelineCycle = scanelineCycle.zero();
-		}
-
-		return cycles;
-	}
-
-
-	inline bool Step( const ppuCycle_t nextCycle )
-	{
-		/*
-		Start of vertical blanking : Set NMI_occurred in PPU to true.
-		End of vertical blanking, sometime in pre - render scanline : Set NMI_occurred to false.
-		Read PPUSTATUS : Return old status of NMI_occurred in bit 7, then set NMI_occurred to false.
-		Write to PPUCTRL : Set NMI_output to bit 7.
-		The PPU pulls / NMI low if and only if both NMI_occurred and NMI_output are true.By toggling NMI_output( PPUCTRL.7 ) during vertical blank without reading PPUSTATUS, a program can cause / NMI to be pulled low multiple times, causing multiple NMIs to be generated.
-		*/
-
-		while ( cycle < nextCycle )
-		{
-			cycle += Exec();
-		}
-
-		return true;
-	}
 /*
 	PPU()
 	{

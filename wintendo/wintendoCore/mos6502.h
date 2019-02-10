@@ -30,10 +30,11 @@ class NesSystem;
 
 #define _OP_ADDR(num,name,address,ops,advance,cycles)	case num: \
 												{ \
+													opCode = num; \
 													retVal = cpuCycle_t( cycles + Cpu6502::##name<AddrMode##address>() ); \
 													mnemonic = #name; \
 													operands = ops; \
-													Advance(advance); \
+													AdvanceProgram(advance); \
 												} break;
 #define OP_ADDR(num,name,address,ops,cycles) _OP_ADDR(num,name,address,ops,ops,cycles)
 #define OP(num,name,ops,cycles) _OP_ADDR(num,name,None,ops,ops,cycles)
@@ -85,10 +86,13 @@ struct Cpu6502
 	cpuCycle_t cycle;
 	cpuCycle_t instructionCycles;
 
+	uint8_t opCode;
+
 #if DEBUG_ADDR == 1
 	std::stringstream debugAddr;
 	std::ofstream logFile;
 	bool printToOutput;
+	bool debugFrame = false;
 #endif
 
 	bool forceStop;
@@ -118,10 +122,10 @@ struct Cpu6502
 		P.bit.i = 1;
 		P.bit.b = 1;
 
-		cycle = cpuCycle_t(0);
+		cycle = cpuCycle_t(0); // FIXME? Test log starts cycles at 7. Is there a BRK at power up?
 	}
 
-	bool Step( const cpuCycle_t nextCycle );
+	bool Step( const cpuCycle_t& nextCycle );
 
 //private:
 
@@ -188,6 +192,9 @@ struct Cpu6502
 
 	OP_DECL( NOP )
 
+	OP_DECL( SKB )
+	OP_DECL( SKW )
+
 	ADDR_MODE_DECL( None )
 	ADDR_MODE_DECL( Absolute )
 	ADDR_MODE_DECL( Zero )
@@ -218,7 +225,7 @@ struct Cpu6502
 	void PushByte( const uint16_t value );
 	uint16_t PullWord();
 
-	void Advance( const uint16_t places );
+	void AdvanceProgram( const uint16_t places );
 	uint8_t& ReadOperand( const uint16_t offset ) const;
 	uint16_t ReadAddressOperand() const;
 
@@ -226,7 +233,7 @@ struct Cpu6502
 
 	uint16_t CombineIndirect( const uint8_t lsb, const uint8_t msb, const uint32_t wrap );
 
-	uint8_t AddPageCrossCycles( const uint16_t address );
+	uint8_t AddressCrossesPage( const uint16_t address, const uint16_t offset );
 	uint8_t Branch( const bool takeBranch );
 	
 	template <class AddrFunctor>
@@ -236,5 +243,5 @@ struct Cpu6502
 
 	cpuCycle_t LookupFunction( const uint16_t instrBegin, const uint8_t byteCode );
 
-	void DebugIndexZero( const uint8_t& reg, const uint32_t address, const uint32_t targetAddresss );
+	void DebugPrintIndexZero( const uint8_t& reg, const uint32_t address, const uint32_t targetAddresss );
 };

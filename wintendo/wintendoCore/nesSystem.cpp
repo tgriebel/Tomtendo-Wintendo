@@ -23,13 +23,14 @@ void NesSystem::LoadProgram( const NesCart& loadCart, const uint32_t resetVector
 
 	assert( loadCart.header.prgRomBanks <= 2 );
 
+	// Mapper - 0
 	if ( loadCart.header.prgRomBanks == 1 )
 	{
 		memcpy( memory + Bank1, loadCart.rom, BankSize );
 	}
 	else
 	{
-		memcpy( memory + Bank1, loadCart.rom + Bank1, BankSize );
+		memcpy( memory + Bank1, loadCart.rom + BankSize, BankSize );
 	}
 
 	if ( resetVectorManual == 0x10000 )
@@ -88,7 +89,6 @@ uint16_t NesSystem::MirrorAddress( const uint16_t address )
 	}
 	else if ( ( address >= PhysicalMemorySize ) && ( address < PpuRegisterBase ) )
 	{
-		assert( 0 );
 		return ( address % PhysicalMemorySize );
 	}
 	else
@@ -156,17 +156,17 @@ void NesSystem::CaptureInput( const Controller keys )
 }
 
 
-bool NesSystem::Run( const masterCycles_t nextCycle )
+bool NesSystem::Run( const masterCycles_t& nextCycle )
 {
-#if DEBUG_ADDR == 1
-	cpu.logFile.open( "tomTendo.log" );
-#endif // #if DEBUG_ADDR == 1
-
 	bool isRunning = true;
 
 	static const masterCycles_t ticks( CpuClockDivide );
 
 #if DEBUG_MODE == 1
+	if( cpu.debugFrame )
+	{
+		cpu.logFile.open( "tomTendo.log" );
+	}
 	auto start = chrono::steady_clock::now();
 #endif // #if DEBUG_MODE == 1
 
@@ -193,7 +193,11 @@ bool NesSystem::Run( const masterCycles_t nextCycle )
 	sysCycles -= nextCycle;
 
 #if DEBUG_ADDR == 1
-	cpu.logFile.close();
+	if ( cpu.debugFrame )
+	{
+		cpu.logFile.close();
+		cpu.debugFrame = false;
+	}
 #endif // #if DEBUG_ADDR == 1
 
 	return isRunning;

@@ -11,8 +11,8 @@
 #include <iomanip>
 
 #define NES_MODE 1
-#define DEBUG_MODE 0
-#define DEBUG_ADDR 0
+#define DEBUG_MODE 1
+#define DEBUG_ADDR 1
 #define DEBUG_MEM 0
 
 inline constexpr uint8_t operator "" _b( uint64_t arg ) noexcept
@@ -23,12 +23,12 @@ inline constexpr uint8_t operator "" _b( uint64_t arg ) noexcept
 const uint64_t MasterClockHz	= 21477272;
 const uint64_t CpuClockDivide	= 12;
 const uint64_t PpuClockDivide	= 4;
-const uint64_t FPS = 30;
+const uint64_t FPS = 60; // FIXME: inverted
 
 using masterCycles_t = std::chrono::duration< uint64_t, std::ratio<1, MasterClockHz> >;
 using ppuCycle_t = std::chrono::duration< uint64_t, std::ratio<PpuClockDivide, MasterClockHz> >;
 using cpuCycle_t = std::chrono::duration< uint64_t, std::ratio<CpuClockDivide, MasterClockHz> >;
-using frameRate_t = std::chrono::duration< float, std::ratio<1, FPS> >;
+using frameRate_t = std::chrono::duration< double, std::ratio<1, FPS> >;
 
 struct iNesHeader
 {
@@ -36,7 +36,7 @@ struct iNesHeader
 	uint8_t magic;
 	uint8_t prgRomBanks;
 	uint8_t chrRomBanks;
-	struct
+	struct ControlsBits0
 	{
 		uint8_t mirror : 1;
 		uint8_t usesBattery : 1;
@@ -44,7 +44,7 @@ struct iNesHeader
 		uint8_t fourScreenMirror : 1;
 		uint8_t mapperNumberLower : 4;
 	} controlBits0;
-	struct
+	struct ControlsBits1
 	{
 		uint8_t reserved0 : 4;
 		uint8_t mappedNumberUpper : 4;
