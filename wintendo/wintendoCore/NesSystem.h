@@ -70,6 +70,7 @@ public:
 
 	uint32_t frameBuffer[ScreenWidth * ScreenHeight];
 	uint32_t nameTableSheet[4 * ScreenWidth * ScreenHeight];
+	uint32_t paletteDebug[4 * 16 * 2];
 
 	uint8_t memory[VirtualMemorySize]; // TODO: make physical size
 
@@ -110,6 +111,9 @@ public:
 
 		ppu.system = this;
 		ppu.palette= &DefaultPalette[0];
+
+		ppu.beamPosition.x = 0;
+		ppu.beamPosition.y = 0;
 
 		strobeOn = false;
 		btnShift = 0;

@@ -127,6 +127,39 @@ struct PpuStatus
 };
 
 
+struct PpuAttribPaletteId
+{
+	struct PpuAttribSemantic
+	{;
+		uint8_t topLeft		: 2;
+		uint8_t topRight	: 2;
+		uint8_t bottomLeft	: 2;
+		uint8_t bottomRight	: 2;
+	} sem;
+
+	uint8_t raw;
+};
+
+
+struct PpuSpriteAttrib
+{
+	uint8_t x;
+	uint8_t y;
+	uint8_t tileId;
+
+	uint8_t palette;
+	uint8_t priority;
+	uint8_t flippedHorizontal;
+	uint8_t flippedVertical;
+};
+
+
+struct OamPipeLineData
+{
+	uint8_t primaryOAM[4];
+
+};
+
 
 struct PPU
 {
@@ -139,6 +172,9 @@ struct PPU
 	static const uint32_t NameTableAttribMemorySize	= NametableMemorySize + AttributeTableMemorySize;
 	static const uint16_t NameTable0BaseAddr		= 0x2000;
 	static const uint16_t PaletteBaseAddr			= 0x3F00;
+	static const uint16_t SpritePaletteAddr			= 0x3F10;
+	static const uint16_t TotalSprites				= 64;
+	static const uint16_t SecondarySprites			= 8;
 	static const uint32_t NameTableWidthTiles		= 32;
 	static const uint32_t NameTableHeightTiles		= 30;
 	static const uint32_t AttribTableWidthTiles		= 8;
@@ -164,6 +200,11 @@ struct PPU
 	int currentScanline;
 	ppuCycle_t scanelineCycle;
 
+	WtPoint beamPosition;
+
+	bool loadingSecondingOAM;
+	OamPipeLineData primaryOamSpriteData;
+
 	bool nmiOccurred;
 
 	ppuCycle_t cycle;
@@ -175,8 +216,10 @@ struct PPU
 
 	uint8_t vram[VirtualMemorySize];
 	uint8_t primaryOAM[OamSize];
-	uint8_t secondaryOAM[OamSecondSize];
+	uint8_t secondaryOAM[OamSize/*OamSecondSize*/];
+	bool sprite0InList; // In secondary OAM
 
+	uint8_t scrollPosPending[2];
 	uint8_t scrollPosition[2];
 	uint8_t scrollReg = 0x00;
 
@@ -216,8 +259,13 @@ struct PPU
 	uint8_t GetNameTableId();
 
 	void FrameBufferWritePixel( const uint32_t x, const uint32_t y, const Pixel pixel );
-	void DrawTile( uint32_t imageBuffer[], const WtRect& imageRect, const WtPoint& nametableTile, const uint32_t ntId, const uint32_t ptrnTableId, bool scroll );
-	void DrawSprite( const uint32_t tableId );
+	uint8_t DrawPixel( uint32_t imageBuffer[], const WtRect& imageRect, const uint8_t ntId, const uint8_t ptrnTableId, const WtPoint point );
+	void DrawBlankScanline( uint32_t imageBuffer[], const WtRect& imageRect, const uint8_t scanY );
+	void DrawScanline( uint32_t imageBuffer[], const WtRect& imageRect, const uint32_t lineWidth, const uint8_t scanY );
+	void DrawTile( uint32_t imageBuffer[], const WtRect& imageRect, const WtPoint& nametableTile, const uint32_t ntId, const uint32_t ptrnTableId );
+	void DrawSpritePixel( uint32_t imageBuffer[], const WtRect& imageRect, const PpuSpriteAttrib attribs, const WtPoint& point, const uint8_t bgPixel, bool sprite0 );
+	void DrawSprites( const uint32_t tableId );
+	void DrawDebugPalette( uint32_t imageBuffer[] );
 
 	void GenerateNMI();
 	void GenerateDMA();
@@ -228,11 +276,17 @@ struct PPU
 	bool vramWritePending;
 
 	uint16_t MirrorVramAddr( uint16_t addr );
-	uint8_t ReadMem( const uint16_t addr );
-	uint8_t GetNtTileForPoint( const uint32_t ntId, WtPoint point );
+	uint8_t ReadVram( const uint16_t addr );
+	uint8_t GetNtTileForPoint( const uint32_t ntId, WtPoint point, uint32_t& newNtId, WtPoint& newPoint );
 	uint8_t GetNtTile( const uint32_t ntId, const WtPoint& tileCoord );
 	uint8_t GetArribute( const uint32_t ntId, const WtPoint& tileCoord );
-	uint8_t GetTilePaletteId( const uint32_t ntId, const WtPoint& tileCoord );
+	uint8_t GetTilePaletteId( const uint32_t attribTable, const WtPoint& tileCoord );
+	uint8_t GetChrRom( const uint32_t tileId, const uint8_t plane, const uint8_t ptrnTableId, const WtPoint point );
+
+	void LoadSecondaryOAM();
+	PpuSpriteAttrib GetSpriteData( const uint8_t spriteId, const uint8_t oam[] );
+
+	static uint8_t GetChrRomPalette( const uint8_t plane0, const uint8_t plane1, const WtPoint point );
 
 	void WriteVram();
 

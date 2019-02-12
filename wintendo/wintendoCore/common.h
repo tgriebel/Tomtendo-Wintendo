@@ -20,14 +20,16 @@ inline constexpr uint8_t operator "" _b( uint64_t arg ) noexcept
 	return static_cast< uint8_t >( arg & 0xFF );
 }
 
-const uint64_t MasterClockHz	= 21477272;
-const uint64_t CpuClockDivide	= 12;
-const uint64_t PpuClockDivide	= 4;
-const uint64_t FPS = 60; // FIXME: inverted
+const uint64_t MasterClockHz		= 21477272;
+const uint64_t CpuClockDivide		= 12;
+const uint64_t PpuClockDivide		= 4;
+const uint64_t PpuCyclesPerScanline	= 341;
+const uint64_t FPS					= 60;
 
 using masterCycles_t = std::chrono::duration< uint64_t, std::ratio<1, MasterClockHz> >;
 using ppuCycle_t = std::chrono::duration< uint64_t, std::ratio<PpuClockDivide, MasterClockHz> >;
 using cpuCycle_t = std::chrono::duration< uint64_t, std::ratio<CpuClockDivide, MasterClockHz> >;
+using scanCycle_t = std::chrono::duration< uint64_t, std::ratio<PpuCyclesPerScanline * PpuClockDivide, MasterClockHz> >; // TODO: Verify
 using frameRate_t = std::chrono::duration< double, std::ratio<1, FPS> >;
 
 struct iNesHeader

@@ -128,6 +128,9 @@ uint8_t& PPU::PPUSTATUS( const uint8_t value )
 	registers[PPUREG_ADDR] = 0;
 	registers[PPUREG_DATA] = 0;
 	vramAddr = 0;
+	
+	scrollPosition[0] = 0;
+	scrollPosition[1] = 0;
 
 	return regStatus.current.raw;
 }
@@ -142,6 +145,10 @@ uint8_t& PPU::PPUSTATUS()
 	registers[PPUREG_ADDR] = 0;
 	registers[PPUREG_DATA] = 0;
 	vramAddr = 0;
+	scrollReg = 0;
+
+	scrollPosition[0] = 0;
+	scrollPosition[1] = 0;
 
 	return regStatus.current.raw;
 }
@@ -187,7 +194,7 @@ uint8_t& PPU::PPUSCROLL( const uint8_t value )
 {
 	registers[PPUREG_SCROLL] = value;
 
-	scrollPosition[scrollReg] = value;
+	scrollPosPending[scrollReg] = value;
 	scrollReg ^= 0x01;
 
 	regStatus.current.sem.lastReadLsb = ( value & 0x1F );
@@ -296,11 +303,16 @@ uint16_t PPU::MirrorVramAddr( uint16_t addr )
 
 	uint32_t mirrorMode = controlBits0.fourScreenMirror ? 2 : controlBits0.mirror;
 
+	// Major mirror
+	addr %= 0x4000;
+
+	// Nametable Mirrors
 	if ( addr >= 0x3000 && addr < 0x3F00 )
 	{
 		addr -= 0x1000;
 	}
 
+	// Nametable Mirroring Modes
 	if ( mirrorMode == 0 ) // Vertical
 	{
 		if ( ( addr >= 0x2400 && addr < 0x2800 ) || ( addr >= 0x2C00 && addr < 0x3000 ) )
@@ -323,23 +335,32 @@ uint16_t PPU::MirrorVramAddr( uint16_t addr )
 		}
 	}
 
+	// Palette Mirrors
+	if ( addr >= 0x3F20 && addr < 0x4000 )
+	{
+		addr = PaletteBaseAddr + ( ( addr & 0x00FF ) % 0x20 );
+	}
+
+	if ( ( addr == 0x3F10 ) || ( addr == 0x3F14 ) || ( addr == 0x3F18 ) || ( addr == 0x3F1C ) )
+	{
+		return ( addr - 0x0010 );
+	}
+
 	return addr;
 }
 
 
-uint8_t PPU::ReadMem( const uint16_t addr )
-{
-	return vram[MirrorVramAddr( addr )];
-}
-
-
-uint8_t PPU::GetNtTileForPoint( const uint32_t ntId, WtPoint point )
+uint8_t PPU::GetNtTileForPoint( const uint32_t ntId, WtPoint point, uint32_t& newNtId, WtPoint& newPoint )
 {
 	WtPoint scrollPoint;
-	uint32_t newNtId = ntId;
+	newNtId = ntId;
 
 	point.x += scrollPosition[0];
 	point.y += scrollPosition[1];
+
+	newPoint.x = ( point.x % 256 );
+	newPoint.y = ( point.y % 240 );
+
 	point.x >>= 3;
 	point.y >>= 3;
 
@@ -378,30 +399,73 @@ uint8_t PPU::GetNtTile( const uint32_t ntId, const WtPoint& tileCoord )
 {
 	const uint32_t ntBaseAddr = ( NameTable0BaseAddr + ntId * NameTableAttribMemorySize );
 	
-	return ReadMem( ntBaseAddr + tileCoord.x + tileCoord.y * NameTableWidthTiles );
+	return ReadVram( ntBaseAddr + tileCoord.x + tileCoord.y * NameTableWidthTiles );
 }
 
 
-uint8_t PPU::GetArribute( const uint32_t ntId, const WtPoint& tileCoord )
+uint8_t PPU::GetArribute( const uint32_t ntId, const WtPoint& point )
 {
-	const uint32_t ntBaseAddr = ( NameTable0BaseAddr + ntId * NameTableAttribMemorySize );
+	const uint32_t ntBaseAddr		= NameTable0BaseAddr + ntId * NameTableAttribMemorySize;
+	const uint32_t attribBaseAddr	= ntBaseAddr + NametableMemorySize;
 
-	const uint8_t attribXoffset = (uint8_t)( tileCoord.x / NtTilesPerAttribute );
-	const uint8_t attribYoffset = (uint8_t)( tileCoord.y / NtTilesPerAttribute );
+	const uint8_t attribXoffset = point.x >> 5;
+	const uint8_t attribYoffset = ( point.y >> 5 ) << 3;
 
-	return ReadMem( ntBaseAddr + NametableMemorySize + attribXoffset + attribYoffset * AttribTableWidthTiles );
+	const uint16_t attributeAddr = attribBaseAddr + attribXoffset + attribYoffset;
+
+	return ReadVram( attributeAddr );
 }
 
 
-uint8_t PPU::GetTilePaletteId( const uint32_t ntId, const WtPoint& tileCoord )
+uint8_t PPU::GetTilePaletteId( const uint32_t attribTable, const WtPoint& point )
 {
-	const uint8_t attribTable = GetArribute( ntId, tileCoord );
+	WtPoint attributeCorner;
 
-	const uint8_t attribSectionRow = (uint8_t)floor( ( tileCoord.x % NtTilesPerAttribute ) / 2.0f ); // 2 is to convert from nametable to attrib tile
-	const uint8_t attribSectionCol = (uint8_t)floor( ( tileCoord.y % NtTilesPerAttribute ) / 2.0f );
-	const uint8_t attribShift = 2 * ( attribSectionRow + 2 * attribSectionCol );
+	// The lower 3bits (0-3) specify the position within a single attrib table
+	// But each attribute contains 4 nametable blocks so only every 2 nametable 
+	// Blocks change the attribute therefore only bit 2 matters
 
-	return 4 * ( ( attribTable >> attribShift ) & 0x03 );
+	// ,---+---.
+	// | . | . |
+	// +---+---+
+	// | . | . |
+	// `---+---.
+
+	// Byte layout, 2 bits each
+	// [ Btm R | Btm L | Top R | Top L ]
+
+	attributeCorner.x = ( point.x >> 3 ) & 0x02; // TODO: fine scroll
+	attributeCorner.y = ( point.y >> 3 ) & 0x02;
+
+	const uint8_t attribShift = attributeCorner.x + ( attributeCorner.y << 1 ); // x + y * w
+
+	return ( ( attribTable >> attribShift ) & 0x03 ) << 2;
+}
+
+
+uint8_t PPU::GetChrRom( const uint32_t tileId, const uint8_t plane, const uint8_t ptrnTableId, const WtPoint point )
+{
+	const uint8_t tileBytes		= 16;
+	const uint16_t baseAddr		= system->cart->header.prgRomBanks * NesSystem::BankSize + ptrnTableId * NesSystem::ChrRomSize;
+	const uint16_t chrRomBase	= baseAddr + tileId * tileBytes;
+
+	return system->cart->rom[chrRomBase + point.y + 8 * ( plane & 0x01 )];
+}
+
+
+uint8_t PPU::GetChrRomPalette( const uint8_t plane0, const uint8_t plane1, const WtPoint point )
+{
+	const uint16_t xBitMask = ( 0x80 >> point.x );
+
+	const uint8_t lowerBits = ( ( plane0 & xBitMask ) >> ( 7 - point.x ) ) | ( ( ( plane1 & xBitMask ) >> ( 7 - point.x ) ) << 1 );
+
+	return ( lowerBits & 0x03 );
+}
+
+
+uint8_t PPU::ReadVram( const uint16_t addr )
+{
+	return vram[MirrorVramAddr( /*vramAddr +*/ addr )];
 }
 
 
@@ -409,7 +473,6 @@ void PPU::WriteVram()
 {
 	if ( vramWritePending )
 	{
-		//std::cout << "Writing: " << std::hex << vramAddr << " " << std::hex << (uint32_t) registers[PPUREG_DATA] << std::endl;
 		vram[MirrorVramAddr( vramAddr )] = registers[PPUREG_DATA];
 		vramAddr += regCtrl.sem.vramInc ? 32 : 1;
 
@@ -424,46 +487,134 @@ void PPU::FrameBufferWritePixel( const uint32_t x, const uint32_t y, const Pixel
 }
 
 
-void PPU::DrawTile( uint32_t imageBuffer[], const WtRect& imageRect, const WtPoint& nametableTile, const uint32_t ntId, const uint32_t ptrnTableId, bool scroll )
+void PPU::DrawBlankScanline( uint32_t imageBuffer[], const WtRect& imageRect, const uint8_t scanY )
 {
-	const uint8_t tileBytes = 16;
-
-	const uint16_t baseAddr = system->cart->header.prgRomBanks * NesSystem::BankSize + ptrnTableId * NesSystem::ChrRomSize;
-
-	for ( int y = 0; y < PPU::NameTableTilePixels; ++y )
+	for ( int x = 0; x < NesSystem::ScreenWidth; ++x )
 	{
-		for ( int x = 0; x < PPU::NameTableTilePixels; ++x )
+		Pixel pixelColor;
+		Bitmap::CopyToPixel( RGBA{ 0, 0, 0, 255 }, pixelColor, BITMAP_BGRA );
+
+		const uint32_t imageX = imageRect.x + x;
+		const uint32_t imageY = imageRect.y + scanY;
+		const uint32_t pixelIx = imageX + imageY * imageRect.width;
+
+		imageBuffer[pixelIx] = pixelColor.raw;
+	}
+}
+
+
+uint8_t PPU::DrawPixel( uint32_t imageBuffer[], const WtRect& imageRect, const uint8_t ntId, const uint8_t ptrnTableId, const WtPoint point )
+{
+	WtPoint nametableTile;
+	WtPoint chrRomPoint;
+	WtPoint scrollPoint;
+	uint32_t scrollNtId;
+
+	const uint32_t imageX = imageRect.x + point.x;
+	const uint32_t imageY = imageRect.y + point.y;
+	const uint32_t imageIx = imageX + imageY * imageRect.width;
+
+	if( !regMask.sem.showBg )
+	{
+		Pixel pixelColor;
+
+		const uint8_t colorIx = ReadVram(PPU::PaletteBaseAddr);
+
+		Bitmap::CopyToPixel( palette[colorIx], pixelColor, BITMAP_BGRA );
+
+		imageBuffer[imageIx] = pixelColor.raw;
+
+		return 0;
+	}
+
+	// Get color index
+	nametableTile.x = ( point.x >> 3 );
+	nametableTile.y = ( point.y >> 3 );
+
+	const uint32_t tileIx = GetNtTileForPoint( ntId, point, scrollNtId, scrollPoint );
+
+	const uint8_t attribute = GetArribute( scrollNtId, scrollPoint );
+	const uint8_t paletteId = GetTilePaletteId( attribute, scrollPoint );
+
+	chrRomPoint.x = ( point.x + scrollPosition[0] ) & 0x07;
+	chrRomPoint.y = ( point.y + scrollPosition[1] ) & 0x07;
+
+	const uint8_t chrRom0 = GetChrRom( tileIx, 0, ptrnTableId, chrRomPoint );
+	const uint8_t chrRom1 = GetChrRom( tileIx, 1, ptrnTableId, chrRomPoint );
+
+	const uint8_t chrRomColor = GetChrRomPalette( chrRom0, chrRom1, chrRomPoint );
+	uint16_t finalPalette = paletteId | chrRomColor;
+
+	finalPalette += PPU::PaletteBaseAddr;
+
+	const uint8_t colorIx = ( chrRomColor == 0 ) ? ReadVram( PPU::PaletteBaseAddr ) : ReadVram( finalPalette );
+
+	// Frame Buffer
+	//Pixel oldPixelColor;
+	Pixel pixelColor;
+
+	Bitmap::CopyToPixel( palette[colorIx], pixelColor, BITMAP_BGRA );
+
+	//oldPixelColor.raw = imageBuffer[pixelIx];
+
+	// Goofing around with frame blends, gives a fun motion blur
+	// pixelColor.vec[0] = ( pixelColor.vec[0] >> 1 ) + ( oldPixelColor.vec[0] >> 1 );
+	// pixelColor.vec[1] = ( pixelColor.vec[1] >> 1 ) + ( oldPixelColor.vec[1] >> 1 );
+	// pixelColor.vec[2] = ( pixelColor.vec[2] >> 1 ) + ( oldPixelColor.vec[2] >> 1 );
+
+	imageBuffer[imageIx] = pixelColor.raw;
+
+	return chrRomColor;
+}
+
+
+void PPU::DrawScanline( uint32_t imageBuffer[], const WtRect& imageRect, const uint32_t lineWidth, const uint8_t scanY )
+{
+	WtPoint point;
+
+	point.y = scanY;
+
+	const uint8_t ntId = GetNameTableId();
+	const uint8_t ptrnTableId = GetBgPatternTableId();
+
+	for ( uint32_t x = 0; x < lineWidth; ++x )
+	{
+		point.x = x;
+		DrawPixel( imageBuffer, imageRect, ntId, ptrnTableId, point );
+	}
+}
+
+
+void PPU::DrawTile( uint32_t imageBuffer[], const WtRect& imageRect, const WtPoint& nametableTile, const uint32_t ntId, const uint32_t ptrnTableId )
+{
+	for ( uint32_t y = 0; y < PPU::NameTableTilePixels; ++y )
+	{
+		for ( uint32_t x = 0; x < PPU::NameTableTilePixels; ++x )
 		{
 			WtPoint point;
+			WtPoint chrRomPoint;
 
 			point.x = 8 * nametableTile.x + x;
 			point.y = 8 * nametableTile.y + y;
 
-			// FIXME: Needs to be per row due to scrolls, split this off into new function and keep this for NT debug
-			const uint32_t tileIx = scroll ? GetNtTileForPoint( ntId, point ) : GetNtTile( ntId, nametableTile );
+			const uint32_t tileIx = GetNtTile( ntId, nametableTile );
 
-			const uint16_t chrRomBase = baseAddr + tileIx * tileBytes;
+			const uint8_t attribute	= GetArribute( ntId, point );
+			const uint8_t paletteId	= GetTilePaletteId( attribute, point );
 
-			const uint8_t paleteId = GetTilePaletteId( ntId, nametableTile ); // TODO: Have Attrib struct and a single function for attribs
+			chrRomPoint.x = x;
+			chrRomPoint.y = y;
 
-			const uint8_t scrollOffsetX = scrollPosition[0] & 0x07;
-			const uint8_t scrollOffsetY = scrollPosition[1] & 0x07;
+			const uint8_t chrRom0 = GetChrRom( tileIx, 0, ptrnTableId, chrRomPoint );
+			const uint8_t chrRom1 = GetChrRom( tileIx, 1, ptrnTableId, chrRomPoint );
 
-			const uint8_t chrRomCol = scroll ? ( x + scrollOffsetX ) % PPU::NameTableTilePixels : x;
-			const uint8_t chrRomRow = scroll ? ( y + scrollOffsetY ) % PPU::NameTableTilePixels : y;
-
-			const uint8_t chrRom0 = system->cart->rom[chrRomBase + chrRomRow];
-			const uint8_t chrRom1 = system->cart->rom[chrRomBase + ( tileBytes / 2 ) + chrRomRow];
-
-			const uint16_t xBitMask = ( 0x80 >> chrRomCol );
-
-			// TODO: Test x scroll
-			const uint8_t lowerBits = ( ( chrRom0 & xBitMask ) >> ( 7 - chrRomCol ) ) | ( ( ( chrRom1 & xBitMask ) >> ( 7 - chrRomCol ) ) << 1 );
+			const uint16_t chrRomColor = GetChrRomPalette( chrRom0, chrRom1, chrRomPoint );
+			const uint8_t finalPalette = paletteId | chrRomColor;
 
 			const uint32_t imageX = imageRect.x + x;
 			const uint32_t imageY = imageRect.y + y;
 
-			const uint8_t colorIx = vram[PPU::PaletteBaseAddr + paleteId + lowerBits];
+			const uint8_t colorIx = /*chrRomColor == 0 ? ReadVram( PPU::PaletteBaseAddr ) :*/ ReadVram( PPU::PaletteBaseAddr + finalPalette );
 
 			Pixel pixelColor;
 
@@ -475,73 +626,180 @@ void PPU::DrawTile( uint32_t imageBuffer[], const WtRect& imageRect, const WtPoi
 }
 
 
-void PPU::DrawSprite( const uint32_t tableId )
+PpuSpriteAttrib PPU::GetSpriteData( const uint8_t spriteId, const uint8_t oam[] )
 {
-	const uint8_t tileBytes = 16;
+	PpuSpriteAttrib attribs;
 
-	const uint16_t totalSprites = 64;
-	const uint16_t spritePaletteAddr = 0x3F10;
+	attribs.y				= oam[spriteId * 4];
+	attribs.tileId			= oam[spriteId * 4 + 1]; // TODO: implement 16x8
+	attribs.x				= oam[spriteId * 4 + 3];
 
-	for ( uint16_t spriteNum = 0; spriteNum < totalSprites; ++spriteNum )
+	const uint8_t attrib	= oam[spriteId * 4 + 2]; // TODO: finish attrib features
+
+	attribs.palette				= ( attrib & 0x03 ) << 2;
+	attribs.priority			= ( attrib & 0x20 ) >> 5;
+	attribs.flippedHorizontal	= ( attrib & 0x40 ) >> 6;
+	attribs.flippedVertical		= ( attrib & 0x80 ) >> 7;
+
+	return attribs;
+}
+
+
+void PPU::DrawSpritePixel( uint32_t imageBuffer[], const WtRect& imageRect, const PpuSpriteAttrib attribs, const WtPoint& point, const uint8_t bgPixel, bool sprite0 )
+{
+	if( !regMask.sem.showSprt )
 	{
-		const uint8_t spriteY = primaryOAM[spriteNum * 4];
-		const uint8_t tileId = primaryOAM[spriteNum * 4 + 1]; // TODO: implement 16x8
-		const uint8_t attrib = primaryOAM[spriteNum * 4 + 2]; // TODO: finish attrib features
-		const uint8_t spriteX = primaryOAM[spriteNum * 4 + 3];
+		return;
+	}
 
-		const uint8_t attribPal = 4 * ( attrib & 0x3 );
-		const uint8_t priority = ( attrib & 0x20 ) >> 5;
-		const uint8_t flippedHor = ( attrib & 0x40 ) >> 6;
-		const uint8_t flippedVert = ( attrib & 0x80 ) >> 7;
+	Pixel pixelColor;
 
-		const uint16_t baseAddr = system->cart->header.prgRomBanks * 0x4000 + tableId * 0x1000;
-		const uint16_t chrRomBase = baseAddr + tileId * tileBytes;
+	WtPoint spritePt;
 
-		if ( spriteY < 8 || spriteY > 232 )
+	spritePt.x = point.x - attribs.x;
+	spritePt.y = point.y - attribs.y;
+
+	spritePt.y = attribs.flippedVertical	? ( 7 - spritePt.y ) : spritePt.y;
+	spritePt.x = attribs.flippedHorizontal	? ( 7 - spritePt.x ) : spritePt.x;
+
+	const uint8_t chrRom0 = GetChrRom( attribs.tileId, 0, 0, spritePt );
+	const uint8_t chrRom1 = GetChrRom( attribs.tileId, 1, 0, spritePt );
+
+	const uint8_t finalPalette = GetChrRomPalette( chrRom0, chrRom1, spritePt );
+
+	const uint32_t imageX = imageRect.x + point.x;
+	const uint32_t imageY = imageRect.y + point.y;
+
+	const uint8_t colorIx = ReadVram( SpritePaletteAddr + attribs.palette + finalPalette );
+
+	// Sprite 0 Hit happens regardless of priority but still draws normal
+	if ( sprite0 )
+	{
+		if ( /*( bgPixel != 0 ) &&*/ ( finalPalette != 0 ) && ( point.x != 255 ) && ( regMask.sem.showBg ) )
+		{
+			// SMB bug: supposed to render NT0 until this is hit
+			regStatus.current.sem.spriteHit = true;
+		}
+	}
+
+	if ( finalPalette == 0x00 )
+		return;
+
+	if ( ( ( attribs.priority == 1 ) && ( bgPixel != 0 ) && ( finalPalette != 0 ) ) )
+	{
+		return;
+	}
+
+	Bitmap::CopyToPixel( palette[colorIx], pixelColor, BITMAP_BGRA );
+
+	const uint32_t imageIndex = imageX + imageY * imageRect.width;
+
+	if ( sprite0 )
+	{
+		imageBuffer[imageIndex] = 0x0000FFFF;
+	}
+	else
+	{
+		imageBuffer[imageIndex] = pixelColor.raw;
+	}
+}
+
+
+void PPU::DrawSprites( const uint32_t tableId )
+{
+	static WtRect imageRect = { 0, 0, NesSystem::ScreenWidth, NesSystem::ScreenHeight };
+
+	for ( uint8_t spriteNum = 0; spriteNum < TotalSprites; ++spriteNum )
+	{
+		PpuSpriteAttrib attribs = GetSpriteData( spriteNum, primaryOAM );
+
+		if ( attribs.y < 8 || attribs.y > 232 )
 			continue;
 
-		assert( priority == 0 );
+		//assert( attribs.priority == 0 );
 
-		for ( int y = 0; y < 8; ++y )
+		for ( uint32_t y = 0; y < 8; ++y )
 		{
-			for ( int x = 0; x < 8; ++x )
+			for ( uint32_t x = 0; x < 8; ++x )
 			{
-				const uint8_t tileRow = flippedVert ? ( 7 - y ) : y;
-				const uint8_t tileCol = flippedHor ? ( 7 - x ) : x;
+				uint8_t bgPixel = 0;
 
-				const uint8_t chrRom0 = system->cart->rom[chrRomBase + y];
-				const uint8_t chrRom1 = system->cart->rom[chrRomBase + ( tileBytes / 2 ) + y];
+				WtPoint point = { x + attribs.x, y + attribs.y };
 
-				const uint16_t xBitMask = ( 0x80 >> x );
-
-				const uint8_t lowerBits = ( ( chrRom0 & xBitMask ) >> ( 7 - x ) ) | ( ( ( chrRom1 & xBitMask ) >> ( 7 - x ) ) << 1 );
-
-				if ( lowerBits == 0x00 )
-					continue;
-
-				//if( spriteZeroHit )
-				{
-					system->ppu.regStatus.current.sem.spriteHit = true;
-				}
-
-				const uint8_t colorIx = vram[spritePaletteAddr + attribPal + lowerBits];
-
-				Pixel pixelColor;
-
-				Bitmap::CopyToPixel( palette[colorIx], pixelColor, BITMAP_BGRA );
-				FrameBufferWritePixel( spriteX + tileCol, spriteY + tileRow, pixelColor );
+				DrawSpritePixel( system->frameBuffer, imageRect, attribs, point, bgPixel, false );
 			}
 		}
 	}
 }
 
 
+void PPU::DrawDebugPalette( uint32_t imageBuffer[] )
+{
+	for ( uint16_t colorIx = 0; colorIx < 16; ++colorIx )
+	{
+		Pixel pixel;
+
+		uint32_t color = ReadVram( PaletteBaseAddr + colorIx );
+		Bitmap::CopyToPixel( palette[color], pixel, BITMAP_BGRA );
+		imageBuffer[colorIx] = pixel.raw;
+
+		color = ReadVram( SpritePaletteAddr + colorIx );
+		Bitmap::CopyToPixel( palette[color], pixel, BITMAP_BGRA );
+		imageBuffer[16 + colorIx] = pixel.raw;
+	}
+}
+
+
+void PPU::LoadSecondaryOAM()
+{
+	if( !loadingSecondingOAM )
+	{
+		return;
+	}
+
+	uint8_t destSpriteNum = 0;
+
+	sprite0InList = false;
+	memset( &secondaryOAM, 0xFF, 32 );
+
+	for ( uint8_t spriteNum = 0; spriteNum < 64; ++spriteNum )
+	{
+		uint8_t y = 1 + primaryOAM[spriteNum * 4];
+
+		if ( ( beamPosition.y < ( y + 8u ) ) && ( beamPosition.y >= y ) )
+		{
+			secondaryOAM[destSpriteNum * 4]		= y;
+			secondaryOAM[destSpriteNum * 4 + 1] = primaryOAM[spriteNum * 4 + 1];
+			secondaryOAM[destSpriteNum * 4 + 2] = primaryOAM[spriteNum * 4 + 2];
+			secondaryOAM[destSpriteNum * 4 + 3] = primaryOAM[spriteNum * 4 + 3];
+
+			if( spriteNum == 0 )
+			{
+				sprite0InList = true;
+			}
+
+			destSpriteNum++;
+		}
+
+		if ( destSpriteNum >= 8 )
+		{
+			break;
+		}
+	}
+
+	loadingSecondingOAM = false;
+}
+
+
 const ppuCycle_t PPU::Exec()
 {
-	ppuCycle_t cycles = ppuCycle_t( 0 );
+	// Function advances 1 - 8 cycles at a time. The logic is built on this constaint.
+	static WtRect imageRect = { 0, 0, NesSystem::ScreenWidth, NesSystem::ScreenHeight };
+
+	ppuCycle_t execCycles = ppuCycle_t( 0 );
 
 	// Cycle timing
-	const uint64_t cycleCount = scanelineCycle.count();
+	const uint64_t cycleCount = cycle.count() % 341;
 
 	if ( regStatus.hasLatch )
 	{
@@ -552,6 +810,9 @@ const ppuCycle_t PPU::Exec()
 
 	WriteVram();
 
+	scrollPosition[0] = scrollPosPending[0];
+	scrollPosition[1] = scrollPosPending[1];
+
 	// Scanline Work
 	// Scanlines take multiple cycles
 	if ( cycleCount == 0 )
@@ -561,6 +822,11 @@ const ppuCycle_t PPU::Exec()
 			regStatus.current.sem.vBlank = 0;
 			regStatus.latched.raw = 0;
 			regStatus.hasLatch = false;
+
+			//scrollPosition[0] = scrollPosPending[0];
+			//scrollPosition[1] = scrollPosPending[1];
+
+		//	regStatus.current.sem.spriteHit = false;// Clear at dot 1
 		}
 		else if ( currentScanline < 240 )
 		{
@@ -589,48 +855,87 @@ const ppuCycle_t PPU::Exec()
 	if ( cycleCount == 0 )
 	{
 		// Idle cycle
-		cycles++;
+		execCycles++;
 		scanelineCycle++;
+
+		sprite0InList = false;
+		loadingSecondingOAM = true;
+		LoadSecondaryOAM();
+
+//		OAMDATA( 0xFF );
 	}
 	else if ( cycleCount <= 256 )
 	{
 		// Scanline render
-		cycles += ppuCycle_t( 8 );
-		scanelineCycle += ppuCycle_t( 8 );
+		execCycles += ppuCycle_t( 1 );
+		scanelineCycle += ppuCycle_t( 1 );
+	
+		uint8_t bgPixel = DrawPixel( system->frameBuffer, imageRect, GetNameTableId(), GetBgPatternTableId(), beamPosition );
+		
+		for ( uint8_t spriteNum = 0; spriteNum < 8; ++spriteNum )
+		{
+			PpuSpriteAttrib attribs = GetSpriteData( spriteNum, secondaryOAM );
+
+			// FIXME: this check is too agressive
+			if ( ( beamPosition.x < ( attribs.x + 8u ) ) && ( beamPosition.x >= attribs.x ) )
+			{
+				if ( !( attribs.y < 8 || attribs.y > 232 ) )
+				{	
+					DrawSpritePixel( system->frameBuffer, imageRect, attribs, beamPosition, bgPixel, ( spriteNum == 0 ) && sprite0InList );
+				}
+			}
+		}
+		
+		beamPosition.x++;
 	}
 	else if ( cycleCount <= 320 )
 	{
 		// Prefetch the 8 sprites on next scanline
-		cycles += ppuCycle_t( 8 );
-		scanelineCycle += ppuCycle_t( 8 );
+		execCycles += ppuCycle_t( 1 );
+		scanelineCycle += ppuCycle_t( 1 );
 	}
 	else if ( cycleCount <= 336 )
 	{
 		// Prefetch first two tiles on next scanline
-		cycles++;
+		execCycles++;
 		scanelineCycle++;
 	}
-	else if ( cycleCount <= 340 )
+	else if ( cycleCount < 340 ) // [337 - 340], +4 cycles
 	{
 		// Unused fetch
-		cycles += ppuCycle_t( 8 );
-		scanelineCycle += ppuCycle_t( 8 );
+		execCycles++;
+		scanelineCycle++;
 	}
 	else
 	{
-		if ( currentScanline >= 260 )
+		if( currentScanline >= 260 )
 		{
 			currentScanline = -1;
+
+			regStatus.current.sem.spriteHit = false;// Clear at dot 1
+
+			//scrollPosition[0] = scrollPosPending[0];
+			//scrollPosition[1] = scrollPosPending[1];
+
+			beamPosition.x = 0;
+			beamPosition.y = 0;
 		}
 		else
 		{
-			++currentScanline;
+			currentScanline++;
+			beamPosition.x = 0;
+
+			if( currentScanline <= 240 )
+			{
+				beamPosition.y++;
+			}
 		}
 
-		scanelineCycle = scanelineCycle.zero();
+		execCycles++;
+		scanelineCycle = ppuCycle_t( 0 );
 	}
 
-	return cycles;
+	return execCycles;
 }
 
 

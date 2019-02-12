@@ -176,7 +176,7 @@ bool NesSystem::Run( const masterCycles_t& nextCycle )
 		sysCycles += ticks;
 
 		isRunning = cpu.Step( chrono::duration_cast<cpuCycle_t>( sysCycles ) );
-		ppu.Step( chrono::duration_cast<ppuCycle_t>( sysCycles ) );
+		ppu.Step( chrono::duration_cast<ppuCycle_t>( cpu.cycle ) );
 	}
 
 #if DEBUG_MODE == 1
@@ -187,10 +187,6 @@ bool NesSystem::Run( const masterCycles_t& nextCycle )
 
 	//	cout << "Elapsed:" << dur << ": Cycles: " << cpu.cycle.count() << endl;
 #endif // #if DEBUG_MODE == 1
-
-	cpu.cycle -= chrono::duration_cast<cpuCycle_t>( sysCycles );
-	ppu.cycle -= chrono::duration_cast<ppuCycle_t>( sysCycles );
-	sysCycles -= nextCycle;
 
 #if DEBUG_ADDR == 1
 	if ( cpu.debugFrame )

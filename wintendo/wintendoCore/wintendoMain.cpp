@@ -31,14 +31,14 @@ int InitSystem()
 	//nesSystem.LoadProgram( cart, 0xC000 );
 	//nesSystem.cpu.forceStopAddr = 0xC6BD;
 
-	//LoadNesFile( "Games/Contra.nes", cart );
-	//LoadNesFile( "Games/Super Mario Bros.nes", cart ); // starts, stalls on 0 sprite flag
-	//LoadNesFile( "Games/Mario Bros.nes", cart ); // works, no collision (0 sprite?)
-	//LoadNesFile( "Games/Balloon Fight.nes", cart ); // works, scrolls
+	//LoadNesFile( "Games/Contra.nes", cart ); // Needs mapper
+	LoadNesFile( "Games/Super Mario Bros.nes", cart ); // starts, flicker on HUD
+	//LoadNesFile( "Games/Mario Bros.nes", cart ); // works, no collision
+	//LoadNesFile( "Games/Balloon Fight.nes", cart ); // works
 	//LoadNesFile( "Games/Tennis.nes", cart ); // works
-	//LoadNesFile( "Games/Ice Climber.nes", cart ); // starts, scrolls
-	//LoadNesFile( "Games/Excitebike.nes", cart ); // works, no scroll, no sprites (0 sprite?)
-	LoadNesFile( "Games/Donkey Kong.nes", cart ); // works, completed game
+	//LoadNesFile( "Games/Ice Climber.nes", cart ); // busted title screen
+	//LoadNesFile( "Games/Excitebike.nes", cart ); // works
+	//LoadNesFile( "Games/Donkey Kong.nes", cart ); // works
 	nesSystem.LoadProgram( cart );
 	nesSystem.cart = &cart;
 
@@ -66,6 +66,12 @@ void CopyNametable( uint32_t destBuffer[], const size_t destSize )
 }
 
 
+void CopyPalette( uint32_t destBuffer[], const size_t destSize )
+{
+	memcpy( destBuffer, nesSystem.paletteDebug, destSize );
+}
+
+
 int RunFrame()
 {
 	chrono::milliseconds frameTime = chrono::duration_cast<chrono::milliseconds>( frameRate_t( 1 ) );
@@ -85,11 +91,9 @@ int RunFrame()
 
 	masterCycles_t cyclesPerFrame = chrono::duration_cast<masterCycles_t>( frameTime );
 
-	masterCycles_t nextCycle = chrono::duration_cast<masterCycles_t>( frameRate_t( 1 ) );
+	masterCycles_t nextCycle = chrono::duration_cast<masterCycles_t>( ++frame );
 
 	bool isRunning = isRunning = nesSystem.Run( nextCycle );
-
-	++frame;
 
 	if( nesSystem.headless )
 	{
@@ -98,20 +102,22 @@ int RunFrame()
 
 	WtRect imageRect = { 0, 0, NesSystem::ScreenWidth, NesSystem::ScreenHeight };
 
-	for ( uint32_t tileY = 0; tileY < PPU::NameTableHeightTiles; ++tileY )
-	{
-		for ( uint32_t tileX = 0; tileX < PPU::NameTableWidthTiles; ++tileX )
-		{
-			nesSystem.ppu.DrawTile( nesSystem.frameBuffer, imageRect, WtPoint{ tileX, tileY }, nesSystem.ppu.GetNameTableId(), nesSystem.ppu.GetBgPatternTableId(), true );
+	static uint8_t line = 0;
 
-			imageRect.x += static_cast< uint32_t >( PPU::NameTableTilePixels );
+	for ( uint32_t scanY = 0; scanY < NesSystem::ScreenHeight; ++scanY )
+	{
+		if( ( scanY % 2 ) == line ) // lazy scanline effect
+		{
+		//	nesSystem.ppu.DrawBlankScanline( nesSystem.frameBuffer, imageRect, scanY );
+			continue;
 		}
 
-		imageRect.x = 0;
-		imageRect.y += static_cast< uint32_t >( PPU::NameTableTilePixels );
+	//	nesSystem.ppu.DrawScanline( nesSystem.frameBuffer, imageRect, NesSystem::ScreenWidth, scanY );
 	}
 
-	nesSystem.ppu.DrawSprite( nesSystem.ppu.GetSpritePatternTableId() );
+	line ^= 1;
+
+	//nesSystem.ppu.DrawSprites( nesSystem.ppu.GetSpritePatternTableId() );
 
 	bool debugNT = nesSystem.debugNT && ( ( (int)frame.count() % 60 ) == 0 );
 
@@ -133,7 +139,7 @@ int RunFrame()
 			{
 				for ( uint32_t tileX = 0; tileX < PPU::NameTableWidthTiles; ++tileX )
 				{
-					nesSystem.ppu.DrawTile( nesSystem.nameTableSheet, ntRects[ntId], WtPoint{ tileX, tileY }, ntId, nesSystem.ppu.GetBgPatternTableId(), false );
+					nesSystem.ppu.DrawTile( nesSystem.nameTableSheet, ntRects[ntId], WtPoint{ tileX, tileY }, ntId, nesSystem.ppu.GetBgPatternTableId() );
 
 					ntRects[ntId].x += static_cast< uint32_t >( PPU::NameTableTilePixels );
 				}
@@ -144,48 +150,43 @@ int RunFrame()
 		}
 	}
 
-	/*
-	stringstream palettesName;
-	palettesName << "Palettes/" << "plt_" << frame.count() << ".bmp";
+	nesSystem.ppu.DrawDebugPalette( nesSystem.paletteDebug );
 
-	Bitmap framePalette( 0x10, 2, 0x00 );
-	for ( int colorIx = 0; colorIx <= 0x0F; ++colorIx )
+	static bool debugAttribs = false;
+		
+	if( debugAttribs )
 	{
-		Pixel pixel;
+		ofstream attribFile;
 
-		const uint16_t paletteAddr = 0x3F00;
-		const uint16_t spritePaletteAddr = 0x3F10;
+		stringstream attribName;
+		attribName << "Palettes/" << "attrib_" << frame.count() << ".txt";
 
-		Bitmap::CopyToPixel( Palette[nesSystem.ppu.vram[ paletteAddr + colorIx ] ], pixel, BITMAP_ABGR );
-		framePalette.SetPixel( colorIx, 0, pixel.raw );
+		attribFile.open( attribName.str() );
 
-		Bitmap::CopyToPixel( Palette[nesSystem.ppu.vram[spritePaletteAddr + colorIx]], pixel, BITMAP_ABGR );
-		framePalette.SetPixel( colorIx, 1, pixel.raw );
-	}
-	framePalette.Write( palettesName.str() );
-			
-	cout << "Frame: " << frame.count() << endl;
+		attribFile << "Frame: " << frame.count() << endl;
 
-	const uint16_t attribAddr = 0x23C0;
+		const uint16_t attribAddr = 0x23C0;
 
-	for ( int attribY = 0; attribY < 8; ++attribY )
-	{
-		for ( int attribX = 0; attribX < 8; ++attribX )
+		for ( int attribY = 0; attribY < 8; ++attribY )
 		{
-			const uint16_t attribTable = system.ppu.vram[attribAddr + attribY*8 + attribX];
-			const uint16_t tL = ( attribTable >> 6 ) & 0x03;
-			const uint16_t tR = ( attribTable >> 4 ) & 0x03;
-			const uint16_t bL = ( attribTable >> 2 ) & 0x03;
-			const uint16_t bR = ( attribTable >> 0 ) & 0x03;
+			for ( int attribX = 0; attribX < 8; ++attribX )
+			{
+				const uint16_t attribTable = nesSystem.ppu.vram[attribAddr + attribY*8 + attribX];
+				const uint16_t tL = ( attribTable >> 6 ) & 0x03;
+				const uint16_t tR = ( attribTable >> 4 ) & 0x03;
+				const uint16_t bL = ( attribTable >> 2 ) & 0x03;
+				const uint16_t bR = ( attribTable >> 0 ) & 0x03;
 
-			cout << "[" << setfill( '0' ) << hex << setw( 2 ) << tL << " " << setw( 2 ) << tR << " " << setw( 2 ) << bL << " " << setw( 2 ) << bR << "]";
+				attribFile << "[" << setfill( '0' ) << hex << setw( 2 ) << tL << " " << setw( 2 ) << tR << " " << setw( 2 ) << bL << " " << setw( 2 ) << bR << "]";
+			}
+
+			attribFile << endl;
 		}
 
-		cout << endl;
-	}
+		attribFile << endl;
 
-	cout << endl;
-	*/
+		attribFile.close();
+	}
 
 	return 0;
 }
