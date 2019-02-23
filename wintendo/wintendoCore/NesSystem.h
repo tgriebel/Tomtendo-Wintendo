@@ -118,6 +118,13 @@ public:
 		strobeOn = false;
 		btnShift = 0;
 
+		ppu.regT.raw = 0;
+		ppu.regV.raw = 0;
+		ppu.regV0.raw = 0;
+
+		ppu.curShift = 0;
+		ppu.plLatches.flags = 0;
+
 		cart = nullptr;
 
 		headless = false;
