@@ -70,7 +70,7 @@ union PpuCtrl
 {
 	struct PpuCtrlSemantic
 	{
-		Nametable		nameTableId		: 2;
+		Nametable		ntId			: 2;
 		VramInc			vramInc			: 1;
 		PatternTable	spriteTableId	: 1;
 	
@@ -101,6 +101,21 @@ union PpuMask
 	} sem;
 
 	uint8_t raw;
+};
+
+
+union iRegScroll // internal register T
+{
+	struct iRegScrollSemantic
+	{
+		uint16_t coarseX	: 5;
+		uint16_t coarseY	: 5;
+		uint16_t ntId		: 2;
+		uint16_t fineY		: 3;
+		uint16_t unused		: 1;
+	} sem;
+
+	uint16_t raw;
 };
 
 
@@ -161,6 +176,16 @@ struct OamPipeLineData
 };
 
 
+struct TilePipeLineData
+{
+	uint32_t flags;
+	uint8_t tileId;
+	uint8_t attribId;
+	uint8_t chrRom0;
+	uint8_t chrRom1;
+};
+
+
 struct PPU
 {
 	static const uint32_t VirtualMemorySize			= 0x10000;
@@ -171,6 +196,7 @@ struct PPU
 	static const uint32_t AttributeTableMemorySize	= 0x0040;
 	static const uint32_t NameTableAttribMemorySize	= NametableMemorySize + AttributeTableMemorySize;
 	static const uint16_t NameTable0BaseAddr		= 0x2000;
+	static const uint16_t AttribTable0BaseAddr		= NameTable0BaseAddr + NametableMemorySize;
 	static const uint16_t PaletteBaseAddr			= 0x3F00;
 	static const uint16_t SpritePaletteAddr			= 0x3F10;
 	static const uint16_t TotalSprites				= 64;
@@ -184,6 +210,7 @@ struct PPU
 	static const uint32_t NameTableWidthPixels		= NameTableWidthTiles * NameTableTilePixels;
 	static const uint32_t NameTableHeightPixels		= NameTableHeightTiles * NameTableTilePixels;
 	static const uint32_t RegisterCount				= 8;
+	static const uint32_t ScanlineCycles			= 341;
 	//static const ppuCycle_t VBlankCycles = ppuCycle_t( 20 * 341 * 5 );
 
 	PatternTable bgPatternTbl;
@@ -212,16 +239,24 @@ struct PPU
 	NesSystem* system;
 	const RGBA* palette;
 
-	uint16_t vramAddr;
+	// Internal registers
+	iRegScroll regV;
+	iRegScroll regV0; // temp to stand up proper internal regs
+	iRegScroll regT;
+	uint16_t regX = 0x0000;
+	uint16_t regW = 0x0000;
+
+	int nextTilePixels;
 
 	uint8_t vram[VirtualMemorySize];
 	uint8_t primaryOAM[OamSize];
 	uint8_t secondaryOAM[OamSize/*OamSecondSize*/];
 	bool sprite0InList; // In secondary OAM
 
-	uint8_t scrollPosPending[2];
-	uint8_t scrollPosition[2];
-	uint8_t scrollReg = 0x00;
+	TilePipeLineData plLatches;
+	TilePipeLineData plShifts[2];
+	uint8_t curShift;
+	bool fetchMode;
 
 	uint8_t registers[9]; // no need?
 
@@ -252,14 +287,21 @@ struct PPU
 	uint8_t& OAMDMA( const uint8_t value );
 	uint8_t& OAMDMA();
 
-	void RenderScanline();
+	void BgPipelineFetch( const uint64_t cycle );
+	void AdvanceXScroll( const uint64_t cycleCount );
+	void AdvanceYScroll( const uint64_t cycleCount );
+
+	bool RenderEnabled()
+	{
+		return ( regMask.sem.showBg || regMask.sem.showSprt );
+	}
 
 	uint8_t GetBgPatternTableId();
 	uint8_t GetSpritePatternTableId();
 	uint8_t GetNameTableId();
 
 	void FrameBufferWritePixel( const uint32_t x, const uint32_t y, const Pixel pixel );
-	uint8_t DrawPixel( uint32_t imageBuffer[], const WtRect& imageRect, const uint8_t ntId, const uint8_t ptrnTableId, const WtPoint point );
+	uint8_t DrawPixel( uint32_t imageBuffer[], const WtRect& imageRect, const uint8_t ntId, const uint8_t ptrnTableId, const WtPoint point, const uint8_t tileX );
 	void DrawBlankScanline( uint32_t imageBuffer[], const WtRect& imageRect, const uint8_t scanY );
 	void DrawScanline( uint32_t imageBuffer[], const WtRect& imageRect, const uint32_t lineWidth, const uint8_t scanY );
 	void DrawTile( uint32_t imageBuffer[], const WtRect& imageRect, const WtPoint& nametableTile, const uint32_t ntId, const uint32_t ptrnTableId );
@@ -275,18 +317,17 @@ struct PPU
 
 	bool vramWritePending;
 
-	uint16_t MirrorVramAddr( uint16_t addr );
+	uint16_t MirrorVram( uint16_t addr );
 	uint8_t ReadVram( const uint16_t addr );
-	uint8_t GetNtTileForPoint( const uint32_t ntId, WtPoint point, uint32_t& newNtId, WtPoint& newPoint );
 	uint8_t GetNtTile( const uint32_t ntId, const WtPoint& tileCoord );
 	uint8_t GetArribute( const uint32_t ntId, const WtPoint& tileCoord );
 	uint8_t GetTilePaletteId( const uint32_t attribTable, const WtPoint& tileCoord );
-	uint8_t GetChrRom( const uint32_t tileId, const uint8_t plane, const uint8_t ptrnTableId, const WtPoint point );
+	uint8_t GetChrRom( const uint32_t tileId, const uint8_t plane, const uint8_t ptrnTableId, const uint8_t row );
 
 	void LoadSecondaryOAM();
 	PpuSpriteAttrib GetSpriteData( const uint8_t spriteId, const uint8_t oam[] );
 
-	static uint8_t GetChrRomPalette( const uint8_t plane0, const uint8_t plane1, const WtPoint point );
+	static uint8_t GetChrRomPalette( const uint8_t plane0, const uint8_t plane1, const uint8_t col );
 
 	void WriteVram();
 
