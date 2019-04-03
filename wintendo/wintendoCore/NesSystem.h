@@ -94,36 +94,13 @@ public:
 	{
 		cpu.forceStop = false;
 		cpu.cycle = cpuCycle_t(0);
-		ppu.cycle = ppuCycle_t(0);
 		sysCycles = masterCycles_t(0);
-
-		ppu.currentScanline	= -1;
-		ppu.currentPixel	= 0;
-		ppu.scanelineCycle	= ppuCycle_t(0);
-
-		ppu.regCtrl.raw = 0;
-		ppu.regMask.raw = 0;
-		ppu.regStatus.current.raw = 0;
-		ppu.regStatus.latched.raw = 0;
-		ppu.regStatus.hasLatch = false;
-
-		ppu.vramWritePending = false;
 
 		ppu.system = this;
 		ppu.palette= &DefaultPalette[0];
 
-		ppu.beamPosition.x = 0;
-		ppu.beamPosition.y = 0;
-
 		strobeOn = false;
 		btnShift = 0;
-
-		ppu.regT.raw = 0;
-		ppu.regV.raw = 0;
-		ppu.regV0.raw = 0;
-
-		ppu.curShift = 0;
-		ppu.plLatches.flags = 0;
 
 		cart = nullptr;
 
