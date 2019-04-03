@@ -31,12 +31,13 @@ int InitSystem()
 	//nesSystem.LoadProgram( cart, 0xC000 );
 	//nesSystem.cpu.forceStopAddr = 0xC6BD;
 
+	//LoadNesFile( "Games/Metroid.nes", cart ); // 
 	//LoadNesFile( "Games/Contra.nes", cart ); // Needs mapper
-	LoadNesFile( "Games/Super Mario Bros.nes", cart ); // starts, flicker on HUD
-	//LoadNesFile( "Games/Mario Bros.nes", cart ); // works, no collision
+	LoadNesFile( "Games/Super Mario Bros.nes", cart ); // works
+	//LoadNesFile( "Games/Mario Bros.nes", cart ); // works
 	//LoadNesFile( "Games/Balloon Fight.nes", cart ); // works
 	//LoadNesFile( "Games/Tennis.nes", cart ); // works
-	//LoadNesFile( "Games/Ice Climber.nes", cart ); // busted title screen
+	//LoadNesFile( "Games/Ice Climber.nes", cart ); // works, minor graphical issues with ice blocks, wasn't a problem before addr reg rework
 	//LoadNesFile( "Games/Excitebike.nes", cart ); // works
 	//LoadNesFile( "Games/Donkey Kong.nes", cart ); // works
 	nesSystem.LoadProgram( cart );
@@ -135,9 +136,9 @@ int RunFrame()
 
 		for ( uint32_t ntId = 0; ntId < 4; ++ntId )
 		{
-			for ( uint32_t tileY = 0; tileY < PPU::NameTableHeightTiles; ++tileY )
+			for ( int32_t tileY = 0; tileY < (int)PPU::NameTableHeightTiles; ++tileY )
 			{
-				for ( uint32_t tileX = 0; tileX < PPU::NameTableWidthTiles; ++tileX )
+				for ( int32_t tileX = 0; tileX < (int)PPU::NameTableWidthTiles; ++tileX )
 				{
 					nesSystem.ppu.DrawTile( nesSystem.nameTableSheet, ntRects[ntId], WtPoint{ tileX, tileY }, ntId, nesSystem.ppu.GetBgPatternTableId() );
 

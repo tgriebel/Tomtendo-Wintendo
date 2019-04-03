@@ -63,13 +63,6 @@ void PPU::GenerateNMI()
 	system->cpu.interruptTriggered = true;
 }
 
-inline void PPU::EnablePrinting()
-{
-#if DEBUG_ADDR == 1
-	system->cpu.printToOutput = true;
-#endif // #if DEBUG_ADDR == 1
-}
-
 
 void PPU::GenerateDMA()
 {
@@ -193,8 +186,6 @@ uint8_t& PPU::PPUSCROLL( const uint8_t value )
 	{
 		regX = ( value & 0x07 );
 		regT.sem.coarseX = value >> 3;
-
-		nextTilePixels = regX;
 	}
 	else
 	{
@@ -230,7 +221,6 @@ uint8_t& PPU::PPUADDR( const uint8_t value )
 	{
 		regT.raw = ( regT.raw & 0xFF00 ) | value;
 		regV = regT;
-		//regV0 = regT;
 	}
 
 	regW ^= 1;
@@ -247,11 +237,15 @@ uint8_t& PPU::PPUADDR()
 
 uint8_t& PPU::PPUDATA( const uint8_t value )
 {
-	registers[PPUREG_DATA] = value;
+	if( DataportEnabled() )
+	{
+		registers[PPUREG_DATA] = value;
 
-	regStatus.current.sem.lastReadLsb = ( value & 0x1F );
+		regStatus.current.sem.lastReadLsb = ( value & 0x1F );
 
-	vramWritePending = true;
+		vramAccessed = true;
+		vramWritePending = true;
+	}
 
 	return registers[PPUREG_DATA];
 }
@@ -259,11 +253,23 @@ uint8_t& PPU::PPUDATA( const uint8_t value )
 
 uint8_t& PPU::PPUDATA()
 {
-	registers[PPUREG_DATA] = ReadVram( regV0.raw );
+	// ppuReadBuffer[1] is the internal read buffer buy ppuReadBuffer[0] is used to return a 'safe' writable byte
+	// This is due to the current (wonky) memory design
+	ppuReadBuffer[0] = ppuReadBuffer[1];
 
-	regV0.raw += regCtrl.sem.vramInc ? 32 : 1;
+	if ( DataportEnabled() )
+	{
+		ppuReadBuffer[1] = ReadVram( regV.raw );
 
-	return registers[PPUREG_DATA];
+		if( regV.raw >= PaletteBaseAddr )
+		{
+			ppuReadBuffer[0] = ppuReadBuffer[1];
+		}
+
+		vramAccessed = true;
+	}
+
+	return ppuReadBuffer[0];
 }
 
 
@@ -283,6 +289,15 @@ uint8_t& PPU::OAMDMA()
 }
 
 
+void PPU::IncRenderAddr()
+{
+	if( DataportEnabled() )
+	{
+		regV.raw += regCtrl.sem.vramInc ? 32 : 1;
+	}
+}
+
+
 void PPU::BgPipelineFetch( const uint64_t scanlineCycle )
 {
 	/*
@@ -294,33 +309,58 @@ void PPU::BgPipelineFetch( const uint64_t scanlineCycle )
 	4. Pattern table bitmap #1
 	*/
 
-	if ( !fetchMode )
+	if ( !BgDataFetchEnabled() )
+	{
 		return;
+	}
 
 	uint32_t cycleCountAdjust = ( scanlineCycle - 1 ) % 8;
-	if ( cycleCountAdjust == 0 )
+	if ( cycleCountAdjust == 1 )
 	{
-		if ( plLatches.flags == 0x1 )
+		plLatches.tileId = ReadVram( NameTable0BaseAddr | ( regV.raw & 0x0FFF ) );
+	}
+	else if ( cycleCountAdjust == 3 )
+	{
+		// The problem might be an issue with coarseX being off +/-
+		WtPoint coarsePt;
+		coarsePt.x = regV.sem.coarseX;
+		coarsePt.y = regV.sem.coarseY;
+
+		//const uint32_t attribute = GetArribute( regV0.sem.ntId, coarsePt );
+		const uint32_t attribute = ReadVram( AttribTable0BaseAddr | ( regV.sem.ntId << 10 ) | ( ( regV.sem.coarseY << 1 ) & 0xF8 ) | ( ( regV.sem.coarseX >> 2 ) & 0x07 ) );		
+
+		plLatches.attribId = GetTilePaletteId( attribute, coarsePt );
+	}
+	else if ( cycleCountAdjust == 5 )
+	{
+		plLatches.chrRom0 = GetChrRom( plLatches.tileId, 0, GetBgPatternTableId(), regV.sem.fineY );
+	}
+	else if( cycleCountAdjust == 7 )
+	{
+		plLatches.chrRom1 = GetChrRom( plLatches.tileId, 1, GetBgPatternTableId(), regV.sem.fineY );
+		plLatches.flags = 0x1;
+		AdvanceXScroll( scanlineCycle );
+
+		plShifts[curShift] = plLatches;
+
+		chrShifts[0] = ( chrShifts[0] & 0xFF00 ) | plLatches.chrRom0;
+		chrShifts[1] = ( chrShifts[1] & 0xFF00 ) | plLatches.chrRom1;
+
+		palLatch[0] = ( plShifts[curShift].attribId >> 2 ) & 0x01;
+		palLatch[1] = ( ( plShifts[curShift].attribId >> 2 ) & 0x2 ) >> 1;
+
+		palShifts[0] = 0;
+		palShifts[1] = 0;
+
+		for ( uint8_t bit = 0; bit < 8; ++bit )
 		{
-			plShifts[curShift] = plLatches;
-			plLatches.flags = 0;
-			curShift ^= 0x1;
+			palShifts[0] <<= 1;
+			palShifts[1] <<= 1;
+			palShifts[0] |= ( plShifts[curShift^1].attribId >> 2 ) & 0x1;
+			palShifts[1] |= ( ( plShifts[curShift^1].attribId >> 2 ) & 0x2 ) >> 1;
 		}
 
-		plLatches.tileId = ReadVram( NameTable0BaseAddr | ( regV0.raw & 0x0FFF ) );
-	}
-	else if ( cycleCountAdjust == 2 )
-	{
-		plLatches.attribId = ReadVram( AttribTable0BaseAddr | ( regV0.sem.ntId << 10 ) | ( ( regV0.sem.coarseY << 1 ) & 0xF8 ) | ( regV0.sem.coarseX >> 2 ) );
-	}
-	else if ( cycleCountAdjust == 4 )
-	{
-		plLatches.chrRom0 = GetChrRom( plLatches.tileId, 0, GetBgPatternTableId(), regV0.sem.fineY );
-	}
-	else if ( cycleCountAdjust == 6 )
-	{
-		plLatches.chrRom1 = GetChrRom( plLatches.tileId, 1, GetBgPatternTableId(), regV0.sem.fineY );
-		plLatches.flags = 0x1;
+		curShift ^= 0x1;
 	}
 }
 
@@ -339,7 +379,7 @@ uint8_t PPU::GetSpritePatternTableId()
 
 uint8_t PPU::GetNameTableId()
 {
-	return regCtrl.sem.ntId;
+	return regV.sem.ntId;
 }
 
 
@@ -405,13 +445,13 @@ uint8_t PPU::GetNtTile( const uint32_t ntId, const WtPoint& tileCoord )
 }
 
 
-uint8_t PPU::GetArribute( const uint32_t ntId, const WtPoint& point )
+uint8_t PPU::GetArribute( const uint32_t ntId, const WtPoint& tileCoord )
 {
 	const uint32_t ntBaseAddr		= NameTable0BaseAddr + ntId * NameTableAttribMemorySize;
 	const uint32_t attribBaseAddr	= ntBaseAddr + NametableMemorySize;
 
-	const uint8_t attribXoffset = point.x >> 5;
-	const uint8_t attribYoffset = ( point.y >> 5 ) << 3;
+	const uint8_t attribXoffset = tileCoord.x >> 2;
+	const uint8_t attribYoffset = ( tileCoord.y >> 2 ) << 3;
 
 	const uint16_t attributeAddr = attribBaseAddr + attribXoffset + attribYoffset;
 
@@ -419,13 +459,13 @@ uint8_t PPU::GetArribute( const uint32_t ntId, const WtPoint& point )
 }
 
 
-uint8_t PPU::GetTilePaletteId( const uint32_t attribTable, const WtPoint& point )
+uint8_t PPU::GetTilePaletteId( const uint32_t attribTable, const WtPoint& tileCoord )
 {
 	WtPoint attributeCorner;
 
-	// The lower 3bits (0-3) specify the position within a single attrib table
-	// But each attribute contains 4 nametable blocks so only every 2 nametable 
-	// Blocks change the attribute therefore only bit 2 matters
+	// The lower 2bits (0-3) specify the position within a single attrib table
+	// Each attribute contains 4 nametable blocks
+	// Every two nametable blocks change the attribute meaning only bit 2 matters
 
 	// ,---+---.
 	// | . | . |
@@ -436,8 +476,8 @@ uint8_t PPU::GetTilePaletteId( const uint32_t attribTable, const WtPoint& point 
 	// Byte layout, 2 bits each
 	// [ Btm R | Btm L | Top R | Top L ]
 
-	attributeCorner.x = ( point.x >> 3 ) & 0x02;
-	attributeCorner.y = ( point.y >> 3 ) & 0x02;
+	attributeCorner.x = tileCoord.x & 0x02;
+	attributeCorner.y = tileCoord.y & 0x02;
 
 	const uint8_t attribShift = attributeCorner.x + ( attributeCorner.y << 1 ); // x + y * w
 
@@ -475,7 +515,9 @@ uint8_t PPU::ReadVram( const uint16_t addr )
 	}
 	else
 	{
-		return vram[MirrorVram( addr )];
+		const uint16_t adjustedAddr = MirrorVram( addr );
+		assert( adjustedAddr < VirtualMemorySize );
+		return vram[adjustedAddr];
 	}
 }
 
@@ -484,9 +526,16 @@ void PPU::WriteVram()
 {
 	if ( vramWritePending )
 	{
-		vram[MirrorVram( /*regV0.raw*/regV.raw )] = registers[PPUREG_DATA];
-		regV.raw += regCtrl.sem.vramInc ? 32 : 1;
-		//regV0.raw += regCtrl.sem.vramInc ? 32 : 1;
+		if ( DataportEnabled() )
+		{
+			const uint16_t adjustedAddr = MirrorVram( regV.raw );
+			//assert( ( adjustedAddr < VirtualMemorySize ) && ( adjustedAddr >= 0x2000 ) );
+
+			if( adjustedAddr >= 0x2000 )
+			{
+				vram[adjustedAddr] = registers[PPUREG_DATA];
+			}
+		}
 
 		vramWritePending = false;
 	}
@@ -515,84 +564,28 @@ void PPU::DrawBlankScanline( uint32_t imageBuffer[], const WtRect& imageRect, co
 }
 
 
-uint8_t PPU::DrawPixel( uint32_t imageBuffer[], const WtRect& imageRect, const uint8_t ntId, const uint8_t ptrnTableId, const WtPoint courseOffset, const uint8_t tileX )
+void PPU::DrawPixel( uint32_t imageBuffer[], const WtRect& imageRect )
 {
-	WtPoint chrRomPoint;
 
-	const uint32_t imageX = imageRect.x;
-	const uint32_t imageY = imageRect.y;
-	const uint32_t imageIx = imageX + imageY * imageRect.width;
-
-	if( !regMask.sem.showBg )
-	{
-		Pixel pixelColor;
-
-		const uint8_t colorIx = ReadVram(PPU::PaletteBaseAddr);
-
-		Bitmap::CopyToPixel( palette[colorIx], pixelColor, BITMAP_BGRA );
-
-		imageBuffer[imageIx] = pixelColor.raw;
-
-		return 0;
-	}
-
-	// Get color index
-	chrRomPoint.x = ( nextTilePixels ) & 0x07;
-	chrRomPoint.y = regV0.sem.fineY;
-
-	uint32_t tileIx;
-	uint8_t attribute;
-	uint8_t chrRom0;
-	uint8_t chrRom1;
-
-	if( fetchMode )
-	{
-		tileIx = plShifts[curShift].tileId;
-		attribute = plShifts[curShift].attribId;
-		chrRom0 = plShifts[curShift].chrRom0;
-		chrRom1 = plShifts[curShift].chrRom1;
-	}
-	else
-	{
-		tileIx = ReadVram( NameTable0BaseAddr | ( regV0.raw & 0x0FFF ) );
-		attribute = ReadVram( AttribTable0BaseAddr | ( regV0.sem.ntId << 10 ) | ( ( regV0.sem.coarseY << 1 ) & 0xF8 ) | ( regV0.sem.coarseX >> 2 ) );
-		chrRom0 = GetChrRom( tileIx, 0, ptrnTableId, chrRomPoint.y );
-		chrRom1 = GetChrRom( tileIx, 1, ptrnTableId, chrRomPoint.y );
-	}
-
-	const uint8_t paletteId = GetTilePaletteId( attribute, courseOffset );
-
-	const uint8_t chrRomColor = GetChrRomPalette( chrRom0, chrRom1, chrRomPoint.x );
-	uint16_t finalPalette = paletteId | chrRomColor;
-
-	finalPalette += PPU::PaletteBaseAddr;
-
-	const uint8_t colorIx = ( chrRomColor == 0 ) ? ReadVram( PPU::PaletteBaseAddr ) : ReadVram( finalPalette );
-
-	// Frame Buffer
-	Pixel pixelColor;
-	Bitmap::CopyToPixel( palette[colorIx], pixelColor, BITMAP_BGRA );
-
-	imageBuffer[imageIx] = pixelColor.raw;
-
-	return chrRomColor;
 }
 
 
-void PPU::DrawScanline( uint32_t imageBuffer[], const WtRect& imageRect, const uint32_t lineWidth, const uint8_t scanY )
+uint8_t PPU::BgPipelineDecodePalette()
 {
-	WtPoint point;
+	uint8_t chrRomColor;
 
-	point.y = scanY;
+	uint8_t paletteId = plShifts[curShift].attribId;
+	uint8_t chrRom0 = static_cast< uint8_t >( chrShifts[0] >> 8 );
+	uint8_t chrRom1 = static_cast< uint8_t >( chrShifts[1] >> 8 );
 
-	const uint8_t ntId = GetNameTableId();
-	const uint8_t ptrnTableId = GetBgPatternTableId();
+	paletteId = GetChrRomPalette( palShifts[0], palShifts[1], static_cast< uint8_t >( regX ) );
+	paletteId <<= 2;
 
-	for ( uint32_t x = 0; x < lineWidth; ++x )
-	{
-		point.x = x;
-		DrawPixel( imageBuffer, imageRect, ntId, ptrnTableId, point, x % 8 );
-	}
+	static uint8_t shiftRegX = 0;
+
+	chrRomColor = GetChrRomPalette( chrRom0, chrRom1, static_cast< uint8_t >( regX ) );
+
+	return ( paletteId | chrRomColor );
 }
 
 
@@ -610,8 +603,8 @@ void PPU::DrawTile( uint32_t imageBuffer[], const WtRect& imageRect, const WtPoi
 
 			const uint32_t tileIx = GetNtTile( ntId, nametableTile );
 
-			const uint8_t attribute	= GetArribute( ntId, point );
-			const uint8_t paletteId	= GetTilePaletteId( attribute, point );
+			const uint8_t attribute	= GetArribute( ntId, nametableTile );
+			const uint8_t paletteId	= GetTilePaletteId( attribute, nametableTile );
 
 			chrRomPoint.x = x;
 			chrRomPoint.y = y;
@@ -719,9 +712,9 @@ void PPU::DrawSprites( const uint32_t tableId )
 		if ( attribs.y < 8 || attribs.y > 232 )
 			continue;
 
-		for ( uint32_t y = 0; y < 8; ++y )
+		for ( int32_t y = 0; y < 8; ++y )
 		{
-			for ( uint32_t x = 0; x < 8; ++x )
+			for ( int32_t x = 0; x < 8; ++x )
 			{
 				uint8_t bgPixel = 0;
 
@@ -767,7 +760,7 @@ void PPU::LoadSecondaryOAM()
 	{
 		uint8_t y = 1 + primaryOAM[spriteNum * 4];
 
-		if ( ( beamPosition.y < ( y + 8u ) ) && ( beamPosition.y >= y ) )
+		if ( ( beamPosition.y < ( y + 8 ) ) && ( beamPosition.y >= y ) )
 		{
 			secondaryOAM[destSpriteNum * 4]		= y;
 			secondaryOAM[destSpriteNum * 4 + 1] = primaryOAM[spriteNum * 4 + 1];
@@ -794,19 +787,17 @@ void PPU::LoadSecondaryOAM()
 
 void PPU::AdvanceXScroll( const uint64_t cycleCount )
 {
-	if ( ( nextTilePixels ) >= 8 )
+	if ( RenderEnabled() )
 	{
-		if ( regV0.sem.coarseX == 0x001F )
+		if ( regV.sem.coarseX == 0x001F )
 		{
-			regV0.sem.coarseX = 0;
-			regV0.sem.ntId ^= 0x1;
+			regV.sem.coarseX = 0;
+			regV.sem.ntId ^= 0x1;
 		}
 		else
 		{
-			regV0.sem.coarseX++;
+			regV.sem.coarseX++;
 		}
-
-		nextTilePixels = 0;
 	}
 }
 
@@ -815,29 +806,94 @@ void PPU::AdvanceYScroll( const uint64_t cycleCount )
 {
 	if ( RenderEnabled() )
 	{
-		if ( regV0.sem.fineY < 7 )
+		if ( regV.sem.fineY < 7 )
 		{
-			regV0.sem.fineY++;
+			regV.sem.fineY++;
 		}
 		else
 		{
-			regV0.sem.fineY = 0;
+			regV.sem.fineY = 0;
 
-			if ( regV0.sem.coarseY == 29 ) // > 240 vertical pixel
+			if ( regV.sem.coarseY == 29 ) // > 240 vertical pixel
 			{
-				regV0.sem.coarseY = 0;
-				regV0.sem.ntId ^= 0x2;
+				regV.sem.coarseY = 0;
+				regV.sem.ntId ^= 0x2;
 			}
-			else if ( regV0.sem.coarseY == 31 ) // This is legal to set, but causes odd behavior
+			else if ( regV.sem.coarseY == 31 ) // This is legal to set, but causes odd behavior
 			{
-				regV0.sem.coarseY = 0;
+				regV.sem.coarseY = 0;
 			}
 			else
 			{
-				regV0.sem.coarseY++;
+				regV.sem.coarseY++;
 			}
 		}
 	}
+}
+
+
+void PPU::BgPipelineShiftRegisters()
+{
+	if ( !BgDataFetchEnabled() )
+	{
+		return;
+	}
+
+	chrShifts[0] <<= 1;
+	chrShifts[1] <<= 1;
+	palShifts[0] <<= 1;
+	palShifts[1] <<= 1;
+	palShifts[0] |= palLatch[0] & 0x1;
+	palShifts[1] |= palLatch[1] & 0x1;
+}
+
+
+void PPU::BgPipelineDebugPrefetchFetchTiles()
+{
+	if ( !BgDataFetchEnabled() )
+	{
+		return;
+	}
+
+	if ( debugPrefetchTiles )
+	{
+		plShifts[0].tileId = 1;
+		plShifts[0].attribId = 2;
+		plShifts[0].chrRom0 = GetChrRom( plShifts[0].tileId, 0, GetBgPatternTableId(), regV.sem.fineY );
+		plShifts[0].chrRom1 = GetChrRom( plShifts[0].tileId, 1, GetBgPatternTableId(), regV.sem.fineY );
+
+		plShifts[1].tileId = 2;
+		plShifts[1].attribId = 4;
+		plShifts[1].chrRom0 = GetChrRom( plShifts[1].tileId, 0, GetBgPatternTableId(), regV.sem.fineY );
+		plShifts[1].chrRom1 = GetChrRom( plShifts[1].tileId, 1, GetBgPatternTableId(), regV.sem.fineY );
+
+		chrShifts[0] = ( plShifts[0].chrRom0 << 8 ) | plShifts[1].chrRom0;
+		chrShifts[1] = ( plShifts[0].chrRom1 << 8 ) | plShifts[1].chrRom1;
+	}
+}
+
+
+bool PPU::BgDataFetchEnabled()
+{
+	return ( ( currentScanline < POSTRENDER_SCANLINE ) || ( currentScanline == PRERENDER_SCANLINE ) );
+}
+
+
+bool PPU::RenderEnabled()
+{
+	return ( regMask.sem.showBg || regMask.sem.showSprt ) && BgDataFetchEnabled();
+}
+
+
+bool PPU::InVBlank()
+{
+	return inVBlank;
+}
+
+
+bool PPU::DataportEnabled()
+{
+	return ( InVBlank() || !RenderEnabled() );
 }
 
 
@@ -845,8 +901,6 @@ const ppuCycle_t PPU::Exec()
 {
 	// Function advances 1 - 8 cycles at a time. The logic is built on this constaint.
 	static WtRect imageRect = { 0, 0, NesSystem::ScreenWidth, NesSystem::ScreenHeight };
-
-	fetchMode = false;
 
 	ppuCycle_t execCycles = ppuCycle_t( 0 );
 
@@ -862,7 +916,15 @@ const ppuCycle_t PPU::Exec()
 
 	WriteVram();
 
-	if ( currentScanline == 240 )
+	if( vramAccessed )
+	{
+		IncRenderAddr();
+		vramAccessed = false;
+	}
+
+	// Scanline Work
+	// Scanlines take multiple cycles
+	if ( currentScanline == POSTRENDER_SCANLINE )
 	{
 		++currentScanline;
 
@@ -871,48 +933,44 @@ const ppuCycle_t PPU::Exec()
 
 		return execCycles;
 	}
-
-	if ( currentScanline < 0 )
+	else if ( currentScanline == PRERENDER_SCANLINE )
 	{
-		if ( ( cycleCount >= 281 ) && ( cycleCount <= 305 ) )
+		if ( cycleCount == 1 )
 		{
-			if ( RenderEnabled() )
-			{
-			//	regV0.sem.fineY = regT.sem.fineY;
-			//	regV0.sem.coarseY = regT.sem.coarseY;
-			//	regV0.sem.ntId = ( regV0.sem.ntId & 0x1 ) | ( regT.sem.ntId & 0x2 );
-			}
-		}
-	}
+			regStatus.current.sem.spriteHit = false;
 
-	// Scanline Work
-	// Scanlines take multiple cycles
-
-	if ( cycleCount == 0 )
-	{
-		if ( currentScanline < 0 )
-		{
+			inVBlank = false;
 			regStatus.current.sem.vBlank = 0;
 			regStatus.latched.raw = 0;
 			regStatus.hasLatch = false;
-
-			regV0.sem.fineY = regT.sem.fineY;
-			regV0.sem.coarseY = regT.sem.coarseY;
-			regV0.sem.ntId = ( regV0.sem.ntId & 0x1 ) | ( regT.sem.ntId & 0x2 );
 		}
-		else if ( currentScanline == 241 )
+		else if( cycleCount >= 280 && cycleCount <= 304 )
 		{
-			// must only exec once!
-			// set vblank flag at second tick, cycle=1
+			if ( RenderEnabled() )
+			{
+				regV.sem.fineY = regT.sem.fineY;
+				regV.sem.coarseY = regT.sem.coarseY;
+				regV.sem.ntId = ( regV.sem.ntId & 0x1 ) | ( regT.sem.ntId & 0x2 );
+			}
+		}
+	}
+	else if ( currentScanline == 241 )
+	{
+		// must only exec once!
+		if( cycleCount == 1 )
+		{
+			inVBlank = true;
 			regStatus.current.sem.vBlank = 1;
-			//EnablePrinting();
-			// Gen NMI
+
 			if ( regCtrl.sem.nmiVblank )
 			{
 				GenerateNMI();
 			}
 		}
+	}
 
+	if ( cycleCount == 0 )
+	{
 		// Idle cycle
 		execCycles++;
 		scanelineCycle++;
@@ -920,7 +978,6 @@ const ppuCycle_t PPU::Exec()
 		sprite0InList = false;
 		loadingSecondingOAM = true;
 		LoadSecondaryOAM();
-
 //		OAMDATA( 0xFF );
 	}
 	else if ( cycleCount <= 256 )
@@ -928,83 +985,114 @@ const ppuCycle_t PPU::Exec()
 		execCycles += ppuCycle_t( 1 );
 		scanelineCycle += ppuCycle_t( 1 );
 
-		WtPoint screenPt;
-		screenPt.x = ( regV0.sem.coarseX << 3 );
-		screenPt.y = ( regV0.sem.coarseY << 3 );
-
-		BgPipelineFetch( cycleCount );
-		AdvanceXScroll( cycleCount );
-
-		// Scanline render
-		imageRect.x = beamPosition.x;
-		imageRect.y = beamPosition.y;
-
-		uint8_t bgPixel = DrawPixel( system->frameBuffer, imageRect, regV0.sem.ntId/*GetNameTableId()*/, GetBgPatternTableId(), screenPt, 0 );
-		
-		for ( uint8_t spriteNum = 0; spriteNum < 8; ++spriteNum )
+		if( currentScanline < POSTRENDER_SCANLINE )
 		{
-			PpuSpriteAttrib attribs = GetSpriteData( spriteNum, secondaryOAM );
+			WtPoint screenPt;
+			screenPt.x = beamPosition.x & 0xF8;
+			screenPt.y = beamPosition.y & 0xF8;
 
-			if ( ( beamPosition.x < ( attribs.x + 8u ) ) && ( beamPosition.x >= attribs.x ) )
+			// Scanline render
+			imageRect.x = beamPosition.x;
+			imageRect.y = beamPosition.y;
+
+			// TODO: don't use globals directly in this function
+			const uint32_t imageX = imageRect.x;
+			const uint32_t imageY = imageRect.y;
+			const uint32_t imageIx = imageX + imageY * imageRect.width;
+
+			uint8_t bgPixel = 0;
+
+			if ( !regMask.sem.showBg )
 			{
-				if ( !( attribs.y < 8 || attribs.y > 232 ) )
+				Pixel pixelColor;
+
+				const uint8_t colorIx = ReadVram( PPU::PaletteBaseAddr );
+
+				Bitmap::CopyToPixel( palette[colorIx], pixelColor, BITMAP_BGRA );
+
+				system->frameBuffer[imageIx] = pixelColor.raw;
+			}
+			else
+			{
+				bgPixel = BgPipelineDecodePalette();
+
+				uint16_t finalPalette = bgPixel + PPU::PaletteBaseAddr;
+
+				const uint8_t colorIx = ( ( bgPixel & 0x03 ) == 0 ) ? ReadVram( PPU::PaletteBaseAddr ) : ReadVram( finalPalette );
+
+				// Frame Buffer
+				Pixel pixelColor;
+				Bitmap::CopyToPixel( palette[colorIx], pixelColor, BITMAP_BGRA );
+
+				system->frameBuffer[imageIx] = pixelColor.raw;
+			}
+
+			for ( uint8_t spriteNum = 0; spriteNum < 8; ++spriteNum )
+			{
+				PpuSpriteAttrib attribs = GetSpriteData( spriteNum, secondaryOAM );
+
+				if ( ( beamPosition.x < ( attribs.x + 8 ) ) && ( beamPosition.x >= attribs.x ) )
 				{
-					DrawSpritePixel( system->frameBuffer, imageRect, attribs, beamPosition, bgPixel, ( spriteNum == 0 ) && sprite0InList );
+					if ( !( attribs.y < 8 || attribs.y > 232 ) )
+					{
+						DrawSpritePixel( system->frameBuffer, imageRect, attribs, beamPosition, bgPixel & 0x03, ( spriteNum == 0 ) && sprite0InList );
+					}
 				}
 			}
 		}
 
+		BgPipelineShiftRegisters();
+		BgPipelineFetch( cycleCount );
+
 		beamPosition.x++;
-		nextTilePixels++;
 	}
 	else if ( cycleCount == 257 )
 	{
 		execCycles += ppuCycle_t( 1 );
 		scanelineCycle += ppuCycle_t( 1 );
 
+		BgPipelineFetch( cycleCount );
+
 		AdvanceYScroll( cycleCount );
-	}
-	else if ( cycleCount == 258 )
-	{
-		execCycles += ppuCycle_t( 1 );
-		scanelineCycle += ppuCycle_t( 1 );
 
 		if ( RenderEnabled() )
 		{
-			regV0.sem.coarseX = regT.sem.coarseX;
-			regV0.sem.ntId = ( regV0.sem.ntId & 0x2 ) | ( regT.sem.ntId & 0x1 );
+			regV.sem.coarseX = regT.sem.coarseX;
+			regV.sem.ntId = ( regV.sem.ntId & 0x2 ) | ( regT.sem.ntId & 0x1 );
 		}
 	}
-	else if ( cycleCount <= 320 )
+	else if ( cycleCount <= 320 ) // [258 - 320]
 	{
 		// Prefetch the 8 sprites on next scanline
 		execCycles += ppuCycle_t( 1 );
 		scanelineCycle += ppuCycle_t( 1 );
 
-		BgPipelineFetch( cycleCount ); // Garbage fetches
+	//	BgPipelineFetch( cycleCount ); // Garbage fetches, 8 fetches
 	}
-	else if ( cycleCount <= 336 )
+	else if ( cycleCount <= 336 ) // [321 - 336]
 	{
 		execCycles++;
 		scanelineCycle++;
 
+		BgPipelineShiftRegisters();
+
 		BgPipelineFetch( cycleCount ); // Prefetch first two tiles on next scanline
+		BgPipelineDebugPrefetchFetchTiles();
 	}
 	else if ( cycleCount < 340 ) // [337 - 340], +4 cycles
 	{
+		BgPipelineFetch( cycleCount );
+
 		// 2 unused fetches
 		execCycles++;
 		scanelineCycle++;
 	}
 	else
 	{
-		if( currentScanline >= 260 )
+		if( currentScanline == PRERENDER_SCANLINE )
 		{
-			currentScanline = -1;
+			currentScanline = 0;
 
-			regStatus.current.sem.spriteHit = false;// Clear at dot 1
-
-			nextTilePixels = regX;
 			beamPosition.x = 0;
 			beamPosition.y = 0;
 		}
@@ -1012,13 +1100,7 @@ const ppuCycle_t PPU::Exec()
 		{
 			currentScanline++;
 			beamPosition.x = 0;
-			beamPosition.x = 0;
-			nextTilePixels = regX;
-
-			if( currentScanline <= 240 )
-			{
-				beamPosition.y++;
-			}
+			beamPosition.y++;
 		}
 
 		execCycles++;

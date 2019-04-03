@@ -104,7 +104,7 @@ union PpuMask
 };
 
 
-union iRegScroll // internal register T
+union PpuScrollReg // Internal register T and V
 {
 	struct iRegScrollSemantic
 	{
@@ -116,6 +116,11 @@ union iRegScroll // internal register T
 	} sem;
 
 	uint16_t raw;
+};
+
+
+struct PpuScrollRegisters
+{
 };
 
 
@@ -186,6 +191,13 @@ struct TilePipeLineData
 };
 
 
+enum PpuScanLine
+{
+	POSTRENDER_SCANLINE = 240,
+	PRERENDER_SCANLINE = 261,
+};
+
+
 struct PPU
 {
 	static const uint32_t VirtualMemorySize			= 0x10000;
@@ -213,17 +225,12 @@ struct PPU
 	static const uint32_t ScanlineCycles			= 341;
 	//static const ppuCycle_t VBlankCycles = ppuCycle_t( 20 * 341 * 5 );
 
-	PatternTable bgPatternTbl;
-	PatternTable sprPatternTbl;
-
 	PpuCtrl regCtrl;
 	PpuMask regMask;
 	PpuStatus regStatus;
 
-	bool masterSlave;
 	bool genNMI;
 
-	int currentPixel; // pixel on scanline
 	int currentScanline;
 	ppuCycle_t scanelineCycle;
 
@@ -239,24 +246,35 @@ struct PPU
 	NesSystem* system;
 	const RGBA* palette;
 
+	bool debugPrefetchTiles = false;
+
+	bool vramWritePending;
+	bool vramAccessed = false;
+
 	// Internal registers
-	iRegScroll regV;
-	iRegScroll regV0; // temp to stand up proper internal regs
-	iRegScroll regT;
+	PpuScrollReg regV;
+	PpuScrollReg regT;
 	uint16_t regX = 0x0000;
 	uint16_t regW = 0x0000;
-
-	int nextTilePixels;
 
 	uint8_t vram[VirtualMemorySize];
 	uint8_t primaryOAM[OamSize];
 	uint8_t secondaryOAM[OamSize/*OamSecondSize*/];
 	bool sprite0InList; // In secondary OAM
 
+	uint8_t ppuReadBuffer[2];
+
+	bool inVBlank; // This is for internal state tracking not for reporting to the CPU
+
 	TilePipeLineData plLatches;
 	TilePipeLineData plShifts[2];
+	uint16_t chrShifts[2];
+	uint8_t palShifts[2];
+	uint8_t palLatch[2];
+	uint8_t chrLatch[2];
+
 	uint8_t curShift;
-	bool fetchMode;
+	uint16_t attrib;
 
 	uint8_t registers[9]; // no need?
 
@@ -287,23 +305,27 @@ struct PPU
 	uint8_t& OAMDMA( const uint8_t value );
 	uint8_t& OAMDMA();
 
+	void BgPipelineShiftRegisters();
+	void BgPipelineDebugPrefetchFetchTiles();
+	uint8_t BgPipelineDecodePalette();
 	void BgPipelineFetch( const uint64_t cycle );
 	void AdvanceXScroll( const uint64_t cycleCount );
 	void AdvanceYScroll( const uint64_t cycleCount );
 
-	bool RenderEnabled()
-	{
-		return ( regMask.sem.showBg || regMask.sem.showSprt );
-	}
+	void IncRenderAddr();
+
+	bool BgDataFetchEnabled();
+	bool RenderEnabled();
+	bool DataportEnabled();
+	bool InVBlank();
 
 	uint8_t GetBgPatternTableId();
 	uint8_t GetSpritePatternTableId();
 	uint8_t GetNameTableId();
 
 	void FrameBufferWritePixel( const uint32_t x, const uint32_t y, const Pixel pixel );
-	uint8_t DrawPixel( uint32_t imageBuffer[], const WtRect& imageRect, const uint8_t ntId, const uint8_t ptrnTableId, const WtPoint point, const uint8_t tileX );
+	void DrawPixel( uint32_t imageBuffer[], const WtRect& imageRect );
 	void DrawBlankScanline( uint32_t imageBuffer[], const WtRect& imageRect, const uint8_t scanY );
-	void DrawScanline( uint32_t imageBuffer[], const WtRect& imageRect, const uint32_t lineWidth, const uint8_t scanY );
 	void DrawTile( uint32_t imageBuffer[], const WtRect& imageRect, const WtPoint& nametableTile, const uint32_t ntId, const uint32_t ptrnTableId );
 	void DrawSpritePixel( uint32_t imageBuffer[], const WtRect& imageRect, const PpuSpriteAttrib attribs, const WtPoint& point, const uint8_t bgPixel, bool sprite0 );
 	void DrawSprites( const uint32_t tableId );
@@ -312,10 +334,6 @@ struct PPU
 	void GenerateNMI();
 	void GenerateDMA();
 	uint8_t DMA( const uint16_t address );
-
-	void EnablePrinting();
-
-	bool vramWritePending;
 
 	uint16_t MirrorVram( uint16_t addr );
 	uint8_t ReadVram( const uint16_t addr );
@@ -334,11 +352,31 @@ struct PPU
 	const ppuCycle_t Exec();
 	bool Step( const ppuCycle_t& nextCycle );
 
-/*
 	PPU()
 	{
 		cycle = ppuCycle_t( 0 );
-	}*/
+
+		currentScanline = PRERENDER_SCANLINE;
+		scanelineCycle = ppuCycle_t( 0 );
+
+		regCtrl.raw = 0;
+		regMask.raw = 0;
+		regStatus.current.raw = 0;
+		regStatus.latched.raw = 0;
+		regStatus.hasLatch = false;
+
+		vramWritePending = false;
+
+		beamPosition.x = 0;
+		beamPosition.y = 0;
+
+		regT.raw = 0;
+		regV.raw = 0;
+
+		curShift = 0;
+
+		inVBlank = true;
+	}
 
 
 	uint8_t& Reg( uint16_t address, uint8_t value );
