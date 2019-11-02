@@ -91,12 +91,13 @@ struct Cpu6502
 #if DEBUG_ADDR == 1
 	std::stringstream debugAddr;
 	std::ofstream logFile;
-	bool printToOutput;
+	bool printToOutput = false;
 	bool debugFrame = false;
+	bool debugNextFrame = false;
 #endif
 
-	bool forceStop;
-	uint16_t forceStopAddr;
+	bool forceStop = false;
+	uint16_t forceStopAddr = 0;
 
 	bool resetTriggered;
 	bool interruptTriggered;
@@ -123,6 +124,11 @@ struct Cpu6502
 		P.bit.b = 1;
 
 		cycle = cpuCycle_t(0); // FIXME? Test log starts cycles at 7. Is there a BRK at power up?
+	}
+
+	Cpu6502()
+	{
+		Reset();
 	}
 
 	bool Step( const cpuCycle_t& nextCycle );

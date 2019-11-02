@@ -71,6 +71,12 @@ public:
 	uint32_t frameBuffer[ScreenWidth * ScreenHeight];
 	uint32_t nameTableSheet[4 * ScreenWidth * ScreenHeight];
 	uint32_t paletteDebug[4 * 16 * 2];
+	uint32_t patternTable0Debug[128 * 128];
+	uint32_t patternTable1Debug[128 * 128];
+
+	uint32_t prgRomBank;
+
+	string fileName;
 
 	uint8_t memory[VirtualMemorySize]; // TODO: make physical size
 
@@ -95,6 +101,13 @@ public:
 		cpu.forceStop = false;
 		cpu.cycle = cpuCycle_t(0);
 		sysCycles = masterCycles_t(0);
+
+		memset( frameBuffer, 0, sizeof( frameBuffer ) );
+		memset( memory, 0, sizeof( memory ) );
+		memset( nameTableSheet, 0, sizeof( nameTableSheet ) );
+		memset( paletteDebug, 0, sizeof( paletteDebug ) );
+		memset( patternTable0Debug, 0, sizeof( patternTable0Debug ) );
+		memset( patternTable1Debug, 0, sizeof( patternTable1Debug ) );
 
 		ppu.system = this;
 		ppu.palette= &DefaultPalette[0];

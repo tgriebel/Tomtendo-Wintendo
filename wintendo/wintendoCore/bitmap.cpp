@@ -169,7 +169,7 @@ void Bitmap::Load( const string& filename )
 			pixel.red		= buffer[pixNum + 2];
 			pixel.alpha		= (uint8_t)0xFF;
 			
-			mapdata[ row * bhi.width + ( pixNum/ pixelBytes ) ] = pixel;
+			mapdata[ row * bhi.width + ( pixNum / pixelBytes ) ] = pixel;
 		}
 
 		instream.seekg(padding+instream.tellg(), ios_base::beg);

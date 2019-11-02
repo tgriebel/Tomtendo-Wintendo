@@ -42,7 +42,7 @@ inline ButtonFlags GetKeyBuffer()
 // keyBuffer is only written by store key so it's guaranteed read only elsewhere
 inline void StoreKey( uint8_t key )
 {
-	keyBuffer = static_cast<ButtonFlags>( keyBuffer | key);
+	keyBuffer = static_cast<ButtonFlags>( keyBuffer | key );
 }
 
 
