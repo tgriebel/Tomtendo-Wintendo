@@ -253,7 +253,7 @@ uint8_t& PPU::PPUDATA( const uint8_t value )
 
 uint8_t& PPU::PPUDATA()
 {
-	// ppuReadBuffer[1] is the internal read buffer buy ppuReadBuffer[0] is used to return a 'safe' writable byte
+	// ppuReadBuffer[1] is the internal read buffer but ppuReadBuffer[0] is used to return a 'safe' writable byte
 	// This is due to the current (wonky) memory design
 	ppuReadBuffer[0] = ppuReadBuffer[1];
 
@@ -504,20 +504,38 @@ uint8_t PPU::GetChrRomPalette( const uint8_t plane0, const uint8_t plane1, const
 	return ( lowerBits & 0x03 );
 }
 
+static int chrRamAddr = 0;
+
 
 uint8_t PPU::ReadVram( const uint16_t addr )
 {
-	if( addr < 0x2000 )
-	{
-		const uint16_t baseAddr = system->cart->header.prgRomBanks * NesSystem::BankSize;
-
-		return system->cart->rom[baseAddr + addr];
-	}
-	else
+	// TODO: Has CHR-RAM check
+	bool isUnrom = system->cart->header.controlBits0.mapperNumberLower == 2;
+	if ( addr >= 0x2000 )
 	{
 		const uint16_t adjustedAddr = MirrorVram( addr );
 		assert( adjustedAddr < VirtualMemorySize );
 		return vram[adjustedAddr];
+	}
+	else if ( isUnrom && ( addr < 0x2000 ) )
+	{
+		/*/
+		if( addr >= 0x1000 )
+		{
+			return forcePatterntable[addr - 0x1000];
+		}
+		else*/
+		{
+			const uint16_t adjustedAddr = MirrorVram(addr);
+			assert(adjustedAddr < VirtualMemorySize);
+			return vram[adjustedAddr];
+		}
+	}
+	else
+	{
+		const uint16_t baseAddr = system->cart->header.prgRomBanks * NesSystem::BankSize;
+
+		return system->cart->rom[baseAddr + addr];
 	}
 }
 
@@ -531,9 +549,18 @@ void PPU::WriteVram()
 			const uint16_t adjustedAddr = MirrorVram( regV.raw );
 			//assert( ( adjustedAddr < VirtualMemorySize ) && ( adjustedAddr >= 0x2000 ) );
 
-			if( adjustedAddr >= 0x2000 )
+			if ( adjustedAddr >= 0x2000 )
 			{
 				vram[adjustedAddr] = registers[PPUREG_DATA];
+			}
+
+			// TODO: Has CHR-RAM check
+			bool isUnrom = system->cart->header.controlBits0.mapperNumberLower == 2;
+			if ( isUnrom && ( adjustedAddr < 0x2000 ) )
+			{
+				vram[adjustedAddr] = registers[PPUREG_DATA];
+
+			//	chrRamAddr = ( chrRamAddr + 1 ) % 0x2000;
 			}
 		}
 
@@ -591,9 +618,9 @@ uint8_t PPU::BgPipelineDecodePalette()
 
 void PPU::DrawTile( uint32_t imageBuffer[], const WtRect& imageRect, const WtPoint& nametableTile, const uint32_t ntId, const uint32_t ptrnTableId )
 {
-	for ( uint32_t y = 0; y < PPU::NameTableTilePixels; ++y )
+	for ( uint32_t y = 0; y < PPU::TilePixels; ++y )
 	{
-		for ( uint32_t x = 0; x < PPU::NameTableTilePixels; ++x )
+		for ( uint32_t x = 0; x < PPU::TilePixels; ++x )
 		{
 			WtPoint point;
 			WtPoint chrRomPoint;
@@ -619,6 +646,39 @@ void PPU::DrawTile( uint32_t imageBuffer[], const WtRect& imageRect, const WtPoi
 			const uint32_t imageY = imageRect.y + y;
 
 			const uint8_t colorIx = chrRomColor == 0 ? ReadVram( PPU::PaletteBaseAddr ) : ReadVram( PPU::PaletteBaseAddr + finalPalette );
+
+			Pixel pixelColor;
+
+			Bitmap::CopyToPixel( palette[colorIx], pixelColor, BITMAP_BGRA );
+
+			imageBuffer[imageX + imageY * imageRect.width] = pixelColor.raw;
+		}
+	}
+}
+
+
+void PPU::DrawTile( uint32_t imageBuffer[], const WtRect& imageRect, const uint32_t tileId, const uint32_t ptrnTableId )
+{
+	for ( uint32_t y = 0; y < PPU::TilePixels; ++y )
+	{
+		for ( uint32_t x = 0; x < PPU::TilePixels; ++x )
+		{
+			WtPoint chrRomPoint;
+
+			chrRomPoint.x = x;
+			chrRomPoint.y = y;
+
+			static uint32_t toggleTable = 0;
+
+			const uint8_t chrRom0 = toggleTable == 1 ? 0 : GetChrRom( tileId, 0, ptrnTableId, chrRomPoint.y );
+			const uint8_t chrRom1 = toggleTable == 2 ? 0 : GetChrRom( tileId, 1, ptrnTableId, chrRomPoint.y );
+
+			const uint16_t chrRomColor = GetChrRomPalette( chrRom0, chrRom1, chrRomPoint.x );
+
+			const uint32_t imageX = imageRect.x + x;
+			const uint32_t imageY = imageRect.y + y;
+
+			const uint8_t colorIx = ReadVram( PPU::PaletteBaseAddr + chrRomColor );
 
 			Pixel pixelColor;
 
@@ -746,7 +806,7 @@ void PPU::DrawDebugPalette( uint32_t imageBuffer[] )
 
 void PPU::LoadSecondaryOAM()
 {
-	if( !loadingSecondingOAM )
+	if( !loadingSecondaryOAM )
 	{
 		return;
 	}
@@ -781,7 +841,7 @@ void PPU::LoadSecondaryOAM()
 		}
 	}
 
-	loadingSecondingOAM = false;
+	loadingSecondaryOAM = false;
 }
 
 
@@ -976,7 +1036,7 @@ const ppuCycle_t PPU::Exec()
 		scanelineCycle++;
 
 		sprite0InList = false;
-		loadingSecondingOAM = true;
+		loadingSecondaryOAM = true;
 		LoadSecondaryOAM();
 //		OAMDATA( 0xFF );
 	}

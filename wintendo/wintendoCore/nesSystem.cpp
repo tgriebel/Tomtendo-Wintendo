@@ -21,16 +21,20 @@ void NesSystem::LoadProgram( const NesCart& loadCart, const uint32_t resetVector
 
 	memcpy( memory + Bank0, loadCart.rom, BankSize );
 
-	assert( loadCart.header.prgRomBanks <= 2 );
-
 	// Mapper - 0
 	if ( loadCart.header.prgRomBanks == 1 )
 	{
 		memcpy( memory + Bank1, loadCart.rom, BankSize );
 	}
-	else
+	else if ( loadCart.header.prgRomBanks == 2 )
 	{
 		memcpy( memory + Bank1, loadCart.rom + BankSize, BankSize );
+	}
+	else if ( loadCart.header.prgRomBanks > 2 )
+	{
+		// Should be the only logic needed for all cases
+		size_t bank = loadCart.header.prgRomBanks - 1;
+		memcpy( memory + Bank1, loadCart.rom + bank * BankSize, BankSize );
 	}
 
 	if ( resetVectorManual == 0x10000 )
@@ -41,6 +45,12 @@ void NesSystem::LoadProgram( const NesCart& loadCart, const uint32_t resetVector
 	{
 		cpu.resetVector = static_cast< uint16_t >( resetVectorManual & 0xFFFF );
 	}
+
+	prgRomBank = 0;
+
+	//const uint16_t baseAddr = loadCart.header.prgRomBanks * NesSystem::BankSize;
+
+	//memcpy( &ppu.vram[0], &loadCart.rom[baseAddr], 0x2000 );
 
 	cpu.nmiVector = Combine( memory[NmiVectorAddr], memory[NmiVectorAddr + 1] );
 	cpu.irqVector = Combine( memory[IrqVectorAddr], memory[IrqVectorAddr + 1] );
@@ -126,6 +136,7 @@ uint8_t& NesSystem::GetMemory( const uint16_t address )
 
 		controllerBuffer0 = ( GetKeyBuffer() >> ( 7 - btnShift ) ) & 0x01;
 		++btnShift;
+		btnShift %= 8;
 
 		return controllerBuffer0;
 	}
@@ -163,6 +174,9 @@ bool NesSystem::Run( const masterCycles_t& nextCycle )
 	static const masterCycles_t ticks( CpuClockDivide );
 
 #if DEBUG_MODE == 1
+	cpu.debugFrame = cpu.debugNextFrame ? true : cpu.debugFrame;
+	cpu.debugNextFrame = false;
+
 	if( cpu.debugFrame )
 	{
 		cpu.logFile.open( "tomTendo.log" );

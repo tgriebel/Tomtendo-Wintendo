@@ -218,9 +218,9 @@ struct PPU
 	static const uint32_t AttribTableWidthTiles		= 8;
 	static const uint32_t AttribTableWHeightTiles	= 8;
 	static const uint32_t NtTilesPerAttribute		= 4;
-	static const uint32_t NameTableTilePixels		= 8;
-	static const uint32_t NameTableWidthPixels		= NameTableWidthTiles * NameTableTilePixels;
-	static const uint32_t NameTableHeightPixels		= NameTableHeightTiles * NameTableTilePixels;
+	static const uint32_t TilePixels		= 8;
+	static const uint32_t NameTableWidthPixels		= NameTableWidthTiles * TilePixels;
+	static const uint32_t NameTableHeightPixels		= NameTableHeightTiles * TilePixels;
 	static const uint32_t RegisterCount				= 8;
 	static const uint32_t ScanlineCycles			= 341;
 	//static const ppuCycle_t VBlankCycles = ppuCycle_t( 20 * 341 * 5 );
@@ -229,14 +229,14 @@ struct PPU
 	PpuMask regMask;
 	PpuStatus regStatus;
 
-	bool genNMI;
+	bool genNMI = false;
 
-	int currentScanline;
+	int currentScanline = 0;
 	ppuCycle_t scanelineCycle;
 
 	WtPoint beamPosition;
 
-	bool loadingSecondingOAM;
+	bool loadingSecondaryOAM = false;
 	OamPipeLineData primaryOamSpriteData;
 
 	bool nmiOccurred;
@@ -327,6 +327,7 @@ struct PPU
 	void DrawPixel( uint32_t imageBuffer[], const WtRect& imageRect );
 	void DrawBlankScanline( uint32_t imageBuffer[], const WtRect& imageRect, const uint8_t scanY );
 	void DrawTile( uint32_t imageBuffer[], const WtRect& imageRect, const WtPoint& nametableTile, const uint32_t ntId, const uint32_t ptrnTableId );
+	void DrawTile( uint32_t imageBuffer[], const WtRect& imageRect, const uint32_t tileId, const uint32_t ptrnTableId );
 	void DrawSpritePixel( uint32_t imageBuffer[], const WtRect& imageRect, const PpuSpriteAttrib attribs, const WtPoint& point, const uint8_t bgPixel, bool sprite0 );
 	void DrawSprites( const uint32_t tableId );
 	void DrawDebugPalette( uint32_t imageBuffer[] );
@@ -355,6 +356,26 @@ struct PPU
 	PPU()
 	{
 		cycle = ppuCycle_t( 0 );
+
+		genNMI = false;
+		attrib = 0;
+		chrLatch[0] = 0;
+		chrLatch[1] = 0;
+		chrShifts[0] = 0;
+		chrShifts[1] = 0;
+		loadingSecondaryOAM = false;
+		nmiOccurred = false;
+		palLatch[0] = 0;
+		palLatch[1] = 0;
+		palShifts[0] = 0;
+		palShifts[1] = 0;
+		ppuReadBuffer[0] = 0;
+		ppuReadBuffer[1] = 0;
+
+		system = nullptr;
+
+		memset( secondaryOAM, 0, sizeof( secondaryOAM ) );
+		memset( vram, 0, sizeof( vram ) );
 
 		currentScanline = PRERENDER_SCANLINE;
 		scanelineCycle = ppuCycle_t( 0 );
