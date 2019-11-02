@@ -23,7 +23,7 @@ NesCart cart;
 
 typedef std::chrono::time_point<std::chrono::steady_clock> timePoint_t;
 timePoint_t previousTime;
-bool lockFps = false;
+bool lockFps = true;
 
 
 int InitSystem( const char* filePath )

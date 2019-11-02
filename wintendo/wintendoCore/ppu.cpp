@@ -72,8 +72,8 @@ void PPU::GenerateDMA()
 
 uint8_t PPU::DMA( const uint16_t address )
 {
-	//	assert( address == 0 ); // need to handle other case
-	memcpy( primaryOAM, &system->GetMemory( Combine( 0x00, static_cast<uint8_t>( address ) ) ), 256 );
+	//assert( address == 0 ); // test this case
+	memcpy( primaryOAM, &system->GetMemory( 0x0100 * static_cast<uint8_t>( address ) ), 0xFF );
 
 	return 0;
 }
@@ -293,7 +293,7 @@ void PPU::IncRenderAddr()
 {
 	if( DataportEnabled() )
 	{
-		regV.raw += regCtrl.sem.vramInc ? 32 : 1;
+		regV.raw += regCtrl.sem.vramInc ? 0x20 : 0x01;
 	}
 }
 

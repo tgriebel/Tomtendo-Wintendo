@@ -13,5 +13,4 @@ void CopyNametable( uint32_t destBuffer[], const size_t destSize );
 void CopyPalette( uint32_t destBuffer[], const size_t destSize );
 void CopyPatternTable0( uint32_t destBuffer[], const size_t destSize );
 void CopyPatternTable1( uint32_t destBuffer[], const size_t destSize );
-void StoreKey( uint8_t keys );
 void SetGameName( const char* name );

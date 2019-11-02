@@ -88,9 +88,8 @@ public:
 	// TODO: Need to support two controllers and clean this up
 	std::atomic<Controller> controller;
 	bool	strobeOn;
-	uint8_t	btnShift;
-	uint8_t controllerBuffer0;
-	uint8_t controllerBuffer1;
+	uint8_t	btnShift[2];
+	uint8_t controllerBuffer[2];
 
 #if DEBUG_ADDR == 1
 	std::map<uint16_t, uint8_t> memoryDebug;
@@ -113,7 +112,10 @@ public:
 		ppu.palette= &DefaultPalette[0];
 
 		strobeOn = false;
-		btnShift = 0;
+		btnShift[0] = 0;
+		btnShift[1] = 0;
+		controllerBuffer[0] = 0;
+		controllerBuffer[1] = 0;
 
 		cart = nullptr;
 
