@@ -92,8 +92,7 @@ struct Cpu6502
 	std::stringstream debugAddr;
 	std::ofstream logFile;
 	bool printToOutput = false;
-	bool debugFrame = false;
-	bool debugNextFrame = false;
+	int logFrameCount = 30;
 #endif
 
 	bool forceStop = false;

@@ -174,10 +174,7 @@ bool NesSystem::Run( const masterCycles_t& nextCycle )
 	static const masterCycles_t ticks( CpuClockDivide );
 
 #if DEBUG_MODE == 1
-	cpu.debugFrame = cpu.debugNextFrame ? true : cpu.debugFrame;
-	cpu.debugNextFrame = false;
-
-	if( cpu.debugFrame )
+	if( ( cpu.logFrameCount > 0 ) && !cpu.logFile.is_open() )
 	{
 		cpu.logFile.open( "tomTendo.log" );
 	}
@@ -203,11 +200,11 @@ bool NesSystem::Run( const masterCycles_t& nextCycle )
 #endif // #if DEBUG_MODE == 1
 
 #if DEBUG_ADDR == 1
-	if ( cpu.debugFrame )
+	if ( cpu.logFrameCount <= 0 )
 	{
 		cpu.logFile.close();
-		cpu.debugFrame = false;
 	}
+	cpu.logFrameCount--;
 #endif // #if DEBUG_ADDR == 1
 
 	return isRunning;

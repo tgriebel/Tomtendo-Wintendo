@@ -11,7 +11,7 @@
 		cpu.debugAddr << " = " << setw( 2 ) << hex << static_cast< uint32_t >( value ); \
 	}
 
-#define DEBUG_ADDR_INDEXED_ABS if( debugFrame ) \
+#define DEBUG_ADDR_INDEXED_ABS if( logFrameCount > 0 ) \
 	{ \
 		uint8_t& value = system->GetMemory( address ); \
 		debugAddr.str( std::string() ); \
@@ -21,7 +21,7 @@
 		debugAddr << " = " << setw( 2 ) << hex << static_cast< uint32_t >( value ); \
 	}
 
-#define DEBUG_ADDR_ZERO if( cpu.debugFrame ) \
+#define DEBUG_ADDR_ZERO if( cpu.logFrameCount > 0 ) \
 	{ \
 		uint8_t& value = cpu.system->GetMemory( address ); \
 		cpu.debugAddr.str( std::string() ); \
@@ -29,7 +29,7 @@
 		cpu.debugAddr << " = " << setfill( '0' ) << setw( 2 ) << hex << static_cast< uint32_t >( value ); \
 	}
 
-#define DEBUG_ADDR_ABS if( cpu.debugFrame ) \
+#define DEBUG_ADDR_ABS if( cpu.logFrameCount > 0 ) \
 	{ \
 		uint8_t& value = cpu.system->GetMemory( address ); \
 		cpu.debugAddr.str( std::string() ); \
@@ -37,13 +37,13 @@
 		cpu.debugAddr << " = " << setfill( '0' ) << setw( 2 ) << hex << static_cast< uint32_t >( value ); \
 	}
 
-#define DEBUG_ADDR_IMMEDIATE if( cpu.debugFrame ) \
+#define DEBUG_ADDR_IMMEDIATE if( cpu.logFrameCount > 0 ) \
 	{ \
 		cpu.debugAddr.str( std::string() ); \
 		cpu.debugAddr << uppercase << "#$" << setfill( '0' ) << setw( 2 ) << hex << static_cast< uint32_t >( value ); \
 	}
 
-#define DEBUG_ADDR_INDIRECT_INDEXED if( cpu.debugFrame ) \
+#define DEBUG_ADDR_INDIRECT_INDEXED if( cpu.logFrameCount > 0 ) \
 	{ \
 		uint8_t& value = cpu.system->GetMemory( offset ); \
 		cpu.debugAddr.str( std::string() ); \
@@ -52,7 +52,7 @@
 		cpu.debugAddr << " @ " << setw( 4 ) << hex << offset << " = " << setw( 2 ) << hex << static_cast< uint32_t >( value ); \
 	}
 
-#define DEBUG_ADDR_INDEXED_INDIRECT if( cpu.debugFrame ) \
+#define DEBUG_ADDR_INDEXED_INDIRECT if( cpu.logFrameCount > 0 ) \
 	{ \
 		uint8_t& value = cpu.system->GetMemory( address ); \
 		cpu.debugAddr.str( std::string() ); \
@@ -61,28 +61,28 @@
 		cpu.debugAddr << " = " << setw( 4 ) << address << " = " << setw( 2 ) << static_cast< uint32_t >( value ); \
 	}
 
-#define DEBUG_ADDR_ACCUMULATOR if( cpu.debugFrame ) { \
+#define DEBUG_ADDR_ACCUMULATOR if( cpu.logFrameCount > 0 ) { \
 		cpu.debugAddr.str( std::string() ); \
 		cpu.debugAddr << "A"; \
 	}
 
-#define DEBUG_ADDR_JMP if( debugFrame ) { \
+#define DEBUG_ADDR_JMP if( logFrameCount > 0 ) { \
 		debugAddr.str( std::string() ); \
 		debugAddr << uppercase << setfill( '0' ) << "$" << setw( 2 ) << hex << PC; \
 	}
 
-#define DEBUG_ADDR_JMPI if( debugFrame ) { \
+#define DEBUG_ADDR_JMPI if( logFrameCount > 0 ) { \
 		debugAddr.str( std::string() ); \
 		debugAddr << uppercase << setfill( '0' ) << "($" << setw( 4 ) << hex << addr0; \
 		debugAddr << ") = " << setw( 4 ) << hex << PC; \
 	}
 
-#define DEBUG_ADDR_JSR if( debugFrame ) { \
+#define DEBUG_ADDR_JSR if( logFrameCount > 0 ) { \
 		debugAddr.str( std::string() ); \
 		debugAddr << uppercase << "$" << setfill( '0' ) << setw( 2 ) << hex << PC; \
 	}
 
-#define DEBUG_ADDR_BRANCH if( debugFrame ) { \
+#define DEBUG_ADDR_BRANCH if( logFrameCount > 0 ) { \
 		debugAddr.str( std::string() ); \
 		debugAddr << uppercase << "$" << setfill( '0' ) << setw( 2 ) << hex << branchedPC; \
 	}
