@@ -218,7 +218,7 @@ struct PPU
 	static const uint32_t AttribTableWidthTiles		= 8;
 	static const uint32_t AttribTableWHeightTiles	= 8;
 	static const uint32_t NtTilesPerAttribute		= 4;
-	static const uint32_t TilePixels		= 8;
+	static const uint32_t TilePixels				= 8;
 	static const uint32_t NameTableWidthPixels		= NameTableWidthTiles * TilePixels;
 	static const uint32_t NameTableHeightPixels		= NameTableHeightTiles * TilePixels;
 	static const uint32_t RegisterCount				= 8;
@@ -256,10 +256,12 @@ struct PPU
 	PpuScrollReg regT;
 	uint16_t regX = 0x0000;
 	uint16_t regW = 0x0000;
+	uint8_t spriteLimit = SecondarySprites;
 
+	uint32_t debugVramWriteCounter[VirtualMemorySize];
 	uint8_t vram[VirtualMemorySize];
 	uint8_t primaryOAM[OamSize];
-	uint8_t secondaryOAM[OamSize/*OamSecondSize*/];
+	uint8_t secondaryOAM[OamSize];
 	bool sprite0InList; // In secondary OAM
 
 	uint8_t ppuReadBuffer[2];
@@ -341,7 +343,8 @@ struct PPU
 	uint8_t GetNtTile( const uint32_t ntId, const WtPoint& tileCoord );
 	uint8_t GetArribute( const uint32_t ntId, const WtPoint& tileCoord );
 	uint8_t GetTilePaletteId( const uint32_t attribTable, const WtPoint& tileCoord );
-	uint8_t GetChrRom( const uint32_t tileId, const uint8_t plane, const uint8_t ptrnTableId, const uint8_t row );
+	uint8_t GetChrRom8x8( const uint32_t tileId, const uint8_t plane, const uint8_t ptrnTableId, const uint8_t row );
+	uint8_t GetChrRom8x16( const uint32_t tileId, const uint8_t plane, const uint8_t row, const bool isUpper );
 
 	void LoadSecondaryOAM();
 	PpuSpriteAttrib GetSpriteData( const uint8_t spriteId, const uint8_t oam[] );
@@ -376,6 +379,7 @@ struct PPU
 
 		memset( secondaryOAM, 0, sizeof( secondaryOAM ) );
 		memset( vram, 0, sizeof( vram ) );
+		memset( debugVramWriteCounter, 0, VirtualMemorySize );
 
 		currentScanline = PRERENDER_SCANLINE;
 		scanelineCycle = ppuCycle_t( 0 );
