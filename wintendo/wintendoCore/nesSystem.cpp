@@ -144,14 +144,16 @@ uint8_t& NesSystem::GetMemory( const uint16_t address )
 	{
 		return apuDummyRegister;
 	}
-	else if ( IsDMA( address ) )
-	{
-		return memory[MirrorAddress( address )];
-	}
 	else
 	{
 		return memory[MirrorAddress( address )];
 	}
+}
+
+
+void NesSystem::WritePhysicalMemory( const uint16_t address, const uint8_t value )
+{
+	memory[MirrorAddress(address)] = value;
 }
 
 

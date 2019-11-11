@@ -123,14 +123,15 @@ public:
 
 	uint8_t& GetStack();
 	uint8_t& GetMemory( const uint16_t address );
+	void WritePhysicalMemory( const uint16_t address, const uint8_t value );
 	uint16_t MirrorAddress( const uint16_t address );
 
 	void LoadProgram( const NesCart& cart, const uint32_t resetVectorManual = 0x10000 );
 	bool Run( const masterCycles_t& nextCycle );
-	bool IsInputRegister( const uint16_t address );
-	bool IsPpuRegister( const uint16_t address );
-	bool IsApuRegister( const uint16_t address );
-	bool IsDMA( const uint16_t address );
+	static bool IsInputRegister( const uint16_t address );
+	static bool IsPpuRegister( const uint16_t address );
+	static bool IsApuRegister( const uint16_t address );
+	static bool IsDMA( const uint16_t address );
 	void CaptureInput( const Controller keys );
 	void WriteInput( const uint8_t value );
 };
