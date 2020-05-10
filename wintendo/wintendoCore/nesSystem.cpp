@@ -13,7 +13,7 @@
 
 using namespace std;
 
-ButtonFlags keyBuffer = BUTTON_NONE;
+ButtonFlags keyBuffer[2] = { BUTTON_NONE, BUTTON_NONE };
 
 void NesSystem::LoadProgram( const NesCart& loadCart, const uint32_t resetVectorManual )
 {
@@ -122,23 +122,23 @@ uint8_t& NesSystem::GetMemory( const uint16_t address )
 	}
 	else if ( IsInputRegister( address ) )
 	{
-		controllerBuffer0 = 0; // FIXME: this register is a hack to get around bad GetMemory func design
+		int controllerIndex = address - InputRegister0;
 
-		if ( strobeOn )
+		controllerBuffer[controllerIndex] = 0; // FIXME: this register is a hack to get around bad GetMemory func design
+
+		if (strobeOn)
 		{
-			// TEMP, strobe returns value of 'A'
-			// GetBuffer is only a single button for now
-			controllerBuffer0 = GetKeyBuffer() & ((ButtonFlags)0X80);
-			btnShift = 0;
+			controllerBuffer[controllerIndex] = GetKeyBuffer(controllerIndex) & ((ButtonFlags)0X80);
+			btnShift[controllerIndex] = 0;
 
-			return controllerBuffer0;
+			return controllerBuffer[controllerIndex];
 		}
 
-		controllerBuffer0 = ( GetKeyBuffer() >> ( 7 - btnShift ) ) & 0x01;
-		++btnShift;
-		btnShift %= 8;
+		controllerBuffer[controllerIndex] = (GetKeyBuffer(controllerIndex) >> (7 - btnShift[controllerIndex])) & 0x01;
+		++btnShift[controllerIndex];
+		btnShift[controllerIndex] %= 8;
 
-		return controllerBuffer0;
+		return controllerBuffer[controllerIndex];
 	}
 	else if( IsApuRegister( address ) )
 	{
@@ -205,11 +205,11 @@ bool NesSystem::Run( const masterCycles_t& nextCycle )
 #endif // #if DEBUG_MODE == 1
 
 #if DEBUG_ADDR == 1
-	if ( cpu.debugFrame )
+	if ( cpu.logFrameCount <= 0 )
 	{
 		cpu.logFile.close();
-		cpu.debugFrame = false;
 	}
+	cpu.logFrameCount--;
 #endif // #if DEBUG_ADDR == 1
 
 	return isRunning;

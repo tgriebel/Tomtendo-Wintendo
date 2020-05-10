@@ -2,8 +2,8 @@
 
 struct PPU;
 
-typedef uint8_t&( PPU::* PpuRegWriteFunc )( const uint8_t value );
-typedef uint8_t&( PPU::* PpuRegReadFunc )();
+typedef uint8_t& ( PPU::* PpuRegWriteFunc )( const uint8_t value );
+typedef uint8_t& ( PPU::* PpuRegReadFunc )( );
 
 union Pixel;
 struct RGBA;
@@ -41,14 +41,14 @@ enum VramInc : uint8_t
 
 enum MasterSlaveMode : uint8_t
 {
-	MASTER_SLAVE_READ_EXT	= 0x00,
-	MASTER_SLAVE_WRITE_EXT	= 0x01,
+	MASTER_SLAVE_READ_EXT = 0x00,
+	MASTER_SLAVE_WRITE_EXT = 0x01,
 };
 
 enum NmiVblank : uint8_t
 {
-	NMI_VBLANK_OFF	= 0X00,
-	NMI_VBLANK_ON	= 0X01,
+	NMI_VBLANK_OFF = 0X00,
+	NMI_VBLANK_ON = 0X01,
 };
 
 
@@ -70,14 +70,14 @@ union PpuCtrl
 {
 	struct PpuCtrlSemantic
 	{
-		Nametable		ntId			: 2;
-		VramInc			vramInc			: 1;
-		PatternTable	spriteTableId	: 1;
-	
-		PatternTable	bgTableId		: 1;
-		SpriteMode		spriteSize		: 1;
-		MasterSlaveMode	masterSlaveMode	: 1;
-		NmiVblank		nmiVblank		: 1;
+		Nametable		ntId : 2;
+		VramInc			vramInc : 1;
+		PatternTable	spriteTableId : 1;
+
+		PatternTable	bgTableId : 1;
+		SpriteMode		spriteSize : 1;
+		MasterSlaveMode	masterSlaveMode : 1;
+		NmiVblank		nmiVblank : 1;
 	} sem;
 
 	uint8_t raw;
@@ -89,15 +89,15 @@ union PpuMask
 {
 	struct PpuMaskSemantic
 	{
-		uint8_t	greyscale	: 1;
-		uint8_t	bgLeft		: 1;
-		uint8_t	sprtLeft	: 1;
-		uint8_t	showBg		: 1;
+		uint8_t	greyscale : 1;
+		uint8_t	bgLeft : 1;
+		uint8_t	sprtLeft : 1;
+		uint8_t	showBg : 1;
 
-		uint8_t	showSprt	: 1;
-		uint8_t	emphazieR	: 1;
-		uint8_t	emphazieG	: 1;
-		uint8_t	emphazieB	: 1;
+		uint8_t	showSprt : 1;
+		uint8_t	emphazieR : 1;
+		uint8_t	emphazieG : 1;
+		uint8_t	emphazieB : 1;
 	} sem;
 
 	uint8_t raw;
@@ -108,11 +108,11 @@ union PpuScrollReg // Internal register T and V
 {
 	struct iRegScrollSemantic
 	{
-		uint16_t coarseX	: 5;
-		uint16_t coarseY	: 5;
-		uint16_t ntId		: 2;
-		uint16_t fineY		: 3;
-		uint16_t unused		: 1;
+		uint16_t coarseX : 5;
+		uint16_t coarseY : 5;
+		uint16_t ntId : 2;
+		uint16_t fineY : 3;
+		uint16_t unused : 1;
 	} sem;
 
 	uint16_t raw;
@@ -128,10 +128,10 @@ union PpuStatusLatch
 {
 	struct PpuStatusSemantic
 	{
-		uint8_t	lastReadLsb		: 5;
-		uint8_t	spriteOverflow	: 1;
-		uint8_t	spriteHit		: 1;
-		uint8_t	vBlank			: 1;
+		uint8_t	lastReadLsb : 5;
+		uint8_t	spriteOverflow : 1;
+		uint8_t	spriteHit : 1;
+		uint8_t	vBlank : 1;
 
 	} sem;
 
@@ -150,11 +150,12 @@ struct PpuStatus
 struct PpuAttribPaletteId
 {
 	struct PpuAttribSemantic
-	{;
-		uint8_t topLeft		: 2;
-		uint8_t topRight	: 2;
-		uint8_t bottomLeft	: 2;
-		uint8_t bottomRight	: 2;
+	{
+		;
+		uint8_t topLeft : 2;
+		uint8_t topRight : 2;
+		uint8_t bottomLeft : 2;
+		uint8_t bottomRight : 2;
 	} sem;
 
 	uint8_t raw;
@@ -200,29 +201,29 @@ enum PpuScanLine
 
 struct PPU
 {
-	static const uint32_t VirtualMemorySize			= 0x10000;
-	static const uint32_t PhysicalMemorySize		= 0x4000;
-	static const uint32_t OamSize					= 0x0100;
-	static const uint32_t OamSecondSize				= 0x0020;
-	static const uint32_t NametableMemorySize		= 0x03C0;
-	static const uint32_t AttributeTableMemorySize	= 0x0040;
-	static const uint32_t NameTableAttribMemorySize	= NametableMemorySize + AttributeTableMemorySize;
-	static const uint16_t NameTable0BaseAddr		= 0x2000;
-	static const uint16_t AttribTable0BaseAddr		= NameTable0BaseAddr + NametableMemorySize;
-	static const uint16_t PaletteBaseAddr			= 0x3F00;
-	static const uint16_t SpritePaletteAddr			= 0x3F10;
-	static const uint16_t TotalSprites				= 64;
-	static const uint16_t SecondarySprites			= 8;
-	static const uint32_t NameTableWidthTiles		= 32;
-	static const uint32_t NameTableHeightTiles		= 30;
-	static const uint32_t AttribTableWidthTiles		= 8;
-	static const uint32_t AttribTableWHeightTiles	= 8;
-	static const uint32_t NtTilesPerAttribute		= 4;
-	static const uint32_t TilePixels		= 8;
-	static const uint32_t NameTableWidthPixels		= NameTableWidthTiles * TilePixels;
-	static const uint32_t NameTableHeightPixels		= NameTableHeightTiles * TilePixels;
-	static const uint32_t RegisterCount				= 8;
-	static const uint32_t ScanlineCycles			= 341;
+	static const uint32_t VirtualMemorySize = 0x10000;
+	static const uint32_t PhysicalMemorySize = 0x4000;
+	static const uint32_t OamSize = 0x0100;
+	static const uint32_t OamSecondSize = 0x0020;
+	static const uint32_t NametableMemorySize = 0x03C0;
+	static const uint32_t AttributeTableMemorySize = 0x0040;
+	static const uint32_t NameTableAttribMemorySize = NametableMemorySize + AttributeTableMemorySize;
+	static const uint16_t NameTable0BaseAddr = 0x2000;
+	static const uint16_t AttribTable0BaseAddr = NameTable0BaseAddr + NametableMemorySize;
+	static const uint16_t PaletteBaseAddr = 0x3F00;
+	static const uint16_t SpritePaletteAddr = 0x3F10;
+	static const uint16_t TotalSprites = 64;
+	static const uint16_t SecondarySprites = 8;
+	static const uint32_t NameTableWidthTiles = 32;
+	static const uint32_t NameTableHeightTiles = 30;
+	static const uint32_t AttribTableWidthTiles = 8;
+	static const uint32_t AttribTableWHeightTiles = 8;
+	static const uint32_t NtTilesPerAttribute = 4;
+	static const uint32_t TilePixels = 8;
+	static const uint32_t NameTableWidthPixels = NameTableWidthTiles * TilePixels;
+	static const uint32_t NameTableHeightPixels = NameTableHeightTiles * TilePixels;
+	static const uint32_t RegisterCount = 8;
+	static const uint32_t ScanlineCycles = 341;
 	//static const ppuCycle_t VBlankCycles = ppuCycle_t( 20 * 341 * 5 );
 
 	PpuCtrl regCtrl;
@@ -256,10 +257,12 @@ struct PPU
 	PpuScrollReg regT;
 	uint16_t regX = 0x0000;
 	uint16_t regW = 0x0000;
+	uint8_t spriteLimit = SecondarySprites;
 
+	uint32_t debugVramWriteCounter[VirtualMemorySize];
 	uint8_t vram[VirtualMemorySize];
 	uint8_t primaryOAM[OamSize];
-	uint8_t secondaryOAM[OamSize/*OamSecondSize*/];
+	uint8_t secondaryOAM[OamSize];
 	bool sprite0InList; // In secondary OAM
 
 	uint8_t ppuReadBuffer[2];
@@ -277,6 +280,9 @@ struct PPU
 	uint16_t attrib;
 
 	uint8_t registers[9]; // no need?
+
+	static void GenerateMirrorMap();
+	static uint16_t StaticMirrorVram( uint16_t addr, uint32_t mirrorMode );
 
 	uint8_t& PPUCTRL( const uint8_t value );
 	uint8_t& PPUCTRL();
@@ -341,7 +347,8 @@ struct PPU
 	uint8_t GetNtTile( const uint32_t ntId, const WtPoint& tileCoord );
 	uint8_t GetArribute( const uint32_t ntId, const WtPoint& tileCoord );
 	uint8_t GetTilePaletteId( const uint32_t attribTable, const WtPoint& tileCoord );
-	uint8_t GetChrRom( const uint32_t tileId, const uint8_t plane, const uint8_t ptrnTableId, const uint8_t row );
+	uint8_t GetChrRom8x8( const uint32_t tileId, const uint8_t plane, const uint8_t ptrnTableId, const uint8_t row );
+	uint8_t GetChrRom8x16( const uint32_t tileId, const uint8_t plane, const uint8_t row, const bool isUpper );
 
 	void LoadSecondaryOAM();
 	PpuSpriteAttrib GetSpriteData( const uint8_t spriteId, const uint8_t oam[] );
@@ -376,6 +383,7 @@ struct PPU
 
 		memset( secondaryOAM, 0, sizeof( secondaryOAM ) );
 		memset( vram, 0, sizeof( vram ) );
+		memset( debugVramWriteCounter, 0, VirtualMemorySize );
 
 		currentScanline = PRERENDER_SCANLINE;
 		scanelineCycle = ppuCycle_t( 0 );
@@ -397,6 +405,8 @@ struct PPU
 		curShift = 0;
 
 		inVBlank = true;
+
+		GenerateMirrorMap();
 	}
 
 
@@ -417,7 +427,6 @@ static const PpuRegWriteFunc PpuRegWriteMap[PPU::RegisterCount] =
 };
 
 
-
 static const PpuRegReadFunc PpuRegReadMap[PPU::RegisterCount] =
 {
 	&PPU::PPUCTRL,
@@ -429,4 +438,3 @@ static const PpuRegReadFunc PpuRegReadMap[PPU::RegisterCount] =
 	&PPU::PPUADDR,
 	&PPU::PPUDATA,
 };
-

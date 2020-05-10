@@ -72,9 +72,8 @@ void PPU::GenerateDMA()
 
 uint8_t PPU::DMA( const uint16_t address )
 {
-	//	assert( address == 0 ); // need to handle other case
-	memcpy( primaryOAM, &system->GetMemory( Combine( 0x00, static_cast<uint8_t>( address ) ) ), 256 );
-
+	const void* memoryAddress = &system->GetMemory( NesSystem::PageSize * static_cast<uint8_t>( address ) );
+	memcpy( primaryOAM, memoryAddress, NesSystem::PageSize );
 	return 0;
 }
 
@@ -122,7 +121,7 @@ uint8_t& PPU::PPUSTATUS( const uint8_t value )
 	regStatus.hasLatch = true;
 	registers[PPUREG_ADDR] = 0;
 	registers[PPUREG_DATA] = 0;
-	
+
 	return regStatus.current.raw;
 }
 
@@ -182,7 +181,7 @@ uint8_t& PPU::PPUSCROLL( const uint8_t value )
 {
 	registers[PPUREG_SCROLL] = value;
 
-	if( regW == 0 )
+	if ( regW == 0 )
 	{
 		regX = ( value & 0x07 );
 		regT.sem.coarseX = value >> 3;
@@ -192,7 +191,7 @@ uint8_t& PPU::PPUSCROLL( const uint8_t value )
 		regT.sem.fineY = value & 0x07;
 		regT.sem.coarseY = ( value & 0xF8 ) >> 3;
 	}
-	
+
 	regW ^= 0x01;
 
 	regStatus.current.sem.lastReadLsb = ( value & 0x1F );
@@ -213,9 +212,9 @@ uint8_t& PPU::PPUADDR( const uint8_t value )
 
 	regStatus.current.sem.lastReadLsb = ( value & 0x1F );
 
-	if( regW == 0 )
+	if ( regW == 0 )
 	{
-		regT.raw = ( regT.raw & 0x00FF) | ( ( value & 0x3F ) << 8 );
+		regT.raw = ( regT.raw & 0x00FF ) | ( ( value & 0x3F ) << 8 );
 	}
 	else
 	{
@@ -237,7 +236,7 @@ uint8_t& PPU::PPUADDR()
 
 uint8_t& PPU::PPUDATA( const uint8_t value )
 {
-	if( DataportEnabled() )
+	if ( DataportEnabled() )
 	{
 		registers[PPUREG_DATA] = value;
 
@@ -261,7 +260,7 @@ uint8_t& PPU::PPUDATA()
 	{
 		ppuReadBuffer[1] = ReadVram( regV.raw );
 
-		if( regV.raw >= PaletteBaseAddr )
+		if ( regV.raw >= PaletteBaseAddr )
 		{
 			ppuReadBuffer[0] = ppuReadBuffer[1];
 		}
@@ -291,9 +290,9 @@ uint8_t& PPU::OAMDMA()
 
 void PPU::IncRenderAddr()
 {
-	if( DataportEnabled() )
+	if ( DataportEnabled() )
 	{
-		regV.raw += regCtrl.sem.vramInc ? 32 : 1;
+		regV.raw += regCtrl.sem.vramInc ? 0x20 : 0x01;
 	}
 }
 
@@ -327,17 +326,17 @@ void PPU::BgPipelineFetch( const uint64_t scanlineCycle )
 		coarsePt.y = regV.sem.coarseY;
 
 		//const uint32_t attribute = GetArribute( regV0.sem.ntId, coarsePt );
-		const uint32_t attribute = ReadVram( AttribTable0BaseAddr | ( regV.sem.ntId << 10 ) | ( ( regV.sem.coarseY << 1 ) & 0xF8 ) | ( ( regV.sem.coarseX >> 2 ) & 0x07 ) );		
+		const uint32_t attribute = ReadVram( AttribTable0BaseAddr | ( regV.sem.ntId << 10 ) | ( ( regV.sem.coarseY << 1 ) & 0xF8 ) | ( ( regV.sem.coarseX >> 2 ) & 0x07 ) );
 
 		plLatches.attribId = GetTilePaletteId( attribute, coarsePt );
 	}
 	else if ( cycleCountAdjust == 5 )
 	{
-		plLatches.chrRom0 = GetChrRom( plLatches.tileId, 0, GetBgPatternTableId(), regV.sem.fineY );
+		plLatches.chrRom0 = GetChrRom8x8( plLatches.tileId, 0, GetBgPatternTableId(), regV.sem.fineY );
 	}
-	else if( cycleCountAdjust == 7 )
+	else if ( cycleCountAdjust == 7 )
 	{
-		plLatches.chrRom1 = GetChrRom( plLatches.tileId, 1, GetBgPatternTableId(), regV.sem.fineY );
+		plLatches.chrRom1 = GetChrRom8x8( plLatches.tileId, 1, GetBgPatternTableId(), regV.sem.fineY );
 		plLatches.flags = 0x1;
 		AdvanceXScroll( scanlineCycle );
 
@@ -356,8 +355,8 @@ void PPU::BgPipelineFetch( const uint64_t scanlineCycle )
 		{
 			palShifts[0] <<= 1;
 			palShifts[1] <<= 1;
-			palShifts[0] |= ( plShifts[curShift^1].attribId >> 2 ) & 0x1;
-			palShifts[1] |= ( ( plShifts[curShift^1].attribId >> 2 ) & 0x2 ) >> 1;
+			palShifts[0] |= ( plShifts[curShift ^ 1].attribId >> 2 ) & 0x1;
+			palShifts[1] |= ( ( plShifts[curShift ^ 1].attribId >> 2 ) & 0x2 ) >> 1;
 		}
 
 		curShift ^= 0x1;
@@ -383,13 +382,8 @@ uint8_t PPU::GetNameTableId()
 }
 
 
-uint16_t PPU::MirrorVram( uint16_t addr )
+uint16_t PPU::StaticMirrorVram( uint16_t addr, uint32_t mirrorMode )
 {
-	const iNesHeader::ControlsBits0 controlBits0 = system->cart->header.controlBits0;
-	const iNesHeader::ControlsBits1 controlBits1 = system->cart->header.controlBits1;
-
-	uint32_t mirrorMode = controlBits0.fourScreenMirror ? 2 : controlBits0.mirror;
-
 	// Major mirror
 	addr %= 0x4000;
 
@@ -404,28 +398,28 @@ uint16_t PPU::MirrorVram( uint16_t addr )
 	{
 		if ( ( addr >= 0x2400 && addr < 0x2800 ) || ( addr >= 0x2C00 && addr < 0x3000 ) )
 		{
-			return ( addr - NameTableAttribMemorySize );
+			return ( addr - PPU::NameTableAttribMemorySize );
 		}
 	}
 	else if ( mirrorMode == 1 ) // Horizontal
 	{
 		if ( addr >= 0x2800 && addr < 0x3000 )
 		{
-			return ( addr - 2 * NameTableAttribMemorySize );
+			return ( addr - 2 * PPU::NameTableAttribMemorySize );
 		}
 	}
 	else if ( mirrorMode == 2 ) // Four screen
 	{
 		if ( addr >= 0x2000 && addr < 0x3000 )
 		{
-			return 0x2000 + ( addr % NameTableAttribMemorySize );
+			return 0x2000 + ( addr % PPU::NameTableAttribMemorySize );
 		}
 	}
 
 	// Palette Mirrors
 	if ( addr >= 0x3F20 && addr < 0x4000 )
 	{
-		addr = PaletteBaseAddr + ( ( addr & 0x00FF ) % 0x20 );
+		addr = PPU::PaletteBaseAddr + ( ( addr & 0x00FF ) % 0x20 );
 	}
 
 	if ( ( addr == 0x3F10 ) || ( addr == 0x3F14 ) || ( addr == 0x3F18 ) || ( addr == 0x3F1C ) )
@@ -436,19 +430,90 @@ uint16_t PPU::MirrorVram( uint16_t addr )
 	return addr;
 }
 
+static uint16_t MirrorMap[4][PPU::VirtualMemorySize];
 
-uint8_t PPU::GetNtTile( const uint32_t ntId, const WtPoint& tileCoord )
+void PPU::GenerateMirrorMap()
+{
+	for ( uint16_t mode = 0; mode < 4; ++mode )
+	{
+		for ( uint32_t addr = 0; addr < PPU::VirtualMemorySize; ++addr )
+		{
+			MirrorMap[mode][addr] = StaticMirrorVram( addr, mode );
+		}
+	}
+}
+
+
+uint16_t PPU::MirrorVram( uint16_t addr )
+{
+	const iNesHeader::ControlsBits0 controlBits0 = system->cart->header.controlBits0;
+	const iNesHeader::ControlsBits1 controlBits1 = system->cart->header.controlBits1;
+
+	uint32_t mirrorMode = controlBits0.fourScreenMirror ? 2 : controlBits0.mirror;
+
+	return MirrorMap[mirrorMode][addr];
+
+	/*
+	// Major mirror
+	addr %= 0x4000;
+
+	// Nametable Mirrors
+	if (addr >= 0x3000 && addr < 0x3F00)
+	{
+		addr -= 0x1000;
+	}
+
+	// Nametable Mirroring Modes
+	if (mirrorMode == 0) // Vertical
+	{
+		if ((addr >= 0x2400 && addr < 0x2800) || (addr >= 0x2C00 && addr < 0x3000))
+		{
+			return (addr - NameTableAttribMemorySize);
+		}
+	}
+	else if (mirrorMode == 1) // Horizontal
+	{
+		if (addr >= 0x2800 && addr < 0x3000)
+		{
+			return (addr - 2 * NameTableAttribMemorySize);
+		}
+	}
+	else if (mirrorMode == 2) // Four screen
+	{
+		if (addr >= 0x2000 && addr < 0x3000)
+		{
+			return 0x2000 + (addr % NameTableAttribMemorySize);
+		}
+	}
+
+	// Palette Mirrors
+	if (addr >= 0x3F20 && addr < 0x4000)
+	{
+		addr = PaletteBaseAddr + ((addr & 0x00FF) % 0x20);
+	}
+
+	if ((addr == 0x3F10) || (addr == 0x3F14) || (addr == 0x3F18) || (addr == 0x3F1C))
+	{
+		return (addr - 0x0010);
+	}
+
+	return addr;
+	*/
+}
+
+
+uint8_t PPU::GetNtTile( const uint32_t ntId, const WtPoint & tileCoord )
 {
 	const uint32_t ntBaseAddr = ( NameTable0BaseAddr + ntId * NameTableAttribMemorySize );
-	
+
 	return ReadVram( ntBaseAddr + tileCoord.x + tileCoord.y * NameTableWidthTiles );
 }
 
 
-uint8_t PPU::GetArribute( const uint32_t ntId, const WtPoint& tileCoord )
+uint8_t PPU::GetArribute( const uint32_t ntId, const WtPoint & tileCoord )
 {
-	const uint32_t ntBaseAddr		= NameTable0BaseAddr + ntId * NameTableAttribMemorySize;
-	const uint32_t attribBaseAddr	= ntBaseAddr + NametableMemorySize;
+	const uint32_t ntBaseAddr = NameTable0BaseAddr + ntId * NameTableAttribMemorySize;
+	const uint32_t attribBaseAddr = ntBaseAddr + NametableMemorySize;
 
 	const uint8_t attribXoffset = tileCoord.x >> 2;
 	const uint8_t attribYoffset = ( tileCoord.y >> 2 ) << 3;
@@ -459,7 +524,7 @@ uint8_t PPU::GetArribute( const uint32_t ntId, const WtPoint& tileCoord )
 }
 
 
-uint8_t PPU::GetTilePaletteId( const uint32_t attribTable, const WtPoint& tileCoord )
+uint8_t PPU::GetTilePaletteId( const uint32_t attribTable, const WtPoint & tileCoord )
 {
 	WtPoint attributeCorner;
 
@@ -485,11 +550,21 @@ uint8_t PPU::GetTilePaletteId( const uint32_t attribTable, const WtPoint& tileCo
 }
 
 
-uint8_t PPU::GetChrRom( const uint32_t tileId, const uint8_t plane, const uint8_t ptrnTableId, const uint8_t row )
+uint8_t PPU::GetChrRom8x8( const uint32_t tileId, const uint8_t plane, const uint8_t ptrnTableId, const uint8_t row )
 {
-	const uint8_t tileBytes		= 16;
-	const uint16_t baseAddr		= ptrnTableId * NesSystem::ChrRomSize;
-	const uint16_t chrRomBase	= baseAddr + tileId * tileBytes;
+	const uint8_t tileBytes = 16;
+	const uint16_t baseAddr = ptrnTableId * NesSystem::ChrRomSize;
+	const uint16_t chrRomBase = baseAddr + tileId * tileBytes;
+
+	return ReadVram( chrRomBase + row + 8 * ( plane & 0x01 ) );
+}
+
+
+uint8_t PPU::GetChrRom8x16( const uint32_t tileId, const uint8_t plane, const uint8_t row, const bool isUpper )
+{
+	const uint8_t tileBytes = 16;
+	const uint16_t baseAddr = ( tileId & 0x01 ) * NesSystem::ChrRomSize;
+	const uint16_t chrRomBase = baseAddr + ( ( tileId & ~0x01 ) + isUpper ) * tileBytes;
 
 	return ReadVram( chrRomBase + row + 8 * ( plane & 0x01 ) );
 }
@@ -506,7 +581,6 @@ uint8_t PPU::GetChrRomPalette( const uint8_t plane0, const uint8_t plane1, const
 
 static int chrRamAddr = 0;
 
-
 uint8_t PPU::ReadVram( const uint16_t addr )
 {
 	// TODO: Has CHR-RAM check
@@ -519,17 +593,9 @@ uint8_t PPU::ReadVram( const uint16_t addr )
 	}
 	else if ( isUnrom && ( addr < 0x2000 ) )
 	{
-		/*/
-		if( addr >= 0x1000 )
-		{
-			return forcePatterntable[addr - 0x1000];
-		}
-		else*/
-		{
-			const uint16_t adjustedAddr = MirrorVram(addr);
-			assert(adjustedAddr < VirtualMemorySize);
-			return vram[adjustedAddr];
-		}
+		const uint16_t adjustedAddr = MirrorVram( addr );
+		assert( adjustedAddr < VirtualMemorySize );
+		return vram[adjustedAddr];
 	}
 	else
 	{
@@ -547,20 +613,21 @@ void PPU::WriteVram()
 		if ( DataportEnabled() )
 		{
 			const uint16_t adjustedAddr = MirrorVram( regV.raw );
-			//assert( ( adjustedAddr < VirtualMemorySize ) && ( adjustedAddr >= 0x2000 ) );
 
 			if ( adjustedAddr >= 0x2000 )
 			{
 				vram[adjustedAddr] = registers[PPUREG_DATA];
+				debugVramWriteCounter[adjustedAddr]++;
 			}
 
+			static uint32_t addr = 0x1000;
 			// TODO: Has CHR-RAM check
 			bool isUnrom = system->cart->header.controlBits0.mapperNumberLower == 2;
 			if ( isUnrom && ( adjustedAddr < 0x2000 ) )
 			{
 				vram[adjustedAddr] = registers[PPUREG_DATA];
 
-			//	chrRamAddr = ( chrRamAddr + 1 ) % 0x2000;
+				debugVramWriteCounter[adjustedAddr]++;
 			}
 		}
 
@@ -575,7 +642,7 @@ void PPU::FrameBufferWritePixel( const uint32_t x, const uint32_t y, const Pixel
 }
 
 
-void PPU::DrawBlankScanline( uint32_t imageBuffer[], const WtRect& imageRect, const uint8_t scanY )
+void PPU::DrawBlankScanline( uint32_t imageBuffer[], const WtRect & imageRect, const uint8_t scanY )
 {
 	for ( int x = 0; x < NesSystem::ScreenWidth; ++x )
 	{
@@ -591,7 +658,7 @@ void PPU::DrawBlankScanline( uint32_t imageBuffer[], const WtRect& imageRect, co
 }
 
 
-void PPU::DrawPixel( uint32_t imageBuffer[], const WtRect& imageRect )
+void PPU::DrawPixel( uint32_t imageBuffer[], const WtRect & imageRect )
 {
 
 }
@@ -602,21 +669,21 @@ uint8_t PPU::BgPipelineDecodePalette()
 	uint8_t chrRomColor;
 
 	uint8_t paletteId = plShifts[curShift].attribId;
-	uint8_t chrRom0 = static_cast< uint8_t >( chrShifts[0] >> 8 );
-	uint8_t chrRom1 = static_cast< uint8_t >( chrShifts[1] >> 8 );
+	uint8_t chrRom0 = static_cast<uint8_t>( chrShifts[0] >> 8 );
+	uint8_t chrRom1 = static_cast<uint8_t>( chrShifts[1] >> 8 );
 
-	paletteId = GetChrRomPalette( palShifts[0], palShifts[1], static_cast< uint8_t >( regX ) );
+	paletteId = GetChrRomPalette( palShifts[0], palShifts[1], static_cast<uint8_t>( regX ) );
 	paletteId <<= 2;
 
 	static uint8_t shiftRegX = 0;
 
-	chrRomColor = GetChrRomPalette( chrRom0, chrRom1, static_cast< uint8_t >( regX ) );
+	chrRomColor = GetChrRomPalette( chrRom0, chrRom1, static_cast<uint8_t>( regX ) );
 
 	return ( paletteId | chrRomColor );
 }
 
 
-void PPU::DrawTile( uint32_t imageBuffer[], const WtRect& imageRect, const WtPoint& nametableTile, const uint32_t ntId, const uint32_t ptrnTableId )
+void PPU::DrawTile( uint32_t imageBuffer[], const WtRect & imageRect, const WtPoint & nametableTile, const uint32_t ntId, const uint32_t ptrnTableId )
 {
 	for ( uint32_t y = 0; y < PPU::TilePixels; ++y )
 	{
@@ -630,14 +697,14 @@ void PPU::DrawTile( uint32_t imageBuffer[], const WtRect& imageRect, const WtPoi
 
 			const uint32_t tileIx = GetNtTile( ntId, nametableTile );
 
-			const uint8_t attribute	= GetArribute( ntId, nametableTile );
-			const uint8_t paletteId	= GetTilePaletteId( attribute, nametableTile );
+			const uint8_t attribute = GetArribute( ntId, nametableTile );
+			const uint8_t paletteId = GetTilePaletteId( attribute, nametableTile );
 
 			chrRomPoint.x = x;
 			chrRomPoint.y = y;
 
-			const uint8_t chrRom0 = GetChrRom( tileIx, 0, ptrnTableId, chrRomPoint.y );
-			const uint8_t chrRom1 = GetChrRom( tileIx, 1, ptrnTableId, chrRomPoint.y );
+			const uint8_t chrRom0 = GetChrRom8x8( tileIx, 0, ptrnTableId, chrRomPoint.y );
+			const uint8_t chrRom1 = GetChrRom8x8( tileIx, 1, ptrnTableId, chrRomPoint.y );
 
 			const uint16_t chrRomColor = GetChrRomPalette( chrRom0, chrRom1, chrRomPoint.x );
 			const uint8_t finalPalette = paletteId | chrRomColor;
@@ -657,7 +724,7 @@ void PPU::DrawTile( uint32_t imageBuffer[], const WtRect& imageRect, const WtPoi
 }
 
 
-void PPU::DrawTile( uint32_t imageBuffer[], const WtRect& imageRect, const uint32_t tileId, const uint32_t ptrnTableId )
+void PPU::DrawTile( uint32_t imageBuffer[], const WtRect & imageRect, const uint32_t tileId, const uint32_t ptrnTableId )
 {
 	for ( uint32_t y = 0; y < PPU::TilePixels; ++y )
 	{
@@ -670,8 +737,8 @@ void PPU::DrawTile( uint32_t imageBuffer[], const WtRect& imageRect, const uint3
 
 			static uint32_t toggleTable = 0;
 
-			const uint8_t chrRom0 = toggleTable == 1 ? 0 : GetChrRom( tileId, 0, ptrnTableId, chrRomPoint.y );
-			const uint8_t chrRom1 = toggleTable == 2 ? 0 : GetChrRom( tileId, 1, ptrnTableId, chrRomPoint.y );
+			const uint8_t chrRom0 = toggleTable == 1 ? 0 : GetChrRom8x8( tileId, 0, ptrnTableId, chrRomPoint.y );
+			const uint8_t chrRom1 = toggleTable == 2 ? 0 : GetChrRom8x8( tileId, 1, ptrnTableId, chrRomPoint.y );
 
 			const uint16_t chrRomColor = GetChrRomPalette( chrRom0, chrRom1, chrRomPoint.x );
 
@@ -694,24 +761,24 @@ PpuSpriteAttrib PPU::GetSpriteData( const uint8_t spriteId, const uint8_t oam[] 
 {
 	PpuSpriteAttrib attribs;
 
-	attribs.y				= oam[spriteId * 4];
-	attribs.tileId			= oam[spriteId * 4 + 1]; // TODO: implement 16x8
-	attribs.x				= oam[spriteId * 4 + 3];
+	attribs.y = oam[spriteId * 4];
+	attribs.tileId = oam[spriteId * 4 + 1]; // TODO: implement 16x8
+	attribs.x = oam[spriteId * 4 + 3];
 
-	const uint8_t attrib	= oam[spriteId * 4 + 2]; // TODO: finish attrib features
+	const uint8_t attrib = oam[spriteId * 4 + 2]; // TODO: finish attrib features
 
-	attribs.palette				= ( attrib & 0x03 ) << 2;
-	attribs.priority			= ( attrib & 0x20 ) >> 5;
-	attribs.flippedHorizontal	= ( attrib & 0x40 ) >> 6;
-	attribs.flippedVertical		= ( attrib & 0x80 ) >> 7;
+	attribs.palette = ( attrib & 0x03 ) << 2;
+	attribs.priority = ( attrib & 0x20 ) >> 5;
+	attribs.flippedHorizontal = ( attrib & 0x40 ) >> 6;
+	attribs.flippedVertical = ( attrib & 0x80 ) >> 7;
 
 	return attribs;
 }
 
 
-void PPU::DrawSpritePixel( uint32_t imageBuffer[], const WtRect& imageRect, const PpuSpriteAttrib attribs, const WtPoint& point, const uint8_t bgPixel, bool sprite0 )
+void PPU::DrawSpritePixel( uint32_t imageBuffer[], const WtRect & imageRect, const PpuSpriteAttrib attribs, const WtPoint & point, const uint8_t bgPixel, bool sprite0 )
 {
-	if( !regMask.sem.showSprt )
+	if ( !regMask.sem.showSprt )
 	{
 		return;
 	}
@@ -722,12 +789,32 @@ void PPU::DrawSpritePixel( uint32_t imageBuffer[], const WtRect& imageRect, cons
 
 	spritePt.x = point.x - attribs.x;
 	spritePt.y = point.y - attribs.y;
+	spritePt.x = attribs.flippedHorizontal ? ( 7 - spritePt.x ) : spritePt.x;
 
-	spritePt.y = attribs.flippedVertical	? ( 7 - spritePt.y ) : spritePt.y;
-	spritePt.x = attribs.flippedHorizontal	? ( 7 - spritePt.x ) : spritePt.x;
+	uint8_t chrRom0 = 0;
+	uint8_t chrRom1 = 0;
 
-	const uint8_t chrRom0 = GetChrRom( attribs.tileId, 0, 0, spritePt.y );
-	const uint8_t chrRom1 = GetChrRom( attribs.tileId, 1, 0, spritePt.y );
+	if ( regCtrl.sem.spriteSize == SpriteMode::SPRITE_MODE_8x16 )
+	{
+		bool isUpper = ( spritePt.y >= 8 );
+		uint8_t row = ( spritePt.y % 8 );
+
+		if ( attribs.flippedVertical )
+		{
+			row = ( 7 - row );
+			isUpper = !isUpper;
+		}
+
+		chrRom0 = GetChrRom8x16( attribs.tileId, 0, row, isUpper );
+		chrRom1 = GetChrRom8x16( attribs.tileId, 1, row, isUpper );
+	}
+	else
+	{
+		spritePt.y = attribs.flippedVertical ? ( 7 - spritePt.y ) : spritePt.y;
+
+		chrRom0 = GetChrRom8x8( attribs.tileId, 0, 0, spritePt.y );
+		chrRom1 = GetChrRom8x8( attribs.tileId, 1, 0, spritePt.y );
+	}
 
 	const uint8_t finalPalette = GetChrRomPalette( chrRom0, chrRom1, spritePt.x );
 
@@ -748,7 +835,7 @@ void PPU::DrawSpritePixel( uint32_t imageBuffer[], const WtRect& imageRect, cons
 	if ( finalPalette == 0x00 )
 		return;
 
-	if ( ( ( attribs.priority == 1 ) && ( bgPixel != 0 ) && ( finalPalette != 0 ) ) )
+	if ( ( attribs.priority == 1 ) && ( bgPixel != 0 ) )
 	{
 		return;
 	}
@@ -806,7 +893,7 @@ void PPU::DrawDebugPalette( uint32_t imageBuffer[] )
 
 void PPU::LoadSecondaryOAM()
 {
-	if( !loadingSecondaryOAM )
+	if ( !loadingSecondaryOAM )
 	{
 		return;
 	}
@@ -814,20 +901,21 @@ void PPU::LoadSecondaryOAM()
 	uint8_t destSpriteNum = 0;
 
 	sprite0InList = false;
-	memset( &secondaryOAM, 0xFF, 32 );
+	memset( &secondaryOAM, 0xFF, OamSize );
 
 	for ( uint8_t spriteNum = 0; spriteNum < 64; ++spriteNum )
 	{
 		uint8_t y = 1 + primaryOAM[spriteNum * 4];
+		uint32_t spriteHeight = regCtrl.sem.spriteSize ? 16 : 8;
 
-		if ( ( beamPosition.y < ( y + 8 ) ) && ( beamPosition.y >= y ) )
+		if ( ( beamPosition.y < ( y + spriteHeight ) ) && ( beamPosition.y >= y ) )
 		{
-			secondaryOAM[destSpriteNum * 4]		= y;
+			secondaryOAM[destSpriteNum * 4] = y;
 			secondaryOAM[destSpriteNum * 4 + 1] = primaryOAM[spriteNum * 4 + 1];
 			secondaryOAM[destSpriteNum * 4 + 2] = primaryOAM[spriteNum * 4 + 2];
 			secondaryOAM[destSpriteNum * 4 + 3] = primaryOAM[spriteNum * 4 + 3];
 
-			if( spriteNum == 0 )
+			if ( spriteNum == 0 )
 			{
 				sprite0InList = true;
 			}
@@ -835,7 +923,7 @@ void PPU::LoadSecondaryOAM()
 			destSpriteNum++;
 		}
 
-		if ( destSpriteNum >= 8 )
+		if ( destSpriteNum >= spriteLimit )
 		{
 			break;
 		}
@@ -919,13 +1007,13 @@ void PPU::BgPipelineDebugPrefetchFetchTiles()
 	{
 		plShifts[0].tileId = 1;
 		plShifts[0].attribId = 2;
-		plShifts[0].chrRom0 = GetChrRom( plShifts[0].tileId, 0, GetBgPatternTableId(), regV.sem.fineY );
-		plShifts[0].chrRom1 = GetChrRom( plShifts[0].tileId, 1, GetBgPatternTableId(), regV.sem.fineY );
+		plShifts[0].chrRom0 = GetChrRom8x8( plShifts[0].tileId, 0, GetBgPatternTableId(), regV.sem.fineY );
+		plShifts[0].chrRom1 = GetChrRom8x8( plShifts[0].tileId, 1, GetBgPatternTableId(), regV.sem.fineY );
 
 		plShifts[1].tileId = 2;
 		plShifts[1].attribId = 4;
-		plShifts[1].chrRom0 = GetChrRom( plShifts[1].tileId, 0, GetBgPatternTableId(), regV.sem.fineY );
-		plShifts[1].chrRom1 = GetChrRom( plShifts[1].tileId, 1, GetBgPatternTableId(), regV.sem.fineY );
+		plShifts[1].chrRom0 = GetChrRom8x8( plShifts[1].tileId, 0, GetBgPatternTableId(), regV.sem.fineY );
+		plShifts[1].chrRom1 = GetChrRom8x8( plShifts[1].tileId, 1, GetBgPatternTableId(), regV.sem.fineY );
 
 		chrShifts[0] = ( plShifts[0].chrRom0 << 8 ) | plShifts[1].chrRom0;
 		chrShifts[1] = ( plShifts[0].chrRom1 << 8 ) | plShifts[1].chrRom1;
@@ -976,7 +1064,7 @@ const ppuCycle_t PPU::Exec()
 
 	WriteVram();
 
-	if( vramAccessed )
+	if ( vramAccessed )
 	{
 		IncRenderAddr();
 		vramAccessed = false;
@@ -986,10 +1074,13 @@ const ppuCycle_t PPU::Exec()
 	// Scanlines take multiple cycles
 	if ( currentScanline == POSTRENDER_SCANLINE )
 	{
-		++currentScanline;
+		execCycles += ppuCycle_t( 1 );
+		scanelineCycle += ppuCycle_t( 1 );
 
-		execCycles		+= ppuCycle_t( ScanlineCycles );
-		scanelineCycle	+= ppuCycle_t( ScanlineCycles );
+		if ( scanelineCycle.count() >= ScanlineCycles )
+		{
+			++currentScanline;
+		}
 
 		return execCycles;
 	}
@@ -1004,7 +1095,7 @@ const ppuCycle_t PPU::Exec()
 			regStatus.latched.raw = 0;
 			regStatus.hasLatch = false;
 		}
-		else if( cycleCount >= 280 && cycleCount <= 304 )
+		else if ( cycleCount >= 280 && cycleCount <= 304 )
 		{
 			if ( RenderEnabled() )
 			{
@@ -1017,7 +1108,7 @@ const ppuCycle_t PPU::Exec()
 	else if ( currentScanline == 241 )
 	{
 		// must only exec once!
-		if( cycleCount == 1 )
+		if ( cycleCount == 1 )
 		{
 			inVBlank = true;
 			regStatus.current.sem.vBlank = 1;
@@ -1038,14 +1129,14 @@ const ppuCycle_t PPU::Exec()
 		sprite0InList = false;
 		loadingSecondaryOAM = true;
 		LoadSecondaryOAM();
-//		OAMDATA( 0xFF );
+		//		OAMDATA( 0xFF );
 	}
 	else if ( cycleCount <= 256 )
 	{
 		execCycles += ppuCycle_t( 1 );
 		scanelineCycle += ppuCycle_t( 1 );
 
-		if( currentScanline < POSTRENDER_SCANLINE )
+		if ( currentScanline < POSTRENDER_SCANLINE )
 		{
 			WtPoint screenPt;
 			screenPt.x = beamPosition.x & 0xF8;
@@ -1087,7 +1178,7 @@ const ppuCycle_t PPU::Exec()
 				system->frameBuffer[imageIx] = pixelColor.raw;
 			}
 
-			for ( uint8_t spriteNum = 0; spriteNum < 8; ++spriteNum )
+			for ( uint8_t spriteNum = 0; spriteNum < spriteLimit; ++spriteNum )
 			{
 				PpuSpriteAttrib attribs = GetSpriteData( spriteNum, secondaryOAM );
 
@@ -1127,7 +1218,7 @@ const ppuCycle_t PPU::Exec()
 		execCycles += ppuCycle_t( 1 );
 		scanelineCycle += ppuCycle_t( 1 );
 
-	//	BgPipelineFetch( cycleCount ); // Garbage fetches, 8 fetches
+		//	BgPipelineFetch( cycleCount ); // Garbage fetches, 8 fetches
 	}
 	else if ( cycleCount <= 336 ) // [321 - 336]
 	{
@@ -1149,7 +1240,7 @@ const ppuCycle_t PPU::Exec()
 	}
 	else
 	{
-		if( currentScanline == PRERENDER_SCANLINE )
+		if ( currentScanline == PRERENDER_SCANLINE )
 		{
 			currentScanline = 0;
 
@@ -1171,7 +1262,7 @@ const ppuCycle_t PPU::Exec()
 }
 
 
-bool PPU::Step( const ppuCycle_t& nextCycle )
+bool PPU::Step( const ppuCycle_t & nextCycle )
 {
 	/*
 	Start of vertical blanking : Set NMI_occurred in PPU to true.
