@@ -12,6 +12,7 @@ struct AddrMapTuple;
 struct InstructionMapTuple;
 struct DisassemblerMapTuple;
 class NesSystem;
+struct CpuAddrInfo;
 
 
 #define OP_DECL(name)	template <class AddrMode> \
@@ -23,10 +24,10 @@ class NesSystem;
 								{ \
 									Cpu6502& cpu; \
 									AddrMode##name( Cpu6502& cpui ) : cpu( cpui ) {}; \
-									inline uint8_t& operator()( uint32_t& address ); \
+									inline void operator()( CpuAddrInfo& addrInfo ); \
 								};
 
-#define ADDR_MODE_DEF(name)	uint8_t& Cpu6502::AddrMode##name::operator()( uint32_t& address )
+#define ADDR_MODE_DEF(name)	void Cpu6502::AddrMode##name::operator()( CpuAddrInfo& addrInfo )
 
 #define _OP_ADDR(num,name,address,ops,advance,cycles)	case num: \
 												{ \
@@ -70,6 +71,16 @@ union ProcessorStatus
 	} bit;
 
 	uint8_t byte;
+};
+
+
+struct CpuAddrInfo
+{
+	uint32_t	addr;
+	uint8_t		offset;
+	uint8_t		value;
+	bool		isAccumulator;
+	bool		isImmediate;
 };
 
 
@@ -222,8 +233,8 @@ struct Cpu6502
 	uint8_t NMI();
 	uint8_t IRQ();
 
-	uint8_t& IndexedAbsolute( uint32_t& address, const uint8_t& reg );
-	uint8_t& IndexedZero( uint32_t& address, const uint8_t& reg );
+	void IndexedAbsolute( const uint8_t& reg, CpuAddrInfo& addrInfo );
+	void IndexedZero( const uint8_t& reg, CpuAddrInfo& addrInfo );
 
 	void Push( const uint8_t value );
 	uint8_t Pull();
@@ -242,7 +253,8 @@ struct Cpu6502
 	uint8_t Branch( const bool takeBranch );
 	
 	template <class AddrFunctor>
-	uint8_t& Read();
+	uint8_t Read();
+
 	template <class AddrFunctor>
 	void Write( const uint8_t value );
 

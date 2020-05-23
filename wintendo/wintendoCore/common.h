@@ -13,7 +13,6 @@
 #define NES_MODE 1
 #define DEBUG_MODE 0
 #define DEBUG_ADDR 0
-#define DEBUG_MEM 0
 
 inline constexpr uint8_t operator "" _b( uint64_t arg ) noexcept
 {
