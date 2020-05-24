@@ -8,22 +8,22 @@ typedef uint8_t&( PPU::* PpuRegReadFunc )();
 union Pixel;
 struct RGBA;
 
-// TODO: Enums overkill?
-enum PatternTable : uint8_t
+
+enum class PatternTable : uint8_t
 {
 	PATTERN_TABLE_0 = 0X00,
 	PATTERN_TABLE_1 = 0X01,
 };
 
 
-enum SpriteMode : uint8_t
+enum class SpriteMode : uint8_t
 {
 	SPRITE_MODE_8x8 = 0X00,
 	SPRITE_MODE_8x16 = 0X01,
 };
 
 
-enum Nametable : uint8_t
+enum class Nametable : uint8_t
 {
 	NAMETABLE_0 = 0X00,
 	NAMETABLE_1 = 0X01,
@@ -32,20 +32,20 @@ enum Nametable : uint8_t
 };
 
 
-enum VramInc : uint8_t
+enum class VramInc : uint8_t
 {
 	VRAM_INC_0 = 0x00,
 	VRAM_INC_1 = 0x01,
 };
 
 
-enum MasterSlaveMode : uint8_t
+enum class MasterSlaveMode : uint8_t
 {
 	MASTER_SLAVE_READ_EXT	= 0x00,
 	MASTER_SLAVE_WRITE_EXT	= 0x01,
 };
 
-enum NmiVblank : uint8_t
+enum class NmiVblank : uint8_t
 {
 	NMI_VBLANK_OFF	= 0X00,
 	NMI_VBLANK_ON	= 0X01,
@@ -221,6 +221,10 @@ struct PPU
 	static const uint32_t TilePixels				= 8;
 	static const uint32_t NameTableWidthPixels		= NameTableWidthTiles * TilePixels;
 	static const uint32_t NameTableHeightPixels		= NameTableHeightTiles * TilePixels;
+	static const uint32_t PaletteColorNumber		= 16;
+	static const uint32_t PaletteSetNumber			= 2;
+	static const uint32_t PatternTableWidth			= 128;
+	static const uint32_t PatternTableHeight		= 128;
 	static const uint32_t RegisterCount				= 8;
 	static const uint32_t ScanlineCycles			= 341;
 	//static const ppuCycle_t VBlankCycles = ppuCycle_t( 20 * 341 * 5 );
@@ -234,7 +238,7 @@ struct PPU
 	int currentScanline = 0;
 	ppuCycle_t scanelineCycle;
 
-	WtPoint beamPosition;
+	wtPoint beamPosition;
 
 	bool loadingSecondaryOAM = false;
 	OamPipeLineData primaryOamSpriteData;
@@ -326,13 +330,13 @@ struct PPU
 	uint8_t GetNameTableId();
 
 	void FrameBufferWritePixel( const uint32_t x, const uint32_t y, const Pixel pixel );
-	void DrawPixel( uint32_t imageBuffer[], const WtRect& imageRect );
-	void DrawBlankScanline( uint32_t imageBuffer[], const WtRect& imageRect, const uint8_t scanY );
-	void DrawTile( uint32_t imageBuffer[], const WtRect& imageRect, const WtPoint& nametableTile, const uint32_t ntId, const uint32_t ptrnTableId );
-	void DrawTile( uint32_t imageBuffer[], const WtRect& imageRect, const uint32_t tileId, const uint32_t ptrnTableId );
-	void DrawSpritePixel( uint32_t imageBuffer[], const WtRect& imageRect, const PpuSpriteAttrib attribs, const WtPoint& point, const uint8_t bgPixel, bool sprite0 );
+	void DrawPixel( wtRawImage& imageBuffer, const wtRect& imageRect );
+	void DrawBlankScanline( wtRawImage& imageBuffer, const wtRect& imageRect, const uint8_t scanY );
+	void DrawTile( wtRawImage& imageBuffer, const wtRect& imageRect, const wtPoint& nametableTile, const uint32_t ntId, const uint32_t ptrnTableId );
+	void DrawTile( wtRawImage& imageBuffer, const wtRect& imageRect, const uint32_t tileId, const uint32_t ptrnTableId );
+	void DrawSpritePixel( wtRawImage& imageBuffer, const wtRect& imageRect, const PpuSpriteAttrib attribs, const wtPoint& point, const uint8_t bgPixel, bool sprite0 );
 	void DrawSprites( const uint32_t tableId );
-	void DrawDebugPalette( uint32_t imageBuffer[] );
+	void DrawDebugPalette( wtRawImage& imageBuffer );
 
 	void GenerateNMI();
 	void GenerateDMA();
@@ -340,9 +344,9 @@ struct PPU
 
 	uint16_t MirrorVram( uint16_t addr );
 	uint8_t ReadVram( const uint16_t addr );
-	uint8_t GetNtTile( const uint32_t ntId, const WtPoint& tileCoord );
-	uint8_t GetArribute( const uint32_t ntId, const WtPoint& tileCoord );
-	uint8_t GetTilePaletteId( const uint32_t attribTable, const WtPoint& tileCoord );
+	uint8_t GetNtTile( const uint32_t ntId, const wtPoint& tileCoord );
+	uint8_t GetArribute( const uint32_t ntId, const wtPoint& tileCoord );
+	uint8_t GetTilePaletteId( const uint32_t attribTable, const wtPoint& tileCoord );
 	uint8_t GetChrRom8x8( const uint32_t tileId, const uint8_t plane, const uint8_t ptrnTableId, const uint8_t row );
 	uint8_t GetChrRom8x16( const uint32_t tileId, const uint8_t plane, const uint8_t row, const bool isUpper );
 

@@ -122,19 +122,21 @@ uint8_t& NesSystem::GetMemory( const uint16_t address )
 	}
 	else if ( IsInputRegister( address ) )
 	{
-		int controllerIndex = address - InputRegister0;
+		assert( InputRegister0 <= address );
+		const uint32_t controllerIndex = ( address - InputRegister0 );
+		const ControllerId controllerId = static_cast<ControllerId>( controllerIndex );
 
 		controllerBuffer[controllerIndex] = 0; // FIXME: this register is a hack to get around bad GetMemory func design
 
 		if ( strobeOn )
 		{
-			controllerBuffer[controllerIndex] = GetKeyBuffer( controllerIndex ) & ((ButtonFlags)0X80);
+			controllerBuffer[controllerIndex] = GetKeyBuffer( controllerId ) & static_cast<ButtonFlags>( 0X80 );
 			btnShift[controllerIndex] = 0;
 
 			return controllerBuffer[controllerIndex];
 		}
 
-		controllerBuffer[controllerIndex] = ( GetKeyBuffer( controllerIndex ) >> ( 7 - btnShift[controllerIndex] ) ) & 0x01;
+		controllerBuffer[controllerIndex] = ( GetKeyBuffer( controllerId ) >> ( 7 - btnShift[controllerIndex] ) ) & 0x01;
 		++btnShift[controllerIndex];
 		btnShift[controllerIndex] %= 8;
 

@@ -9,6 +9,7 @@
 #include <iostream>
 #include <map>
 #include <iomanip>
+#include "bitmap.h"
 
 #define NES_MODE 1
 #define DEBUG_MODE 0
@@ -62,19 +63,143 @@ struct NesCart
 };
 
 
-struct WtPoint
+struct wtPoint
 {
 	int32_t x;
 	int32_t y;
 };
 
 
-struct WtRect
+struct wtRect
 {
 	int32_t x;
 	int32_t y;
 	int32_t width;
 	int32_t height;
+};
+
+
+class wtRawImage
+{
+public:
+
+	wtRawImage()
+	{
+		width = 0;
+		height = 0;
+		length = 0;
+		buffer = nullptr;
+	}
+
+	wtRawImage( const uint32_t _width, const uint32_t _height )
+	{
+		width = _width;
+		height = _height;
+		length = ( width * height );
+		buffer = new Pixel[length];
+	}
+
+	wtRawImage( const wtRawImage& _image ) = delete;
+
+	wtRawImage& operator=( const wtRawImage& _image )
+	{
+		width = _image.width;
+		height = _image.height;
+		length = _image.length;
+		buffer = new Pixel[length];
+
+		assert( buffer != nullptr );
+
+		for ( uint32_t i = 0; i < _image.length; ++i )
+		{
+			buffer[i].raw = _image.buffer[i].raw;
+		}
+
+		return *this;
+	}
+
+	~wtRawImage()
+	{
+		if ( buffer != nullptr )
+		{
+			delete[] buffer;
+			buffer = nullptr;
+
+			length = 0;
+			width = 0;
+			height = 0;
+		}
+	}
+
+	void SetPixel( const uint32_t x, const uint32_t y, const Pixel& pixel )
+	{
+		const uint32_t index = ( x + y * width );
+		assert( buffer != nullptr );
+		assert( index < length );
+
+		if ( ( buffer != nullptr ) && ( index < length ) )
+		{
+			buffer[index] = pixel;
+		}
+	}
+
+	void Set( const uint32_t index, const Pixel value )
+	{
+		assert( buffer != nullptr );
+		assert( index < length );
+
+		if ( ( buffer != nullptr ) && ( index < length ) )
+		{
+			buffer[index] = value;
+		}
+	}
+
+	void Clear()
+	{
+		if ( buffer == nullptr )
+			return;
+
+		for ( uint32_t i = 0; i < length; ++i )
+		{
+			buffer[i].raw = 0;
+		}
+	}
+
+	inline const uint32_t* GetRawBuffer()
+	{
+		return &buffer[0].raw;
+	}
+
+	inline uint32_t GetWidth()
+	{
+		return width;
+	}
+
+	inline uint32_t GetHeight()
+	{
+		return height;
+	}
+
+	inline uint32_t GetBufferSize()
+	{
+		return ( sizeof( buffer[0] ) * length );
+	}
+
+private:
+	uint32_t width;
+	uint32_t height;
+	uint32_t length;
+	Pixel* buffer;
+};
+
+
+enum class wtImageTag
+{
+	FRAME_BUFFER,
+	NAMETABLE,
+	PALETTE,
+	PATTERN_TABLE_0,
+	PATTERN_TABLE_1
 };
 
 

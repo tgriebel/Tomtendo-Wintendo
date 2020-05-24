@@ -86,31 +86,62 @@ void ShutdownSystem()
 
 void CopyFrameBuffer( uint32_t destBuffer[], const size_t destSize )
 {
-	memcpy( destBuffer, nesSystem.frameBuffer, destSize );
+	memcpy( destBuffer, nesSystem.frameBuffer.GetRawBuffer(), destSize );
 }
 
 
 void CopyNametable( uint32_t destBuffer[], const size_t destSize )
 {
-	memcpy( destBuffer, nesSystem.nameTableSheet, destSize );
+	memcpy( destBuffer, nesSystem.nameTableSheet.GetRawBuffer(), destSize );
 }
 
 
 void CopyPalette( uint32_t destBuffer[], const size_t destSize )
 {
-	memcpy( destBuffer, nesSystem.paletteDebug, destSize );
+	memcpy( destBuffer, nesSystem.paletteDebug.GetRawBuffer(), destSize );
 }
 
 
 void CopyPatternTable0( uint32_t destBuffer[], const size_t destSize )
 {
-	memcpy( destBuffer, nesSystem.patternTable0Debug, destSize );
+	memcpy( destBuffer, nesSystem.patternTable0Debug.GetRawBuffer(), destSize );
 }
 
 
 void CopyPatternTable1( uint32_t destBuffer[], const size_t destSize )
 {
-	memcpy( destBuffer, nesSystem.patternTable1Debug, destSize );
+	memcpy( destBuffer, nesSystem.patternTable1Debug.GetRawBuffer(), destSize );
+}
+
+
+void CopyImageBuffer( wtRawImage& destImageBuffer, wtImageTag tag )
+{
+	switch ( tag )
+	{
+		case wtImageTag::FRAME_BUFFER:
+			destImageBuffer = nesSystem.frameBuffer;
+		break;
+
+		case wtImageTag::NAMETABLE:
+			destImageBuffer = nesSystem.nameTableSheet;
+		break;
+
+		case wtImageTag::PALETTE:
+			destImageBuffer = nesSystem.paletteDebug;
+		break;
+
+		case wtImageTag::PATTERN_TABLE_0:
+			destImageBuffer = nesSystem.patternTable0Debug;
+		break;
+
+		case wtImageTag::PATTERN_TABLE_1:
+			destImageBuffer = nesSystem.patternTable1Debug;
+		break;
+
+		default:
+			assert(0); // TODO: Error message
+		break;
+	}
 }
 
 
@@ -147,10 +178,15 @@ int RunFrame()
 
 	if( nesSystem.headless )
 	{
-		return 0;
+		return isRunning;
 	}
 
-	WtRect imageRect = { 0, 0, NesSystem::ScreenWidth, NesSystem::ScreenHeight };
+	if( !isRunning )
+	{
+		return false;
+	}
+
+	wtRect imageRect = { 0, 0, NesSystem::ScreenWidth, NesSystem::ScreenHeight };
 
 	static uint8_t line = 0;
 
@@ -158,11 +194,11 @@ int RunFrame()
 	{
 		if( ( scanY % 2 ) == line ) // lazy scanline effect
 		{
-		//	nesSystem.ppu.DrawBlankScanline( nesSystem.frameBuffer, imageRect, scanY );
+			//nesSystem.ppu.DrawBlankScanline( nesSystem.frameBuffer, imageRect, scanY );
 			continue;
 		}
 
-	//	nesSystem.ppu.DrawScanline( nesSystem.frameBuffer, imageRect, NesSystem::ScreenWidth, scanY );
+		//nesSystem.ppu.DrawScanline( nesSystem.frameBuffer, imageRect, NesSystem::ScreenWidth, scanY );
 	}
 
 	line ^= 1;
@@ -173,12 +209,12 @@ int RunFrame()
 
 	if( debugNT )
 	{
-		WtRect ntRects[4] = {	{ 0,						0,							2 * NesSystem::ScreenWidth,	2 * NesSystem::ScreenHeight },
+		wtRect ntRects[4] = {	{ 0,						0,							2 * NesSystem::ScreenWidth,	2 * NesSystem::ScreenHeight },
 								{ NesSystem::ScreenWidth,	0,							2 * NesSystem::ScreenWidth,	2 * NesSystem::ScreenHeight },
 								{ 0,						NesSystem::ScreenHeight,	2 * NesSystem::ScreenWidth, 2 * NesSystem::ScreenHeight },
 								{ NesSystem::ScreenWidth,	NesSystem::ScreenHeight,	2 * NesSystem::ScreenWidth, 2 * NesSystem::ScreenHeight }, };
 
-		WtPoint ntCorners[4] = {	{0,							0 },
+		wtPoint ntCorners[4] = {	{0,							0 },
 									{ NesSystem::ScreenWidth,	0 },
 									{ 0,						NesSystem::ScreenHeight },
 									{ NesSystem::ScreenWidth,	NesSystem::ScreenHeight },};
@@ -189,7 +225,7 @@ int RunFrame()
 			{
 				for ( int32_t tileX = 0; tileX < (int)PPU::NameTableWidthTiles; ++tileX )
 				{
-					nesSystem.ppu.DrawTile( nesSystem.nameTableSheet, ntRects[ntId], WtPoint{ tileX, tileY }, ntId, nesSystem.ppu.GetBgPatternTableId() );
+					nesSystem.ppu.DrawTile( nesSystem.nameTableSheet, ntRects[ntId], wtPoint{ tileX, tileY }, ntId, nesSystem.ppu.GetBgPatternTableId() );
 
 					ntRects[ntId].x += static_cast< uint32_t >( PPU::TilePixels );
 				}
@@ -204,8 +240,8 @@ int RunFrame()
 	{
 		for ( int32_t tileX = 0; tileX < 16; ++tileX )
 		{
-			nesSystem.ppu.DrawTile( nesSystem.patternTable0Debug, WtRect{ 8 * tileX, 8 * tileY, 128, 128 }, (int32_t)( tileX + 16 * tileY ), 0 );
-			nesSystem.ppu.DrawTile( nesSystem.patternTable1Debug, WtRect{ 8 * tileX, 8 * tileY, 128, 128 }, (int32_t)( tileX + 16 * tileY ), 1 );
+			nesSystem.ppu.DrawTile( nesSystem.patternTable0Debug, wtRect{ (int32_t)PPU::TilePixels * tileX, (int32_t)PPU::TilePixels * tileY, PPU::PatternTableWidth, PPU::PatternTableHeight }, (int32_t)( tileX + 16 * tileY ), 0 );
+			nesSystem.ppu.DrawTile( nesSystem.patternTable1Debug, wtRect{ (int32_t)PPU::TilePixels * tileX, (int32_t)PPU::TilePixels * tileY, PPU::PatternTableWidth, PPU::PatternTableHeight }, (int32_t)( tileX + 16 * tileY ), 1 );
 		}
 	}
 
@@ -247,7 +283,7 @@ int RunFrame()
 		attribFile.close();
 	}
 
-	return 0;
+	return isRunning;
 }
 
 

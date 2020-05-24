@@ -24,7 +24,6 @@ struct Controller
 };
 
 
-
 class NesSystem
 {
 public:
@@ -68,11 +67,11 @@ public:
 
 	const NesCart*	cart;
 
-	uint32_t frameBuffer[ScreenWidth * ScreenHeight];
-	uint32_t nameTableSheet[4 * ScreenWidth * ScreenHeight];
-	uint32_t paletteDebug[4 * 16 * 2];
-	uint32_t patternTable0Debug[128 * 128];
-	uint32_t patternTable1Debug[128 * 128];
+	wtRawImage frameBuffer;
+	wtRawImage nameTableSheet;
+	wtRawImage paletteDebug;
+	wtRawImage patternTable0Debug;
+	wtRawImage patternTable1Debug;
 
 	uint32_t prgRomBank;
 
@@ -95,18 +94,18 @@ public:
 	std::map<uint16_t, uint8_t> memoryDebug;
 #endif // #if DEBUG_ADDR == 1
 
-	NesSystem()
+	NesSystem() :
+		frameBuffer( ScreenWidth, ScreenHeight ),
+		nameTableSheet( 2 * ScreenWidth, 2 * ScreenHeight ),
+		paletteDebug( PPU::PaletteColorNumber, PPU::PaletteSetNumber ),
+		patternTable0Debug( PPU::PatternTableWidth, PPU::PatternTableHeight ),
+		patternTable1Debug( PPU::PatternTableWidth, PPU::PatternTableHeight )
 	{
 		cpu.forceStop = false;
 		cpu.cycle = cpuCycle_t(0);
 		sysCycles = masterCycles_t(0);
 
-		memset( frameBuffer, 0, sizeof( frameBuffer ) );
 		memset( memory, 0, sizeof( memory ) );
-		memset( nameTableSheet, 0, sizeof( nameTableSheet ) );
-		memset( paletteDebug, 0, sizeof( paletteDebug ) );
-		memset( patternTable0Debug, 0, sizeof( patternTable0Debug ) );
-		memset( patternTable1Debug, 0, sizeof( patternTable1Debug ) );
 
 		ppu.system = this;
 		ppu.palette= &DefaultPalette[0];
@@ -121,6 +120,12 @@ public:
 
 		headless = false;
 		debugNT = true;
+
+		frameBuffer.Clear();
+		nameTableSheet.Clear();
+		paletteDebug.Clear();
+		patternTable0Debug.Clear();
+		patternTable1Debug.Clear();
 	}
 
 	uint8_t& GetStack();

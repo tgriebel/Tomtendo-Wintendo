@@ -19,7 +19,7 @@ enum ButtonFlags : uint8_t
 };
 
 
-enum ControllerId : uint8_t
+enum class ControllerId : uint8_t
 {
 	CONTROLLER_0 = 0X00,
 	CONTROLLER_1 = 0X01,
@@ -32,21 +32,24 @@ enum ControllerId : uint8_t
 extern ButtonFlags keyBuffer[2];
 
 
-inline ButtonFlags GetKeyBuffer( const int controllerId )
+inline ButtonFlags GetKeyBuffer( const ControllerId controllerId )
 {
-	return keyBuffer[controllerId];
+	const uint32_t mapKey = static_cast<uint32_t>( controllerId );
+	return keyBuffer[mapKey];
 }
 
 
 // TODO: make thread safe -- look at CaptureKey function I started
 // keyBuffer is only written by store key so it's guaranteed read only elsewhere
-inline void StoreKey( const uint8_t controllerId, uint8_t key )
+inline void StoreKey( const ControllerId controllerId, uint8_t key )
 {
-	keyBuffer[controllerId] = static_cast<ButtonFlags>( keyBuffer[controllerId] | key );
+	const uint32_t mapKey = static_cast<uint32_t>( controllerId );
+	keyBuffer[mapKey] = static_cast<ButtonFlags>( keyBuffer[mapKey] | key );
 }
 
 
-inline void ReleaseKey( const uint8_t controllerId, uint8_t key )
+inline void ReleaseKey( const ControllerId controllerId, uint8_t key )
 {
-	keyBuffer[controllerId] = static_cast<ButtonFlags>( keyBuffer[controllerId] & ~key );
+	const uint32_t mapKey = static_cast<uint32_t>( controllerId );
+	keyBuffer[mapKey] = static_cast<ButtonFlags>( keyBuffer[mapKey] & ~key );
 }

@@ -83,7 +83,7 @@ uint8_t& PPU::PPUCTRL( const uint8_t value )
 	regCtrl.raw = value;
 	regStatus.current.sem.lastReadLsb = ( value & 0x1F );
 
-	regT.sem.ntId = regCtrl.sem.ntId;
+	regT.sem.ntId = static_cast<uint8_t>( regCtrl.sem.ntId );
 
 	return regCtrl.raw;
 }
@@ -292,7 +292,8 @@ void PPU::IncRenderAddr()
 {
 	if( DataportEnabled() )
 	{
-		regV.raw += regCtrl.sem.vramInc ? 0x20 : 0x01;
+		const bool isLargeIncrement = static_cast<bool>( regCtrl.sem.vramInc );
+		regV.raw += isLargeIncrement ? 0x20 : 0x01;
 	}
 }
 
@@ -321,7 +322,7 @@ void PPU::BgPipelineFetch( const uint64_t scanlineCycle )
 	else if ( cycleCountAdjust == 3 )
 	{
 		// The problem might be an issue with coarseX being off +/-
-		WtPoint coarsePt;
+		wtPoint coarsePt;
 		coarsePt.x = regV.sem.coarseX;
 		coarsePt.y = regV.sem.coarseY;
 
@@ -366,13 +367,13 @@ void PPU::BgPipelineFetch( const uint64_t scanlineCycle )
 
 uint8_t PPU::GetBgPatternTableId()
 {
-	return regCtrl.sem.bgTableId;
+	return static_cast<uint8_t>( regCtrl.sem.bgTableId );
 }
 
 
 uint8_t PPU::GetSpritePatternTableId()
 {
-	return regCtrl.sem.spriteTableId;
+	return static_cast<uint8_t>( regCtrl.sem.spriteTableId );
 }
 
 
@@ -436,7 +437,7 @@ uint16_t PPU::MirrorVram( uint16_t addr )
 }
 
 
-uint8_t PPU::GetNtTile( const uint32_t ntId, const WtPoint& tileCoord )
+uint8_t PPU::GetNtTile( const uint32_t ntId, const wtPoint& tileCoord )
 {
 	const uint32_t ntBaseAddr = ( NameTable0BaseAddr + ntId * NameTableAttribMemorySize );
 	
@@ -444,7 +445,7 @@ uint8_t PPU::GetNtTile( const uint32_t ntId, const WtPoint& tileCoord )
 }
 
 
-uint8_t PPU::GetArribute( const uint32_t ntId, const WtPoint& tileCoord )
+uint8_t PPU::GetArribute( const uint32_t ntId, const wtPoint& tileCoord )
 {
 	const uint32_t ntBaseAddr		= NameTable0BaseAddr + ntId * NameTableAttribMemorySize;
 	const uint32_t attribBaseAddr	= ntBaseAddr + NametableMemorySize;
@@ -458,9 +459,9 @@ uint8_t PPU::GetArribute( const uint32_t ntId, const WtPoint& tileCoord )
 }
 
 
-uint8_t PPU::GetTilePaletteId( const uint32_t attribTable, const WtPoint& tileCoord )
+uint8_t PPU::GetTilePaletteId( const uint32_t attribTable, const wtPoint& tileCoord )
 {
-	WtPoint attributeCorner;
+	wtPoint attributeCorner;
 
 	// The lower 2bits (0-3) specify the position within a single attrib table
 	// Each attribute contains 4 nametable blocks
@@ -572,11 +573,11 @@ void PPU::WriteVram()
 
 void PPU::FrameBufferWritePixel( const uint32_t x, const uint32_t y, const Pixel pixel )
 {
-	system->frameBuffer[x + y * NesSystem::ScreenWidth] = pixel.raw;
+	system->frameBuffer.SetPixel( x, y, pixel );
 }
 
 
-void PPU::DrawBlankScanline( uint32_t imageBuffer[], const WtRect& imageRect, const uint8_t scanY )
+void PPU::DrawBlankScanline( wtRawImage& imageBuffer, const wtRect& imageRect, const uint8_t scanY )
 {
 	for ( int x = 0; x < NesSystem::ScreenWidth; ++x )
 	{
@@ -587,12 +588,12 @@ void PPU::DrawBlankScanline( uint32_t imageBuffer[], const WtRect& imageRect, co
 		const uint32_t imageY = imageRect.y + scanY;
 		const uint32_t pixelIx = imageX + imageY * imageRect.width;
 
-		imageBuffer[pixelIx] = pixelColor.raw;
+		imageBuffer.Set( pixelIx, pixelColor );
 	}
 }
 
 
-void PPU::DrawPixel( uint32_t imageBuffer[], const WtRect& imageRect )
+void PPU::DrawPixel( wtRawImage& imageBuffer, const wtRect& imageRect )
 {
 
 }
@@ -617,14 +618,14 @@ uint8_t PPU::BgPipelineDecodePalette()
 }
 
 
-void PPU::DrawTile( uint32_t imageBuffer[], const WtRect& imageRect, const WtPoint& nametableTile, const uint32_t ntId, const uint32_t ptrnTableId )
+void PPU::DrawTile( wtRawImage& imageBuffer, const wtRect& imageRect, const wtPoint& nametableTile, const uint32_t ntId, const uint32_t ptrnTableId )
 {
 	for ( uint32_t y = 0; y < PPU::TilePixels; ++y )
 	{
 		for ( uint32_t x = 0; x < PPU::TilePixels; ++x )
 		{
-			WtPoint point;
-			WtPoint chrRomPoint;
+			wtPoint point;
+			wtPoint chrRomPoint;
 
 			point.x = 8 * nametableTile.x + x;
 			point.y = 8 * nametableTile.y + y;
@@ -652,19 +653,19 @@ void PPU::DrawTile( uint32_t imageBuffer[], const WtRect& imageRect, const WtPoi
 
 			Bitmap::CopyToPixel( palette[colorIx], pixelColor, BITMAP_BGRA );
 
-			imageBuffer[imageX + imageY * imageRect.width] = pixelColor.raw;
+			imageBuffer.Set( imageX + imageY * imageRect.width, pixelColor );
 		}
 	}
 }
 
 
-void PPU::DrawTile( uint32_t imageBuffer[], const WtRect& imageRect, const uint32_t tileId, const uint32_t ptrnTableId )
+void PPU::DrawTile( wtRawImage& imageBuffer, const wtRect& imageRect, const uint32_t tileId, const uint32_t ptrnTableId )
 {
 	for ( uint32_t y = 0; y < PPU::TilePixels; ++y )
 	{
 		for ( uint32_t x = 0; x < PPU::TilePixels; ++x )
 		{
-			WtPoint chrRomPoint;
+			wtPoint chrRomPoint;
 
 			chrRomPoint.x = x;
 			chrRomPoint.y = y;
@@ -685,7 +686,7 @@ void PPU::DrawTile( uint32_t imageBuffer[], const WtRect& imageRect, const uint3
 
 			Bitmap::CopyToPixel( palette[colorIx], pixelColor, BITMAP_BGRA );
 
-			imageBuffer[imageX + imageY * imageRect.width] = pixelColor.raw;
+			imageBuffer.Set( imageX + imageY * imageRect.width, pixelColor );
 		}
 	}
 }
@@ -710,7 +711,7 @@ PpuSpriteAttrib PPU::GetSpriteData( const uint8_t spriteId, const uint8_t oam[] 
 }
 
 
-void PPU::DrawSpritePixel( uint32_t imageBuffer[], const WtRect& imageRect, const PpuSpriteAttrib attribs, const WtPoint& point, const uint8_t bgPixel, bool sprite0 )
+void PPU::DrawSpritePixel( wtRawImage& imageBuffer, const wtRect& imageRect, const PpuSpriteAttrib attribs, const wtPoint& point, const uint8_t bgPixel, bool sprite0 )
 {
 	if( !regMask.sem.showSprt )
 	{
@@ -719,7 +720,7 @@ void PPU::DrawSpritePixel( uint32_t imageBuffer[], const WtRect& imageRect, cons
 
 	Pixel pixelColor;
 
-	WtPoint spritePt;
+	wtPoint spritePt;
 
 	spritePt.x = point.x - attribs.x;
 	spritePt.y = point.y - attribs.y;
@@ -778,13 +779,13 @@ void PPU::DrawSpritePixel( uint32_t imageBuffer[], const WtRect& imageRect, cons
 
 	const uint32_t imageIndex = imageX + imageY * imageRect.width;
 
-	imageBuffer[imageIndex] = pixelColor.raw;
+	imageBuffer.Set( imageIndex, pixelColor );
 }
 
 
 void PPU::DrawSprites( const uint32_t tableId )
 {
-	static WtRect imageRect = { 0, 0, NesSystem::ScreenWidth, NesSystem::ScreenHeight };
+	static wtRect imageRect = { 0, 0, NesSystem::ScreenWidth, NesSystem::ScreenHeight };
 
 	for ( uint8_t spriteNum = 0; spriteNum < TotalSprites; ++spriteNum )
 	{
@@ -799,7 +800,7 @@ void PPU::DrawSprites( const uint32_t tableId )
 			{
 				uint8_t bgPixel = 0;
 
-				WtPoint point = { x + attribs.x, y + attribs.y };
+				wtPoint point = { x + attribs.x, y + attribs.y };
 
 				DrawSpritePixel( system->frameBuffer, imageRect, attribs, point, bgPixel, false );
 			}
@@ -808,7 +809,7 @@ void PPU::DrawSprites( const uint32_t tableId )
 }
 
 
-void PPU::DrawDebugPalette( uint32_t imageBuffer[] )
+void PPU::DrawDebugPalette( wtRawImage& imageBuffer )
 {
 	for ( uint16_t colorIx = 0; colorIx < 16; ++colorIx )
 	{
@@ -816,11 +817,11 @@ void PPU::DrawDebugPalette( uint32_t imageBuffer[] )
 
 		uint32_t color = ReadVram( PaletteBaseAddr + colorIx );
 		Bitmap::CopyToPixel( palette[color], pixel, BITMAP_BGRA );
-		imageBuffer[colorIx] = pixel.raw;
+		imageBuffer.Set( colorIx, pixel );
 
 		color = ReadVram( SpritePaletteAddr + colorIx );
 		Bitmap::CopyToPixel( palette[color], pixel, BITMAP_BGRA );
-		imageBuffer[16 + colorIx] = pixel.raw;
+		imageBuffer.Set( 16 + colorIx, pixel );
 	}
 }
 
@@ -840,9 +841,10 @@ void PPU::LoadSecondaryOAM()
 	for ( uint8_t spriteNum = 0; spriteNum < 64; ++spriteNum )
 	{
 		uint8_t y = 1 + primaryOAM[spriteNum * 4];
-		uint32_t spriteHeight = regCtrl.sem.spriteSize ? 16 : 8;
+		const bool isLargeSpriteMode = static_cast<bool>( regCtrl.sem.spriteSize );
+		uint32_t spriteHeight = isLargeSpriteMode ? 16 : 8;
 
-		if ( ( beamPosition.y < ( y + spriteHeight ) ) && ( beamPosition.y >= y ) )
+		if ( ( beamPosition.y < static_cast<int32_t>( y + spriteHeight ) ) && ( beamPosition.y >= static_cast<int32_t>( y ) ) )
 		{
 			secondaryOAM[destSpriteNum * 4]		= y;
 			secondaryOAM[destSpriteNum * 4 + 1] = primaryOAM[spriteNum * 4 + 1];
@@ -982,7 +984,7 @@ bool PPU::DataportEnabled()
 const ppuCycle_t PPU::Exec()
 {
 	// Function advances 1 - 8 cycles at a time. The logic is built on this constaint.
-	static WtRect imageRect = { 0, 0, NesSystem::ScreenWidth, NesSystem::ScreenHeight };
+	static wtRect imageRect = { 0, 0, NesSystem::ScreenWidth, NesSystem::ScreenHeight };
 
 	ppuCycle_t execCycles = ppuCycle_t( 0 );
 
@@ -1047,7 +1049,8 @@ const ppuCycle_t PPU::Exec()
 			inVBlank = true;
 			regStatus.current.sem.vBlank = 1;
 
-			if ( regCtrl.sem.nmiVblank )
+			const bool isVblank = static_cast<bool>( regCtrl.sem.nmiVblank );
+			if ( isVblank )
 			{
 				GenerateNMI();
 			}
@@ -1072,7 +1075,7 @@ const ppuCycle_t PPU::Exec()
 
 		if( currentScanline < POSTRENDER_SCANLINE )
 		{
-			WtPoint screenPt;
+			wtPoint screenPt;
 			screenPt.x = beamPosition.x & 0xF8;
 			screenPt.y = beamPosition.y & 0xF8;
 
@@ -1095,7 +1098,7 @@ const ppuCycle_t PPU::Exec()
 
 				Bitmap::CopyToPixel( palette[colorIx], pixelColor, BITMAP_BGRA );
 
-				system->frameBuffer[imageIx] = pixelColor.raw;
+				system->frameBuffer.Set( imageIx, pixelColor );
 			}
 			else
 			{
@@ -1109,7 +1112,7 @@ const ppuCycle_t PPU::Exec()
 				Pixel pixelColor;
 				Bitmap::CopyToPixel( palette[colorIx], pixelColor, BITMAP_BGRA );
 
-				system->frameBuffer[imageIx] = pixelColor.raw;
+				system->frameBuffer.Set( imageIx, pixelColor );
 			}
 
 			for ( uint8_t spriteNum = 0; spriteNum < spriteLimit; ++spriteNum )
@@ -1120,7 +1123,7 @@ const ppuCycle_t PPU::Exec()
 				{
 					if ( !( attribs.y < 8 || attribs.y > 232 ) )
 					{
-  						DrawSpritePixel( system->frameBuffer, imageRect, attribs, beamPosition, bgPixel & 0x03, ( spriteNum == 0 ) && sprite0InList );
+						DrawSpritePixel( system->frameBuffer, imageRect, attribs, beamPosition, bgPixel & 0x03, ( spriteNum == 0 ) && sprite0InList );
 					}
 				}
 			}

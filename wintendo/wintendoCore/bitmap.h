@@ -21,6 +21,7 @@ struct RGBA
 	uint8_t alpha;
 };
 
+
 typedef unsigned int uint32;
 typedef unsigned short uint16;
 
@@ -28,6 +29,7 @@ union Pixel
 {
 	uint8_t vec[4]; // ABGR format
 	uint32 raw;
+	RGBA rgba; // TODO: check order
 };
 
 
