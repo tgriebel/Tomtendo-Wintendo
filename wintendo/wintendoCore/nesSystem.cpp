@@ -13,7 +13,7 @@
 
 using namespace std;
 
-ButtonFlags keyBuffer[2] = { BUTTON_NONE, BUTTON_NONE };
+ButtonFlags keyBuffer[2] = { ButtonFlags::BUTTON_NONE, ButtonFlags::BUTTON_NONE };
 
 void NesSystem::LoadProgram( const NesCart& loadCart, const uint32_t resetVectorManual )
 {
@@ -130,13 +130,13 @@ uint8_t& NesSystem::GetMemory( const uint16_t address )
 
 		if ( strobeOn )
 		{
-			controllerBuffer[controllerIndex] = GetKeyBuffer( controllerId ) & static_cast<ButtonFlags>( 0X80 );
+			controllerBuffer[controllerIndex] = static_cast<uint8_t>( GetKeyBuffer( controllerId ) & static_cast<ButtonFlags>( 0X80 ) );
 			btnShift[controllerIndex] = 0;
 
 			return controllerBuffer[controllerIndex];
 		}
 
-		controllerBuffer[controllerIndex] = ( GetKeyBuffer( controllerId ) >> ( 7 - btnShift[controllerIndex] ) ) & 0x01;
+		controllerBuffer[controllerIndex] = static_cast<uint8_t>( GetKeyBuffer( controllerId ) >> static_cast<ButtonFlags>( 7 - btnShift[controllerIndex] ) ) & 0x01;
 		++btnShift[controllerIndex];
 		btnShift[controllerIndex] %= 8;
 

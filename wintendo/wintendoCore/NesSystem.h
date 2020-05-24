@@ -75,7 +75,7 @@ public:
 
 	uint32_t prgRomBank;
 
-	string fileName;
+	wstring fileName;
 
 	uint8_t memory[VirtualMemorySize]; // TODO: make physical size
 

@@ -203,7 +203,7 @@ enum class wtImageTag
 };
 
 
-static void LoadNesFile( const std::string& fileName, NesCart& outCart )
+static void LoadNesFile( const std::wstring& fileName, NesCart& outCart )
 {
 	std::ifstream nesFile;
 	nesFile.open( fileName, std::ios::binary );
@@ -221,12 +221,6 @@ static void LoadNesFile( const std::string& fileName, NesCart& outCart )
 	assert( outCart.header.type[1] == 'E' );
 	assert( outCart.header.type[2] == 'S' );
 	assert( outCart.header.magic == 0x1A );
-	
-	std::ofstream checkFile;
-	checkFile.open( "checkFile.nes", std::ios::binary );
-	checkFile.write( reinterpret_cast<char*>( &outCart ), len );
-	checkFile.close();
-	
 
 	outCart.size = len - sizeof( outCart.header ); // TODO: trainer needs to be checked
 }

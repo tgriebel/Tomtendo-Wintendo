@@ -3,7 +3,7 @@
 #include "stdafx.h"
 #include <stdint.h>
 
-enum ButtonFlags : uint8_t
+enum class ButtonFlags : uint8_t
 {
 	BUTTON_NONE		= 0X00,
 
@@ -18,6 +18,26 @@ enum ButtonFlags : uint8_t
 	BUTTON_A		= 0X80,
 };
 
+
+inline ButtonFlags operator |( const ButtonFlags lhs, const ButtonFlags rhs )
+{
+	return static_cast<ButtonFlags>( static_cast<uint8_t>( lhs ) | static_cast<uint8_t>( rhs ) );
+}
+
+inline ButtonFlags operator &( const ButtonFlags lhs, const ButtonFlags rhs )
+{
+	return static_cast<ButtonFlags>( static_cast<uint8_t>( lhs ) & static_cast<uint8_t>( rhs ) );
+}
+
+inline ButtonFlags operator >>( const ButtonFlags lhs, const ButtonFlags rhs )
+{
+	return static_cast<ButtonFlags>( static_cast<uint8_t>( lhs ) >> static_cast<uint8_t>( rhs ) );
+}
+
+inline ButtonFlags operator <<( const ButtonFlags lhs, const ButtonFlags rhs )
+{
+	return static_cast<ButtonFlags>( static_cast<uint8_t>( lhs ) << static_cast<uint8_t>( rhs ) );
+}
 
 enum class ControllerId : uint8_t
 {
@@ -41,15 +61,15 @@ inline ButtonFlags GetKeyBuffer( const ControllerId controllerId )
 
 // TODO: make thread safe -- look at CaptureKey function I started
 // keyBuffer is only written by store key so it's guaranteed read only elsewhere
-inline void StoreKey( const ControllerId controllerId, uint8_t key )
+inline void StoreKey( const ControllerId controllerId, const ButtonFlags key )
 {
 	const uint32_t mapKey = static_cast<uint32_t>( controllerId );
-	keyBuffer[mapKey] = static_cast<ButtonFlags>( keyBuffer[mapKey] | key );
+	keyBuffer[mapKey] = keyBuffer[mapKey] | static_cast<ButtonFlags>( key );
 }
 
 
-inline void ReleaseKey( const ControllerId controllerId, uint8_t key )
+inline void ReleaseKey( const ControllerId controllerId, const ButtonFlags key )
 {
 	const uint32_t mapKey = static_cast<uint32_t>( controllerId );
-	keyBuffer[mapKey] = static_cast<ButtonFlags>( keyBuffer[mapKey] & ~key );
+	keyBuffer[mapKey] = keyBuffer[mapKey] & static_cast<ButtonFlags>( ~static_cast<uint8_t>( key ) );
 }

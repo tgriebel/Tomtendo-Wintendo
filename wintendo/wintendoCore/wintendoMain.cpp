@@ -26,51 +26,13 @@ timePoint_t previousTime;
 bool lockFps = true;
 
 
-int InitSystem( const char* filePath )
+int InitSystem( const wstring& filePath )
 {
-	//LoadNesFile( "Games/nestest.nes", cart ); // Draws using pattern table 0
-	//nesSystem.LoadProgram( cart, 0xC000 );
-	//nesSystem.cpu.forceStopAddr = 0xC6BD;
-
-	//LoadNesFile("Tests/01-basics.nes", cart);
-	//LoadNesFile("Tests/02-implied.nes", cart);
-	//LoadNesFile("Tests/03-immediate.nes", cart); // FAILED?
-	//LoadNesFile("Tests/04-zero_page.nes", cart); // FAILED
-	//LoadNesFile("Tests/05-zp_xy.nes", cart); // FAILED
-	//LoadNesFile("Tests/06-absolute.nes", cart); // FAILED
-	//LoadNesFile("Tests/07-abs_xy.nes", cart); // FAILED
-	//LoadNesFile("Tests/08-ind_x.nes", cart); // FAILED
-	//LoadNesFile("Tests/09-ind_y.nes", cart); // FAILED
-	//LoadNesFile("Tests/10-branches.nes", cart);
-	//LoadNesFile("Tests/11-stack.nes", cart);
-	//LoadNesFile("Tests/12-jmp_jsr.nes", cart);
-	//LoadNesFile("Tests/13-rts.nes", cart);
-	//LoadNesFile("Tests/14-rti.nes", cart);
-	//LoadNesFile("Tests/15-brk.nes", cart); // FAILED
-	//LoadNesFile("Tests/16-special.nes", cart); // FAILED
-	//LoadNesFile("Tests/all_instrs.nes", cart);
-	//LoadNesFile("Tests/nestest.nes", cart);
-
-	//LoadNesFile("PpuTests/color_test.nes", cart);	
-	//LoadNesFile("PpuTests/test_ppu_read_buffer.nes", cart); // FAILED
-	//LoadNesFile("PpuTests/vram_access.nes", cart); // FAILED
-	
-	//LoadNesFile( "Games/Metroid.nes", cart ); // 
-	//LoadNesFile("Games/Duck Tales.nes", cart); // Needs mapper
-	//LoadNesFile("Games/Megaman.nes", cart); // Needs mapper
-	//LoadNesFile("Games/Castlevania.nes", cart); // Needs mapper
-	//LoadNesFile( "Games/Contra.nes", cart ); // Needs mapper
-	//LoadNesFile( "Games/Super Mario Bros.nes", cart ); // works
-	//LoadNesFile( "Games/Mario Bros.nes", cart ); // works
-	//LoadNesFile( "Games/Balloon Fight.nes", cart ); // works
-	//LoadNesFile( "Games/Tennis.nes", cart ); // works
-	//LoadNesFile( "Games/Ice Climber.nes", cart ); // works, minor graphical issues with ice blocks, wasn't a problem before addr reg rework
-	//LoadNesFile( "Games/Excitebike.nes", cart ); // works
-	//LoadNesFile( "Games/Donkey Kong.nes", cart ); // works
 	LoadNesFile( filePath, cart);
 
 	nesSystem.LoadProgram( cart );
 	nesSystem.cart = &cart;
+	nesSystem.fileName = filePath;
 
 	return 0;
 }
@@ -81,36 +43,6 @@ void ShutdownSystem()
 #if DEBUG_ADDR == 1
 	nesSystem.cpu.logFile.close();
 #endif // #if DEBUG_ADDR == 1
-}
-
-
-void CopyFrameBuffer( uint32_t destBuffer[], const size_t destSize )
-{
-	memcpy( destBuffer, nesSystem.frameBuffer.GetRawBuffer(), destSize );
-}
-
-
-void CopyNametable( uint32_t destBuffer[], const size_t destSize )
-{
-	memcpy( destBuffer, nesSystem.nameTableSheet.GetRawBuffer(), destSize );
-}
-
-
-void CopyPalette( uint32_t destBuffer[], const size_t destSize )
-{
-	memcpy( destBuffer, nesSystem.paletteDebug.GetRawBuffer(), destSize );
-}
-
-
-void CopyPatternTable0( uint32_t destBuffer[], const size_t destSize )
-{
-	memcpy( destBuffer, nesSystem.patternTable0Debug.GetRawBuffer(), destSize );
-}
-
-
-void CopyPatternTable1( uint32_t destBuffer[], const size_t destSize )
-{
-	memcpy( destBuffer, nesSystem.patternTable1Debug.GetRawBuffer(), destSize );
 }
 
 
@@ -142,14 +74,6 @@ void CopyImageBuffer( wtRawImage& destImageBuffer, wtImageTag tag )
 			assert(0); // TODO: Error message
 		break;
 	}
-}
-
-
-void SetGameName( const char* name )
-{
-	string fileName;
-	nesSystem.fileName.clear();
-	nesSystem.fileName.insert( 0, name );
 }
 
 
@@ -290,7 +214,7 @@ int RunFrame()
 
 int main()
 {
-	InitSystem( "Games/Contra.nes" );
+	InitSystem( L"Games/Contra.nes" );
 	nesSystem.headless = true;
 
 	RunFrame();
