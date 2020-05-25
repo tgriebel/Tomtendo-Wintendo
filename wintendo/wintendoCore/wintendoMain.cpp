@@ -17,9 +17,9 @@
 #include "bitmap.h"
 
 
-NesSystem nesSystem;
+wtSystem nesSystem;
+wtCart cart;
 frameRate_t frame( 1 );
-NesCart cart;
 
 typedef std::chrono::time_point<std::chrono::steady_clock> timePoint_t;
 timePoint_t previousTime;
@@ -110,11 +110,11 @@ int RunFrame()
 		return false;
 	}
 
-	wtRect imageRect = { 0, 0, NesSystem::ScreenWidth, NesSystem::ScreenHeight };
+	wtRect imageRect = { 0, 0, wtSystem::ScreenWidth, wtSystem::ScreenHeight };
 
 	static uint8_t line = 0;
 
-	for ( uint32_t scanY = 0; scanY < NesSystem::ScreenHeight; ++scanY )
+	for ( uint32_t scanY = 0; scanY < wtSystem::ScreenHeight; ++scanY )
 	{
 		if( ( scanY % 2 ) == line ) // lazy scanline effect
 		{
@@ -133,15 +133,15 @@ int RunFrame()
 
 	if( debugNT )
 	{
-		wtRect ntRects[4] = {	{ 0,						0,							2 * NesSystem::ScreenWidth,	2 * NesSystem::ScreenHeight },
-								{ NesSystem::ScreenWidth,	0,							2 * NesSystem::ScreenWidth,	2 * NesSystem::ScreenHeight },
-								{ 0,						NesSystem::ScreenHeight,	2 * NesSystem::ScreenWidth, 2 * NesSystem::ScreenHeight },
-								{ NesSystem::ScreenWidth,	NesSystem::ScreenHeight,	2 * NesSystem::ScreenWidth, 2 * NesSystem::ScreenHeight }, };
+		wtRect ntRects[4] = {	{ 0,						0,							2 * wtSystem::ScreenWidth,	2 * wtSystem::ScreenHeight },
+								{ wtSystem::ScreenWidth,	0,							2 * wtSystem::ScreenWidth,	2 * wtSystem::ScreenHeight },
+								{ 0,						wtSystem::ScreenHeight,	2 * wtSystem::ScreenWidth, 2 * wtSystem::ScreenHeight },
+								{ wtSystem::ScreenWidth,	wtSystem::ScreenHeight,	2 * wtSystem::ScreenWidth, 2 * wtSystem::ScreenHeight }, };
 
 		wtPoint ntCorners[4] = {	{0,							0 },
-									{ NesSystem::ScreenWidth,	0 },
-									{ 0,						NesSystem::ScreenHeight },
-									{ NesSystem::ScreenWidth,	NesSystem::ScreenHeight },};
+									{ wtSystem::ScreenWidth,	0 },
+									{ 0,						wtSystem::ScreenHeight },
+									{ wtSystem::ScreenWidth,	wtSystem::ScreenHeight },};
 
 		for ( uint32_t ntId = 0; ntId < 4; ++ntId )
 		{

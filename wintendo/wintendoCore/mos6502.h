@@ -11,7 +11,7 @@ struct OpCodeMap;
 struct AddrMapTuple;
 struct InstructionMapTuple;
 struct DisassemblerMapTuple;
-class NesSystem;
+class wtSystem;
 struct CpuAddrInfo;
 
 
@@ -92,7 +92,7 @@ struct Cpu6502
 	uint16_t irqVector;
 	uint16_t resetVector;
 
-	NesSystem* system;
+	wtSystem* system;
 
 	cpuCycle_t cycle;
 	cpuCycle_t instructionCycles;

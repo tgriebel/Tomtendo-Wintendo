@@ -32,7 +32,7 @@ using cpuCycle_t = std::chrono::duration< uint64_t, std::ratio<CpuClockDivide, M
 using scanCycle_t = std::chrono::duration< uint64_t, std::ratio<PpuCyclesPerScanline * PpuClockDivide, MasterClockHz> >; // TODO: Verify
 using frameRate_t = std::chrono::duration< double, std::ratio<1, FPS> >;
 
-struct iNesHeader
+struct wtRomHeader
 {
 	uint8_t type[3];
 	uint8_t magic;
@@ -55,9 +55,9 @@ struct iNesHeader
 };
 
 
-struct NesCart
+struct wtCart
 {
-	iNesHeader	header;
+	wtRomHeader	header;
 	uint8_t		rom[524288];
 	size_t		size;
 };
@@ -203,7 +203,7 @@ enum class wtImageTag
 };
 
 
-static void LoadNesFile( const std::wstring& fileName, NesCart& outCart )
+static void LoadNesFile( const std::wstring& fileName, wtCart& outCart )
 {
 	std::ifstream nesFile;
 	nesFile.open( fileName, std::ios::binary );

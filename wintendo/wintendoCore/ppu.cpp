@@ -72,8 +72,8 @@ void PPU::GenerateDMA()
 
 uint8_t PPU::DMA( const uint16_t address )
 {
-	const void* memoryAddress = &system->GetMemory( NesSystem::PageSize * static_cast<uint8_t>( address ) );
-	memcpy( primaryOAM, memoryAddress, NesSystem::PageSize );
+	const void* memoryAddress = &system->GetMemory( wtSystem::PageSize * static_cast<uint8_t>( address ) );
+	memcpy( primaryOAM, memoryAddress, wtSystem::PageSize );
 	return 0;
 }
 
@@ -385,8 +385,8 @@ uint8_t PPU::GetNameTableId()
 
 uint16_t PPU::MirrorVram( uint16_t addr )
 {
-	const iNesHeader::ControlsBits0 controlBits0 = system->cart->header.controlBits0;
-	const iNesHeader::ControlsBits1 controlBits1 = system->cart->header.controlBits1;
+	const wtRomHeader::ControlsBits0 controlBits0 = system->cart->header.controlBits0;
+	const wtRomHeader::ControlsBits1 controlBits1 = system->cart->header.controlBits1;
 
 	uint32_t mirrorMode = controlBits0.fourScreenMirror ? 2 : controlBits0.mirror;
 
@@ -488,7 +488,7 @@ uint8_t PPU::GetTilePaletteId( const uint32_t attribTable, const wtPoint& tileCo
 uint8_t PPU::GetChrRom8x8( const uint32_t tileId, const uint8_t plane, const uint8_t ptrnTableId, const uint8_t row )
 {
 	const uint8_t tileBytes		= 16;
-	const uint16_t baseAddr		= ptrnTableId * NesSystem::ChrRomSize;
+	const uint16_t baseAddr		= ptrnTableId * wtSystem::ChrRomSize;
 	const uint16_t chrRomBase	= baseAddr + tileId * tileBytes;
 
 	return ReadVram( chrRomBase + row + 8 * ( plane & 0x01 ) );
@@ -498,7 +498,7 @@ uint8_t PPU::GetChrRom8x8( const uint32_t tileId, const uint8_t plane, const uin
 uint8_t PPU::GetChrRom8x16( const uint32_t tileId, const uint8_t plane, const uint8_t row, const bool isUpper )
 {
 	const uint8_t tileBytes = 16;
-	const uint16_t baseAddr = ( tileId & 0x01 ) * NesSystem::ChrRomSize;
+	const uint16_t baseAddr = ( tileId & 0x01 ) * wtSystem::ChrRomSize;
 	const uint16_t chrRomBase = baseAddr + ( ( tileId & ~0x01 ) + isUpper ) * tileBytes;
 
 	return ReadVram( chrRomBase + row + 8 * ( plane & 0x01 ) );
@@ -534,7 +534,7 @@ uint8_t PPU::ReadVram( const uint16_t addr )
 	}
 	else
 	{
-		const uint16_t baseAddr = system->cart->header.prgRomBanks * NesSystem::BankSize;
+		const uint16_t baseAddr = system->cart->header.prgRomBanks * wtSystem::BankSize;
 
 		return system->cart->rom[baseAddr + addr];
 	}
@@ -579,7 +579,7 @@ void PPU::FrameBufferWritePixel( const uint32_t x, const uint32_t y, const Pixel
 
 void PPU::DrawBlankScanline( wtRawImage& imageBuffer, const wtRect& imageRect, const uint8_t scanY )
 {
-	for ( int x = 0; x < NesSystem::ScreenWidth; ++x )
+	for ( int x = 0; x < wtSystem::ScreenWidth; ++x )
 	{
 		Pixel pixelColor;
 		Bitmap::CopyToPixel( RGBA{ 0, 0, 0, 255 }, pixelColor, BITMAP_BGRA );
@@ -785,7 +785,7 @@ void PPU::DrawSpritePixel( wtRawImage& imageBuffer, const wtRect& imageRect, con
 
 void PPU::DrawSprites( const uint32_t tableId )
 {
-	static wtRect imageRect = { 0, 0, NesSystem::ScreenWidth, NesSystem::ScreenHeight };
+	static wtRect imageRect = { 0, 0, wtSystem::ScreenWidth, wtSystem::ScreenHeight };
 
 	for ( uint8_t spriteNum = 0; spriteNum < TotalSprites; ++spriteNum )
 	{
@@ -984,7 +984,7 @@ bool PPU::DataportEnabled()
 const ppuCycle_t PPU::Exec()
 {
 	// Function advances 1 - 8 cycles at a time. The logic is built on this constaint.
-	static wtRect imageRect = { 0, 0, NesSystem::ScreenWidth, NesSystem::ScreenHeight };
+	static wtRect imageRect = { 0, 0, wtSystem::ScreenWidth, wtSystem::ScreenHeight };
 
 	ppuCycle_t execCycles = ppuCycle_t( 0 );
 

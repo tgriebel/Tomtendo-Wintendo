@@ -15,7 +15,7 @@ using namespace std;
 
 ButtonFlags keyBuffer[2] = { ButtonFlags::BUTTON_NONE, ButtonFlags::BUTTON_NONE };
 
-void NesSystem::LoadProgram( const NesCart& loadCart, const uint32_t resetVectorManual )
+void wtSystem::LoadProgram( const wtCart& loadCart, const uint32_t resetVectorManual )
 {
 	memset( memory, 0, VirtualMemorySize );
 
@@ -62,32 +62,32 @@ void NesSystem::LoadProgram( const NesCart& loadCart, const uint32_t resetVector
 }
 
 
-bool NesSystem::IsInputRegister( const uint16_t address )
+bool wtSystem::IsInputRegister( const uint16_t address )
 {
 	return ( ( address == InputRegister0 ) || ( address == InputRegister1 ) );
 }
 
 
-bool NesSystem::IsPpuRegister( const uint16_t address )
+bool wtSystem::IsPpuRegister( const uint16_t address )
 {
 	return ( address >= PpuRegisterBase ) && ( address < PpuRegisterEnd );
 }
 
 
-bool NesSystem::IsApuRegister( const uint16_t address )
+bool wtSystem::IsApuRegister( const uint16_t address )
 {
 	return ( address >= ApuRegisterBase ) && ( address < ApuRegisterEnd );
 }
 
 
-bool NesSystem::IsDMA( const uint16_t address )
+bool wtSystem::IsDMA( const uint16_t address )
 {
 	// TODO: port technically on CPU
 	return ( address == PpuOamDma );
 }
 
 
-uint16_t NesSystem::MirrorAddress( const uint16_t address )
+uint16_t wtSystem::MirrorAddress( const uint16_t address )
 {
 	if ( IsPpuRegister( address ) )
 	{
@@ -108,13 +108,13 @@ uint16_t NesSystem::MirrorAddress( const uint16_t address )
 }
 
 
-uint8_t& NesSystem::GetStack()
+uint8_t& wtSystem::GetStack()
 {
 	return memory[StackBase + cpu.SP];
 }
 
 
-uint8_t& NesSystem::GetMemory( const uint16_t address )
+uint8_t& wtSystem::GetMemory( const uint16_t address )
 {
 	if ( IsPpuRegister( address ) )
 	{
@@ -153,25 +153,25 @@ uint8_t& NesSystem::GetMemory( const uint16_t address )
 }
 
 
-void NesSystem::WritePhysicalMemory( const uint16_t address, const uint8_t value )
+void wtSystem::WritePhysicalMemory( const uint16_t address, const uint8_t value )
 {
 	memory[MirrorAddress(address)] = value;
 }
 
 
-void NesSystem::WriteInput( const uint8_t value )
+void wtSystem::WriteInput( const uint8_t value )
 {
 
 }
 
 
-void NesSystem::CaptureInput( const Controller keys )
+void wtSystem::CaptureInput( const Controller keys )
 {
 	controller.exchange( keys );
 }
 
 
-bool NesSystem::Run( const masterCycles_t& nextCycle )
+bool wtSystem::Run( const masterCycles_t& nextCycle )
 {
 	bool isRunning = true;
 

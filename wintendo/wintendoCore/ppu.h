@@ -247,7 +247,7 @@ struct PPU
 
 	ppuCycle_t cycle;
 
-	NesSystem* system;
+	wtSystem* system;
 	const RGBA* palette;
 
 	bool debugPrefetchTiles = false;

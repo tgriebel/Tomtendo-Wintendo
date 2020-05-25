@@ -24,7 +24,7 @@ struct Controller
 };
 
 
-class NesSystem
+class wtSystem
 {
 public:
 
@@ -65,7 +65,7 @@ public:
 	PPU				ppu;
 	masterCycles_t	sysCycles;
 
-	const NesCart*	cart;
+	const wtCart*	cart;
 
 	wtRawImage frameBuffer;
 	wtRawImage nameTableSheet;
@@ -94,7 +94,7 @@ public:
 	std::map<uint16_t, uint8_t> memoryDebug;
 #endif // #if DEBUG_ADDR == 1
 
-	NesSystem() :
+	wtSystem() :
 		frameBuffer( ScreenWidth, ScreenHeight ),
 		nameTableSheet( 2 * ScreenWidth, 2 * ScreenHeight ),
 		paletteDebug( PPU::PaletteColorNumber, PPU::PaletteSetNumber ),
@@ -133,7 +133,7 @@ public:
 	void WritePhysicalMemory( const uint16_t address, const uint8_t value );
 	uint16_t MirrorAddress( const uint16_t address );
 
-	void LoadProgram( const NesCart& cart, const uint32_t resetVectorManual = 0x10000 );
+	void LoadProgram( const wtCart& cart, const uint32_t resetVectorManual = 0x10000 );
 	bool Run( const masterCycles_t& nextCycle );
 	static bool IsInputRegister( const uint16_t address );
 	static bool IsPpuRegister( const uint16_t address );
