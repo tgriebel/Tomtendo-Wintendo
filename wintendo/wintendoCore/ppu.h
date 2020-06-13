@@ -329,14 +329,12 @@ struct PPU
 	uint8_t GetSpritePatternTableId();
 	uint8_t GetNameTableId();
 
-	void FrameBufferWritePixel( const uint32_t x, const uint32_t y, const Pixel pixel );
-	void DrawPixel( wtRawImage& imageBuffer, const wtRect& imageRect );
-	void DrawBlankScanline( wtRawImage& imageBuffer, const wtRect& imageRect, const uint8_t scanY );
-	void DrawTile( wtRawImage& imageBuffer, const wtRect& imageRect, const wtPoint& nametableTile, const uint32_t ntId, const uint32_t ptrnTableId );
-	void DrawTile( wtRawImage& imageBuffer, const wtRect& imageRect, const uint32_t tileId, const uint32_t ptrnTableId );
-	void DrawSpritePixel( wtRawImage& imageBuffer, const wtRect& imageRect, const PpuSpriteAttrib attribs, const wtPoint& point, const uint8_t bgPixel, bool sprite0 );
+	void DrawBlankScanline( wtDisplayImage& imageBuffer, const wtRect& imageRect, const uint8_t scanY );
+	void DrawTile( wtNameTableImage& imageBuffer, const wtRect& imageRect, const wtPoint& nametableTile, const uint32_t ntId, const uint32_t ptrnTableId );
+	void DrawTile( wtPatternTableImage& imageBuffer, const wtRect& imageRect, const uint32_t tileId, const uint32_t ptrnTableId );
+	void DrawSpritePixel( wtDisplayImage& imageBuffer, const wtRect& imageRect, const PpuSpriteAttrib attribs, const wtPoint& point, const uint8_t bgPixel, bool sprite0 );
 	void DrawSprites( const uint32_t tableId );
-	void DrawDebugPalette( wtRawImage& imageBuffer );
+	void DrawDebugPalette( wtPaletteImage& imageBuffer );
 
 	void GenerateNMI();
 	void GenerateDMA();

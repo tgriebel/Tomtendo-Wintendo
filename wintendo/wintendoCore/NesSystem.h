@@ -24,6 +24,27 @@ struct Controller
 };
 
 
+struct wtDebugInfo
+{
+	uint32_t frameTimeUs;
+};
+
+
+struct wtFrameResult
+{
+	uint32_t			currentFrame;
+	wtDisplayImage		frameBuffer;
+	wtNameTableImage	nameTableSheet;
+	wtPaletteImage		paletteDebug;
+	wtPatternTableImage patternTable0;
+	wtPatternTableImage patternTable1;
+
+	// Debug
+	CpuDebugMetrics		dbgMetrics;
+	wtDebugInfo			dbgInfo;
+};
+
+
 class wtSystem
 {
 public:
@@ -65,13 +86,15 @@ public:
 	PPU				ppu;
 	masterCycles_t	sysCycles;
 
-	const wtCart*	cart;
+	wtCart cart;
 
-	wtRawImage frameBuffer;
-	wtRawImage nameTableSheet;
-	wtRawImage paletteDebug;
-	wtRawImage patternTable0Debug;
-	wtRawImage patternTable1Debug;
+	pair<uint32_t,bool>	finishedFrame;
+	uint32_t			currentFrame;
+	wtDisplayImage		frameBuffer[2];
+	wtNameTableImage	nameTableSheet;
+	wtPaletteImage		paletteDebug;
+	wtPatternTableImage patternTable0;
+	wtPatternTableImage patternTable1;
 
 	uint32_t prgRomBank;
 
@@ -82,7 +105,7 @@ public:
 	uint8_t apuDummyRegister;
 
 	bool headless;
-	bool debugNT;
+	bool debugNTEnable;
 
 	// TODO: Need to support two controllers and clean this up
 	std::atomic<Controller> controller;
@@ -90,16 +113,13 @@ public:
 	uint8_t	btnShift[2];
 	uint8_t controllerBuffer[2];
 
+	wtDebugInfo dbgInfo;
+
 #if DEBUG_ADDR == 1
 	std::map<uint16_t, uint8_t> memoryDebug;
 #endif // #if DEBUG_ADDR == 1
 
-	wtSystem() :
-		frameBuffer( ScreenWidth, ScreenHeight ),
-		nameTableSheet( 2 * ScreenWidth, 2 * ScreenHeight ),
-		paletteDebug( PPU::PaletteColorNumber, PPU::PaletteSetNumber ),
-		patternTable0Debug( PPU::PatternTableWidth, PPU::PatternTableHeight ),
-		patternTable1Debug( PPU::PatternTableWidth, PPU::PatternTableHeight )
+	wtSystem()
 	{
 		cpu.forceStop = false;
 		cpu.cycle = cpuCycle_t(0);
@@ -116,29 +136,37 @@ public:
 		controllerBuffer[0] = 0;
 		controllerBuffer[1] = 0;
 
-		cart = nullptr;
-
 		headless = false;
-		debugNT = true;
+		debugNTEnable = true;
+		
+		frameBuffer[0].SetName( "FrameBuffer1" );
+		frameBuffer[1].SetName( "FrameBuffer2" );
+		nameTableSheet.SetName( "nameTable" );
+		paletteDebug.SetName( "Palette" );
+		patternTable0.SetName( "PatternTable0" );
+		patternTable1.SetName( "PatternTable1" );
 
-		frameBuffer.Clear();
-		nameTableSheet.Clear();
-		paletteDebug.Clear();
-		patternTable0Debug.Clear();
-		patternTable1Debug.Clear();
+		finishedFrame.first = 0;
+		finishedFrame.second = false;
 	}
 
 	uint8_t& GetStack();
-	uint8_t& GetMemory( const uint16_t address );
+	uint8_t GetMemory( const uint16_t address );
+	uint8_t& GetMemoryRef( const uint16_t address );
 	void WritePhysicalMemory( const uint16_t address, const uint8_t value );
 	uint16_t MirrorAddress( const uint16_t address );
 
+	int InitSystem( const wstring& filePath );
+	void ShutdownSystem();
 	void LoadProgram( const wtCart& cart, const uint32_t resetVectorManual = 0x10000 );
 	bool Run( const masterCycles_t& nextCycle );
+	int RunFrame();
 	static bool IsInputRegister( const uint16_t address );
 	static bool IsPpuRegister( const uint16_t address );
 	static bool IsApuRegister( const uint16_t address );
 	static bool IsDMA( const uint16_t address );
 	void CaptureInput( const Controller keys );
 	void WriteInput( const uint8_t value );
+	void GetFrameResult( wtFrameResult& outFrameResult );
+	static bool MouseInRegion( const wtRect& region );
 };

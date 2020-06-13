@@ -2,6 +2,7 @@
 
 #include "stdafx.h"
 #include <stdint.h>
+#include <map>
 
 enum class ButtonFlags : uint8_t
 {
@@ -48,9 +49,11 @@ enum class ControllerId : uint8_t
 	CONTROLLER_COUNT,
 };
 
+typedef std::pair<ControllerId, ButtonFlags> wtKeyBinding_t;
+static std::map<uint32_t, wtKeyBinding_t> keyMap;
 
 extern ButtonFlags keyBuffer[2];
-
+extern wtPoint mousePoint;
 
 inline ButtonFlags GetKeyBuffer( const ControllerId controllerId )
 {
@@ -59,17 +62,41 @@ inline ButtonFlags GetKeyBuffer( const ControllerId controllerId )
 }
 
 
-// TODO: make thread safe -- look at CaptureKey function I started
-// keyBuffer is only written by store key so it's guaranteed read only elsewhere
-inline void StoreKey( const ControllerId controllerId, const ButtonFlags key )
+inline void BindKey( const char key, const ControllerId controllerId, const ButtonFlags button )
 {
-	const uint32_t mapKey = static_cast<uint32_t>( controllerId );
-	keyBuffer[mapKey] = keyBuffer[mapKey] | static_cast<ButtonFlags>( key );
+	keyMap[key] = wtKeyBinding_t( controllerId, button );
 }
 
 
-inline void ReleaseKey( const ControllerId controllerId, const ButtonFlags key )
+inline wtKeyBinding_t& GetBinding( const uint32_t key )
 {
-	const uint32_t mapKey = static_cast<uint32_t>( controllerId );
-	keyBuffer[mapKey] = keyBuffer[mapKey] & static_cast<ButtonFlags>( ~static_cast<uint8_t>( key ) );
+	return keyMap[key];
+}
+
+// TODO: make thread safe -- look at CaptureKey function I started
+// keyBuffer is only written by store key so it's guaranteed read only elsewhere
+inline void StoreKey( const uint32_t key )
+{
+	wtKeyBinding_t& keyBinding = GetBinding( key );
+	const uint32_t mapKey = static_cast<uint32_t>( keyBinding.first );
+	keyBuffer[mapKey] = keyBuffer[mapKey] | static_cast<ButtonFlags>( keyBinding.second );
+}
+
+
+inline void ReleaseKey( const uint32_t key )
+{
+	wtKeyBinding_t& keyBinding = GetBinding( key );
+	const uint32_t mapKey = static_cast<uint32_t>( keyBinding.first );
+	keyBuffer[mapKey] = keyBuffer[mapKey] & static_cast<ButtonFlags>( ~static_cast<uint8_t>( keyBinding.second ) );
+}
+
+
+inline void StoreMouseClick( const wtPoint& point )
+{
+	mousePoint = point;
+}
+
+inline void ClearMouseClick()
+{
+	mousePoint = wtPoint( { -1, -1 } );
 }

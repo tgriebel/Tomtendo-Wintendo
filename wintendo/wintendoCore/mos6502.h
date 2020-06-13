@@ -84,6 +84,13 @@ struct CpuAddrInfo
 };
 
 
+struct CpuDebugMetrics
+{
+	uint32_t loadCnt;
+	uint32_t storeCnt;
+};
+
+
 struct Cpu6502
 {
 	static const uint32_t InvalidAddress = ~0x00;
@@ -105,6 +112,7 @@ struct Cpu6502
 	bool printToOutput = false;
 	int logFrameCount = 30;
 #endif
+	CpuDebugMetrics dbgMetrics;
 
 	bool forceStop = false;
 	uint16_t forceStopAddr = 0;
@@ -242,7 +250,7 @@ struct Cpu6502
 	uint16_t PullWord();
 
 	void AdvanceProgram( const uint16_t places );
-	uint8_t& ReadOperand( const uint16_t offset ) const;
+	uint8_t ReadOperand( const uint16_t offset ) const;
 	uint16_t ReadAddressOperand() const;
 
 	void SetAluFlags( const uint16_t value );

@@ -72,7 +72,7 @@ void PPU::GenerateDMA()
 
 uint8_t PPU::DMA( const uint16_t address )
 {
-	const void* memoryAddress = &system->GetMemory( wtSystem::PageSize * static_cast<uint8_t>( address ) );
+	const void* memoryAddress = &system->GetMemoryRef( wtSystem::PageSize * static_cast<uint8_t>( address ) );
 	memcpy( primaryOAM, memoryAddress, wtSystem::PageSize );
 	return 0;
 }
@@ -385,8 +385,8 @@ uint8_t PPU::GetNameTableId()
 
 uint16_t PPU::MirrorVram( uint16_t addr )
 {
-	const wtRomHeader::ControlsBits0 controlBits0 = system->cart->header.controlBits0;
-	const wtRomHeader::ControlsBits1 controlBits1 = system->cart->header.controlBits1;
+	const wtRomHeader::ControlsBits0 controlBits0 = system->cart.header.controlBits0;
+	const wtRomHeader::ControlsBits1 controlBits1 = system->cart.header.controlBits1;
 
 	uint32_t mirrorMode = controlBits0.fourScreenMirror ? 2 : controlBits0.mirror;
 
@@ -519,7 +519,7 @@ static int chrRamAddr = 0;
 uint8_t PPU::ReadVram( const uint16_t addr )
 {
 	// TODO: Has CHR-RAM check
-	bool isUnrom = system->cart->header.controlBits0.mapperNumberLower == 2;
+	bool isUnrom = system->cart.header.controlBits0.mapperNumberLower == 2;
 	if ( addr >= 0x2000 )
 	{
 		const uint16_t adjustedAddr = MirrorVram( addr );
@@ -534,9 +534,9 @@ uint8_t PPU::ReadVram( const uint16_t addr )
 	}
 	else
 	{
-		const uint16_t baseAddr = system->cart->header.prgRomBanks * wtSystem::BankSize;
+		const uint16_t baseAddr = system->cart.header.prgRomBanks * wtSystem::BankSize;
 
-		return system->cart->rom[baseAddr + addr];
+		return system->cart.rom[baseAddr + addr];
 	}
 }
 
@@ -557,7 +557,7 @@ void PPU::WriteVram()
 
 			static uint32_t addr = 0x1000;
 			// TODO: Has CHR-RAM check
-			bool isUnrom = system->cart->header.controlBits0.mapperNumberLower == 2;
+			bool isUnrom = system->cart.header.controlBits0.mapperNumberLower == 2;
 			if ( isUnrom && ( adjustedAddr < 0x2000 ) )
 			{
 				vram[adjustedAddr] = registers[PPUREG_DATA];
@@ -571,18 +571,12 @@ void PPU::WriteVram()
 }
 
 
-void PPU::FrameBufferWritePixel( const uint32_t x, const uint32_t y, const Pixel pixel )
-{
-	system->frameBuffer.SetPixel( x, y, pixel );
-}
-
-
-void PPU::DrawBlankScanline( wtRawImage& imageBuffer, const wtRect& imageRect, const uint8_t scanY )
+void PPU::DrawBlankScanline( wtDisplayImage& imageBuffer, const wtRect& imageRect, const uint8_t scanY )
 {
 	for ( int x = 0; x < wtSystem::ScreenWidth; ++x )
 	{
 		Pixel pixelColor;
-		Bitmap::CopyToPixel( RGBA{ 0, 0, 0, 255 }, pixelColor, BITMAP_BGRA );
+		Bitmap::CopyToPixel( RGBA{ 0, 0, 0, 255 }, pixelColor, BITMAP_RGBA );
 
 		const uint32_t imageX = imageRect.x + x;
 		const uint32_t imageY = imageRect.y + scanY;
@@ -590,12 +584,6 @@ void PPU::DrawBlankScanline( wtRawImage& imageBuffer, const wtRect& imageRect, c
 
 		imageBuffer.Set( pixelIx, pixelColor );
 	}
-}
-
-
-void PPU::DrawPixel( wtRawImage& imageBuffer, const wtRect& imageRect )
-{
-
 }
 
 
@@ -618,7 +606,7 @@ uint8_t PPU::BgPipelineDecodePalette()
 }
 
 
-void PPU::DrawTile( wtRawImage& imageBuffer, const wtRect& imageRect, const wtPoint& nametableTile, const uint32_t ntId, const uint32_t ptrnTableId )
+void PPU::DrawTile( wtNameTableImage& imageBuffer, const wtRect& imageRect, const wtPoint& nametableTile, const uint32_t ntId, const uint32_t ptrnTableId )
 {
 	for ( uint32_t y = 0; y < PPU::TilePixels; ++y )
 	{
@@ -651,7 +639,7 @@ void PPU::DrawTile( wtRawImage& imageBuffer, const wtRect& imageRect, const wtPo
 
 			Pixel pixelColor;
 
-			Bitmap::CopyToPixel( palette[colorIx], pixelColor, BITMAP_BGRA );
+			Bitmap::CopyToPixel( palette[colorIx], pixelColor, BITMAP_RGBA );
 
 			imageBuffer.Set( imageX + imageY * imageRect.width, pixelColor );
 		}
@@ -659,7 +647,7 @@ void PPU::DrawTile( wtRawImage& imageBuffer, const wtRect& imageRect, const wtPo
 }
 
 
-void PPU::DrawTile( wtRawImage& imageBuffer, const wtRect& imageRect, const uint32_t tileId, const uint32_t ptrnTableId )
+void PPU::DrawTile( wtPatternTableImage& imageBuffer, const wtRect& imageRect, const uint32_t tileId, const uint32_t ptrnTableId )
 {
 	for ( uint32_t y = 0; y < PPU::TilePixels; ++y )
 	{
@@ -684,7 +672,7 @@ void PPU::DrawTile( wtRawImage& imageBuffer, const wtRect& imageRect, const uint
 
 			Pixel pixelColor;
 
-			Bitmap::CopyToPixel( palette[colorIx], pixelColor, BITMAP_BGRA );
+			Bitmap::CopyToPixel( palette[colorIx], pixelColor, BITMAP_RGBA );
 
 			imageBuffer.Set( imageX + imageY * imageRect.width, pixelColor );
 		}
@@ -711,7 +699,7 @@ PpuSpriteAttrib PPU::GetSpriteData( const uint8_t spriteId, const uint8_t oam[] 
 }
 
 
-void PPU::DrawSpritePixel( wtRawImage& imageBuffer, const wtRect& imageRect, const PpuSpriteAttrib attribs, const wtPoint& point, const uint8_t bgPixel, bool sprite0 )
+void PPU::DrawSpritePixel( wtDisplayImage& imageBuffer, const wtRect& imageRect, const PpuSpriteAttrib attribs, const wtPoint& point, const uint8_t bgPixel, bool sprite0 )
 {
 	if( !regMask.sem.showSprt )
 	{
@@ -775,7 +763,7 @@ void PPU::DrawSpritePixel( wtRawImage& imageBuffer, const wtRect& imageRect, con
 		return;
 	}
 
-	Bitmap::CopyToPixel( palette[colorIx], pixelColor, BITMAP_BGRA );
+	Bitmap::CopyToPixel( palette[colorIx], pixelColor, BITMAP_RGBA );
 
 	const uint32_t imageIndex = imageX + imageY * imageRect.width;
 
@@ -802,25 +790,25 @@ void PPU::DrawSprites( const uint32_t tableId )
 
 				wtPoint point = { x + attribs.x, y + attribs.y };
 
-				DrawSpritePixel( system->frameBuffer, imageRect, attribs, point, bgPixel, false );
+				DrawSpritePixel( system->frameBuffer[system->currentFrame], imageRect, attribs, point, bgPixel, false );
 			}
 		}
 	}
 }
 
 
-void PPU::DrawDebugPalette( wtRawImage& imageBuffer )
+void PPU::DrawDebugPalette( wtPaletteImage& imageBuffer )
 {
 	for ( uint16_t colorIx = 0; colorIx < 16; ++colorIx )
 	{
 		Pixel pixel;
 
 		uint32_t color = ReadVram( PaletteBaseAddr + colorIx );
-		Bitmap::CopyToPixel( palette[color], pixel, BITMAP_BGRA );
+		Bitmap::CopyToPixel( palette[color], pixel, BITMAP_RGBA );
 		imageBuffer.Set( colorIx, pixel );
 
 		color = ReadVram( SpritePaletteAddr + colorIx );
-		Bitmap::CopyToPixel( palette[color], pixel, BITMAP_BGRA );
+		Bitmap::CopyToPixel( palette[color], pixel, BITMAP_RGBA );
 		imageBuffer.Set( 16 + colorIx, pixel );
 	}
 }
@@ -1053,6 +1041,16 @@ const ppuCycle_t PPU::Exec()
 			if ( isVblank )
 			{
 				GenerateNMI();
+
+				const uint32_t nextFrame = ( system->currentFrame + 1 ) % 2;
+				if ( system->finishedFrame.second == false ) // FIXME: skips frames
+				{
+					system->frameBuffer[system->currentFrame].locked = true;
+					system->finishedFrame = pair<uint32_t, bool>( system->currentFrame, true );	
+					system->currentFrame = nextFrame;
+				}
+				
+				system->frameBuffer[system->currentFrame].Clear();
 			}
 		}
 	}
@@ -1096,9 +1094,9 @@ const ppuCycle_t PPU::Exec()
 
 				const uint8_t colorIx = ReadVram( PPU::PaletteBaseAddr );
 
-				Bitmap::CopyToPixel( palette[colorIx], pixelColor, BITMAP_BGRA );
+				Bitmap::CopyToPixel( palette[colorIx], pixelColor, BITMAP_RGBA );
 
-				system->frameBuffer.Set( imageIx, pixelColor );
+				system->frameBuffer[system->currentFrame].Set( imageIx, pixelColor );
 			}
 			else
 			{
@@ -1110,9 +1108,16 @@ const ppuCycle_t PPU::Exec()
 
 				// Frame Buffer
 				Pixel pixelColor;
-				Bitmap::CopyToPixel( palette[colorIx], pixelColor, BITMAP_BGRA );
+				Bitmap::CopyToPixel( palette[colorIx], pixelColor, BITMAP_RGBA );
+				/*
+				if( wtSystem::MouseInRegion( { beamPosition.x, beamPosition.y, beamPosition.x + 8, beamPosition.y + 8 } ) )
+				{
+					pixelColor.rawABGR = ~pixelColor.rawABGR;
+					pixelColor.rgba.alpha = 0xFF;
+				}
+				*/
 
-				system->frameBuffer.Set( imageIx, pixelColor );
+				system->frameBuffer[system->currentFrame].Set( imageIx, pixelColor );
 			}
 
 			for ( uint8_t spriteNum = 0; spriteNum < spriteLimit; ++spriteNum )
@@ -1123,7 +1128,7 @@ const ppuCycle_t PPU::Exec()
 				{
 					if ( !( attribs.y < 8 || attribs.y > 232 ) )
 					{
-						DrawSpritePixel( system->frameBuffer, imageRect, attribs, beamPosition, bgPixel & 0x03, ( spriteNum == 0 ) && sprite0InList );
+						DrawSpritePixel( system->frameBuffer[system->currentFrame], imageRect, attribs, beamPosition, bgPixel & 0x03, ( spriteNum == 0 ) && sprite0InList );
 					}
 				}
 			}
@@ -1202,6 +1207,7 @@ const ppuCycle_t PPU::Exec()
 bool PPU::Step( const ppuCycle_t& nextCycle )
 {
 	/*
+	https://wiki.nesdev.com/w/index.php/NMI
 	Start of vertical blanking : Set NMI_occurred in PPU to true.
 	End of vertical blanking, sometime in pre - render scanline : Set NMI_occurred to false.
 	Read PPUSTATUS : Return old status of NMI_occurred in bit 7, then set NMI_occurred to false.

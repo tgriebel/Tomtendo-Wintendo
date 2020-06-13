@@ -164,7 +164,6 @@
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
     <ClInclude Include="common.h" />
-    <ClInclude Include="wintendo_api.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="mos6502.cpp" />

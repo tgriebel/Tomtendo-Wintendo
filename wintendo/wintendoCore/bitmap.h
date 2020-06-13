@@ -27,17 +27,25 @@ typedef unsigned short uint16;
 
 union Pixel
 {
-	uint8_t vec[4]; // ABGR format
-	uint32 raw;
-	RGBA rgba; // TODO: check order
+	uint8_t vec[4];
+	uint32_t rawABGR; // ABGR format
+	RGBA rgba;
+
+	inline uint32_t AsHexColor()
+	{
+		Pixel abgr;
+		abgr.rgba = { rgba.alpha, rgba.red, rgba.green, rgba.blue };
+		return abgr.rawABGR;
+	}
 };
 
 
 enum BitmapFormat : uint32_t
 {
 	BITMAP_ABGR = 0,
-	BITMAP_BGRA = 1,
-	BITMAP_RGBA = 2,
+	BITMAP_ARGB = 1,
+	BITMAP_BGRA = 2,
+	BITMAP_RGBA = 3,
 };
 
 

@@ -11,6 +11,9 @@
 #include <iomanip>
 #include "bitmap.h"
 
+#include <thread> // TODO: remove for testing
+#include <chrono>
+
 #define NES_MODE 1
 #define DEBUG_MODE 0
 #define DEBUG_ADDR 0
@@ -27,10 +30,10 @@ const uint64_t PpuCyclesPerScanline	= 341;
 const uint64_t FPS					= 60;
 
 using masterCycles_t = std::chrono::duration< uint64_t, std::ratio<1, MasterClockHz> >;
-using ppuCycle_t = std::chrono::duration< uint64_t, std::ratio<PpuClockDivide, MasterClockHz> >;
-using cpuCycle_t = std::chrono::duration< uint64_t, std::ratio<CpuClockDivide, MasterClockHz> >;
-using scanCycle_t = std::chrono::duration< uint64_t, std::ratio<PpuCyclesPerScanline * PpuClockDivide, MasterClockHz> >; // TODO: Verify
-using frameRate_t = std::chrono::duration< double, std::ratio<1, FPS> >;
+using ppuCycle_t	= std::chrono::duration< uint64_t, std::ratio<PpuClockDivide, MasterClockHz> >;
+using cpuCycle_t	= std::chrono::duration< uint64_t, std::ratio<CpuClockDivide, MasterClockHz> >;
+using scanCycle_t	= std::chrono::duration< uint64_t, std::ratio<PpuCyclesPerScanline * PpuClockDivide, MasterClockHz> >; // TODO: Verify
+using frameRate_t	= std::chrono::duration< double, std::ratio<1, FPS> >;
 
 struct wtRomHeader
 {
@@ -79,65 +82,62 @@ struct wtRect
 };
 
 
-class wtRawImage
+class wtRawImageInterface
+{
+public:
+	virtual void SetPixel( const uint32_t x, const uint32_t y, const Pixel& pixel ) = 0;
+	virtual void Set( const uint32_t index, const Pixel value ) = 0;
+	virtual void Clear() = 0;
+
+	virtual const uint32_t *const GetRawBuffer() const = 0;
+	virtual uint32_t GetWidth() const = 0;
+	virtual uint32_t GetHeight() const = 0;
+	virtual uint32_t GetBufferLength() const = 0;
+	virtual uint32_t GetBufferSize() const = 0;
+	virtual const char* GetName() const = 0;
+	virtual void SetName( const char* debugName ) = 0;
+};
+
+
+template< uint32_t N, uint32 M >
+class wtRawImage : public wtRawImageInterface
 {
 public:
 
 	wtRawImage()
 	{
-		width = 0;
-		height = 0;
-		length = 0;
-		buffer = nullptr;
+		Clear();
+		locked = true;
+		name = "";
 	}
 
-	wtRawImage( const uint32_t _width, const uint32_t _height )
+	wtRawImage( const char* name_ )
 	{
-		width = _width;
-		height = _height;
-		length = ( width * height );
-		buffer = new Pixel[length];
+		Clear();
+		locked = true;
+		name = name_;
 	}
 
-	wtRawImage( const wtRawImage& _image ) = delete;
+	//wtRawImage( const wtRawImage& _image ) = delete;
 
 	wtRawImage& operator=( const wtRawImage& _image )
 	{
-		width = _image.width;
-		height = _image.height;
-		length = _image.length;
-		buffer = new Pixel[length];
-
-		assert( buffer != nullptr );
-
 		for ( uint32_t i = 0; i < _image.length; ++i )
 		{
-			buffer[i].raw = _image.buffer[i].raw;
+			buffer[i].rawABGR = _image.buffer[i].rawABGR;
 		}
+
+		name = _image.name;
 
 		return *this;
-	}
-
-	~wtRawImage()
-	{
-		if ( buffer != nullptr )
-		{
-			delete[] buffer;
-			buffer = nullptr;
-
-			length = 0;
-			width = 0;
-			height = 0;
-		}
 	}
 
 	void SetPixel( const uint32_t x, const uint32_t y, const Pixel& pixel )
 	{
 		const uint32_t index = ( x + y * width );
-		assert( buffer != nullptr );
 		assert( index < length );
 
-		if ( ( buffer != nullptr ) && ( index < length ) )
+		if ( index < length )
 		{
 			buffer[index] = pixel;
 		}
@@ -145,53 +145,73 @@ public:
 
 	void Set( const uint32_t index, const Pixel value )
 	{
-		assert( buffer != nullptr );
 		assert( index < length );
 
-		if ( ( buffer != nullptr ) && ( index < length ) )
+		if ( index < length )
 		{
 			buffer[index] = value;
 		}
 	}
 
+	inline void SetName( const char* debugName )
+	{
+		name = debugName;
+	}
+
 	void Clear()
 	{
-		if ( buffer == nullptr )
-			return;
-
 		for ( uint32_t i = 0; i < length; ++i )
 		{
-			buffer[i].raw = 0;
+			buffer[i].rawABGR = 0;
 		}
+
+		locked = false;
 	}
 
-	inline const uint32_t* GetRawBuffer()
+	inline const uint32_t *const GetRawBuffer() const
 	{
-		return &buffer[0].raw;
+		return &buffer[0].rawABGR;
 	}
 
-	inline uint32_t GetWidth()
+	inline uint32_t GetWidth() const
 	{
 		return width;
 	}
 
-	inline uint32_t GetHeight()
+	inline uint32_t GetHeight() const
 	{
 		return height;
 	}
 
-	inline uint32_t GetBufferSize()
+	inline uint32_t GetBufferLength() const
+	{
+		return length;
+	}
+
+	inline uint32_t GetBufferSize() const
 	{
 		return ( sizeof( buffer[0] ) * length );
 	}
 
+	inline const char* GetName() const
+	{
+		return name;
+	}
+
+	bool locked;
+
 private:
-	uint32_t width;
-	uint32_t height;
-	uint32_t length;
-	Pixel* buffer;
+	static const uint32_t width = N;
+	static const uint32_t height = M;
+	static const uint32_t length = N * M;
+	Pixel buffer[length];
+	const char* name;
 };
 
+using wtDisplayImage = wtRawImage<256, 240>;
+using wtNameTableImage = wtRawImage<2 * 256, 2 *240>;
+using wtPaletteImage = wtRawImage<16, 2>;
+using wtPatternTableImage = wtRawImage<128, 128>;
 
 enum class wtImageTag
 {

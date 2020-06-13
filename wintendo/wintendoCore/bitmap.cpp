@@ -226,9 +226,10 @@ void Bitmap::Write( const string& filename )
 		for( uint32 pix_num = 0, buffer_i = 0; 
 			pix_num < bhi.width; buffer_i += pixelBytes, pix_num++ )
 		{
-			buffer[buffer_i]		=  mapdata[ pix_num + ( i * bhi.width ) ].blue;
+			buffer[buffer_i]		=  mapdata[ pix_num + ( i * bhi.width ) ].red;
 			buffer[buffer_i + 1]	=  mapdata[ pix_num + ( i * bhi.width ) ].green;
-			buffer[buffer_i + 2]	=  mapdata[ pix_num + ( i * bhi.width ) ].red;
+			buffer[buffer_i + 2]	=  mapdata[ pix_num + ( i * bhi.width ) ].blue;
+			buffer[buffer_i + 3]	= 0xFF;
 		}
 
 		outstream.write( reinterpret_cast<char*>( buffer ), lineBytes - 1 );
@@ -302,7 +303,7 @@ void Bitmap::GetBuffer( uint32_t buffer[] )
 		Pixel pixel;
 		CopyToPixel( mapdata[i], pixel, BITMAP_BGRA );
 
-		buffer[i] = pixel.raw;
+		buffer[i] = pixel.rawABGR;
 	}
 }
 
@@ -358,6 +359,15 @@ void Bitmap::CopyToPixel( const RGBA& rgba, Pixel& pixel, BitmapFormat format )
 			pixel.vec[1] = rgba.blue;
 			pixel.vec[2] = rgba.green;
 			pixel.vec[3] = rgba.red;
+		}
+		break;
+
+		case BITMAP_ARGB:
+		{
+			pixel.vec[0] = rgba.alpha;
+			pixel.vec[1] = rgba.red;
+			pixel.vec[2] = rgba.green;
+			pixel.vec[3] = rgba.blue;
 		}
 		break;
 
