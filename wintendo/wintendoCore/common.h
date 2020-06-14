@@ -198,6 +198,11 @@ public:
 		return name;
 	}
 
+	inline wtRect GetRect()
+	{
+		return { 0, 0, width, height };
+	}
+
 	bool locked;
 
 private:

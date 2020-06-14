@@ -174,13 +174,6 @@ struct PpuSpriteAttrib
 };
 
 
-struct OamPipeLineData
-{
-	uint8_t primaryOAM[4];
-
-};
-
-
 struct TilePipeLineData
 {
 	uint32_t flags;
@@ -241,7 +234,6 @@ struct PPU
 	wtPoint beamPosition;
 
 	bool loadingSecondaryOAM = false;
-	OamPipeLineData primaryOamSpriteData;
 
 	bool nmiOccurred;
 
@@ -265,7 +257,8 @@ struct PPU
 	uint32_t debugVramWriteCounter[VirtualMemorySize];
 	uint8_t vram[VirtualMemorySize];
 	uint8_t primaryOAM[OamSize];
-	uint8_t secondaryOAM[OamSize];
+	PpuSpriteAttrib secondaryOAM[OamSize];
+	uint8_t secondaryOamSpriteCnt;
 	bool sprite0InList; // In secondary OAM
 
 	uint8_t ppuReadBuffer[2];
@@ -283,6 +276,7 @@ struct PPU
 	uint16_t attrib;
 
 	uint8_t registers[9]; // no need?
+	uint16_t MirrorMap[4][VirtualMemorySize];
 
 	uint8_t& PPUCTRL( const uint8_t value );
 	uint8_t& PPUCTRL();
@@ -331,16 +325,17 @@ struct PPU
 
 	void DrawBlankScanline( wtDisplayImage& imageBuffer, const wtRect& imageRect, const uint8_t scanY );
 	void DrawTile( wtNameTableImage& imageBuffer, const wtRect& imageRect, const wtPoint& nametableTile, const uint32_t ntId, const uint32_t ptrnTableId );
-	void DrawTile( wtPatternTableImage& imageBuffer, const wtRect& imageRect, const uint32_t tileId, const uint32_t ptrnTableId );
+	void DrawTile( wtRawImageInterface* imageBuffer, const wtRect& imageRect, const uint32_t tileId, const uint32_t ptrnTableId );
 	void DrawSpritePixel( wtDisplayImage& imageBuffer, const wtRect& imageRect, const PpuSpriteAttrib attribs, const wtPoint& point, const uint8_t bgPixel, bool sprite0 );
-	void DrawSprites( const uint32_t tableId );
 	void DrawDebugPalette( wtPaletteImage& imageBuffer );
 
 	void GenerateNMI();
 	void GenerateDMA();
 	uint8_t DMA( const uint16_t address );
 
+	uint16_t StaticMirrorVram( uint16_t addr, uint32_t mirrorMode );
 	uint16_t MirrorVram( uint16_t addr );
+	void	GenerateMirrorMap();
 	uint8_t ReadVram( const uint16_t addr );
 	uint8_t GetNtTile( const uint32_t ntId, const wtPoint& tileCoord );
 	uint8_t GetArribute( const uint32_t ntId, const wtPoint& tileCoord );
@@ -403,6 +398,8 @@ struct PPU
 		curShift = 0;
 
 		inVBlank = true;
+
+		GenerateMirrorMap();
 	}
 
 

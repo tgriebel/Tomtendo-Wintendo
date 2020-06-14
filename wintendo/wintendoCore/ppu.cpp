@@ -14,7 +14,6 @@
 #include "debug.h"
 #include "mos6502.h"
 #include "NesSystem.h"
-#include "bitmap.h"
 
 
 const RGBA DefaultPalette[64] =
@@ -305,8 +304,8 @@ void PPU::BgPipelineFetch( const uint64_t scanlineCycle )
 	---------------------------- -
 	1. Name table byte
 	2. Attribute table byte
-	3. Pattern table bitmap #0
-	4. Pattern table bitmap #1
+	3. Pattern table tile #0
+	4. Pattern table tile #1
 	*/
 
 	if ( !BgDataFetchEnabled() )
@@ -321,12 +320,10 @@ void PPU::BgPipelineFetch( const uint64_t scanlineCycle )
 	}
 	else if ( cycleCountAdjust == 3 )
 	{
-		// The problem might be an issue with coarseX being off +/-
 		wtPoint coarsePt;
 		coarsePt.x = regV.sem.coarseX;
 		coarsePt.y = regV.sem.coarseY;
 
-		//const uint32_t attribute = GetArribute( regV0.sem.ntId, coarsePt );
 		const uint32_t attribute = ReadVram( AttribTable0BaseAddr | ( regV.sem.ntId << 10 ) | ( ( regV.sem.coarseY << 1 ) & 0xF8 ) | ( ( regV.sem.coarseX >> 2 ) & 0x07 ) );		
 
 		plLatches.attribId = GetTilePaletteId( attribute, coarsePt );
@@ -383,13 +380,8 @@ uint8_t PPU::GetNameTableId()
 }
 
 
-uint16_t PPU::MirrorVram( uint16_t addr )
+uint16_t PPU::StaticMirrorVram( uint16_t addr, uint32_t mirrorMode )
 {
-	const wtRomHeader::ControlsBits0 controlBits0 = system->cart.header.controlBits0;
-	const wtRomHeader::ControlsBits1 controlBits1 = system->cart.header.controlBits1;
-
-	uint32_t mirrorMode = controlBits0.fourScreenMirror ? 2 : controlBits0.mirror;
-
 	// Major mirror
 	addr %= 0x4000;
 
@@ -404,28 +396,28 @@ uint16_t PPU::MirrorVram( uint16_t addr )
 	{
 		if ( ( addr >= 0x2400 && addr < 0x2800 ) || ( addr >= 0x2C00 && addr < 0x3000 ) )
 		{
-			return ( addr - NameTableAttribMemorySize );
+			return ( addr - PPU::NameTableAttribMemorySize );
 		}
 	}
 	else if ( mirrorMode == 1 ) // Horizontal
 	{
 		if ( addr >= 0x2800 && addr < 0x3000 )
 		{
-			return ( addr - 2 * NameTableAttribMemorySize );
+			return ( addr - 2 * PPU::NameTableAttribMemorySize );
 		}
 	}
 	else if ( mirrorMode == 2 ) // Four screen
 	{
 		if ( addr >= 0x2000 && addr < 0x3000 )
 		{
-			return 0x2000 + ( addr % NameTableAttribMemorySize );
+			return 0x2000 + ( addr % PPU::NameTableAttribMemorySize );
 		}
 	}
 
 	// Palette Mirrors
 	if ( addr >= 0x3F20 && addr < 0x4000 )
 	{
-		addr = PaletteBaseAddr + ( ( addr & 0x00FF ) % 0x20 );
+		addr = PPU::PaletteBaseAddr + ( ( addr & 0x00FF ) % 0x20 );
 	}
 
 	if ( ( addr == 0x3F10 ) || ( addr == 0x3F14 ) || ( addr == 0x3F18 ) || ( addr == 0x3F1C ) )
@@ -434,6 +426,28 @@ uint16_t PPU::MirrorVram( uint16_t addr )
 	}
 
 	return addr;
+}
+
+
+void PPU::GenerateMirrorMap()
+{
+	for ( uint16_t mode = 0; mode < 4; ++mode )
+	{
+		for ( uint32_t addr = 0; addr < PPU::VirtualMemorySize; ++addr )
+		{
+			MirrorMap[mode][addr] = StaticMirrorVram( addr, mode );
+		}
+	}
+}
+
+uint16_t PPU::MirrorVram( uint16_t addr )
+{
+	const wtRomHeader::ControlsBits0 controlBits0 = system->cart.header.controlBits0;
+	const wtRomHeader::ControlsBits1 controlBits1 = system->cart.header.controlBits1;
+
+	uint32_t mirrorMode = controlBits0.fourScreenMirror ? 2 : controlBits0.mirror;
+
+	return MirrorMap[mirrorMode][addr];
 }
 
 
@@ -576,7 +590,10 @@ void PPU::DrawBlankScanline( wtDisplayImage& imageBuffer, const wtRect& imageRec
 	for ( int x = 0; x < wtSystem::ScreenWidth; ++x )
 	{
 		Pixel pixelColor;
-		Bitmap::CopyToPixel( RGBA{ 0, 0, 0, 255 }, pixelColor, BITMAP_RGBA );
+		pixelColor.vec[0] = 0;
+		pixelColor.vec[1] = 0;
+		pixelColor.vec[2] = 0;
+		pixelColor.vec[3] = 0xFF;
 
 		const uint32_t imageX = imageRect.x + x;
 		const uint32_t imageY = imageRect.y + scanY;
@@ -638,16 +655,13 @@ void PPU::DrawTile( wtNameTableImage& imageBuffer, const wtRect& imageRect, cons
 			const uint8_t colorIx = chrRomColor == 0 ? ReadVram( PPU::PaletteBaseAddr ) : ReadVram( PPU::PaletteBaseAddr + finalPalette );
 
 			Pixel pixelColor;
-
-			Bitmap::CopyToPixel( palette[colorIx], pixelColor, BITMAP_RGBA );
-
+			pixelColor.rgba = palette[colorIx];
 			imageBuffer.Set( imageX + imageY * imageRect.width, pixelColor );
 		}
 	}
 }
 
-
-void PPU::DrawTile( wtPatternTableImage& imageBuffer, const wtRect& imageRect, const uint32_t tileId, const uint32_t ptrnTableId )
+void PPU::DrawTile( wtRawImageInterface* imageBuffer, const wtRect& imageRect, const uint32_t tileId, const uint32_t ptrnTableId )
 {
 	for ( uint32_t y = 0; y < PPU::TilePixels; ++y )
 	{
@@ -671,10 +685,8 @@ void PPU::DrawTile( wtPatternTableImage& imageBuffer, const wtRect& imageRect, c
 			const uint8_t colorIx = ReadVram( PPU::PaletteBaseAddr + chrRomColor );
 
 			Pixel pixelColor;
-
-			Bitmap::CopyToPixel( palette[colorIx], pixelColor, BITMAP_RGBA );
-
-			imageBuffer.Set( imageX + imageY * imageRect.width, pixelColor );
+			pixelColor.rgba = palette[colorIx];
+			imageBuffer->Set( imageX + imageY * imageRect.width, pixelColor );
 		}
 	}
 }
@@ -684,8 +696,8 @@ PpuSpriteAttrib PPU::GetSpriteData( const uint8_t spriteId, const uint8_t oam[] 
 {
 	PpuSpriteAttrib attribs;
 
-	attribs.y				= oam[spriteId * 4];
-	attribs.tileId			= oam[spriteId * 4 + 1]; // TODO: implement 16x8
+	attribs.y				= 1 + oam[spriteId * 4];
+	attribs.tileId			= oam[spriteId * 4 + 1];
 	attribs.x				= oam[spriteId * 4 + 3];
 
 	const uint8_t attrib	= oam[spriteId * 4 + 2]; // TODO: finish attrib features
@@ -763,36 +775,20 @@ void PPU::DrawSpritePixel( wtDisplayImage& imageBuffer, const wtRect& imageRect,
 		return;
 	}
 
-	Bitmap::CopyToPixel( palette[colorIx], pixelColor, BITMAP_RGBA );
-
+	pixelColor.rgba = palette[colorIx];
 	const uint32_t imageIndex = imageX + imageY * imageRect.width;
 
-	imageBuffer.Set( imageIndex, pixelColor );
-}
-
-
-void PPU::DrawSprites( const uint32_t tableId )
-{
-	static wtRect imageRect = { 0, 0, wtSystem::ScreenWidth, wtSystem::ScreenHeight };
-
-	for ( uint8_t spriteNum = 0; spriteNum < TotalSprites; ++spriteNum )
+	uint8_t spriteHeight = (bool)SpriteMode::SPRITE_MODE_8x16 ? 16 : 8;
+	if ( wtSystem::MouseInRegion( { attribs.x, attribs.y, attribs.x + 8, attribs.y + spriteHeight } ) )
 	{
-		PpuSpriteAttrib attribs = GetSpriteData( spriteNum, primaryOAM );
+		pixelColor.rawABGR = ~pixelColor.rawABGR;
+		pixelColor.rgba.alpha = 0xFF;
 
-		if ( attribs.y < 8 || attribs.y > 232 )
-			continue;
-
-		for ( int32_t y = 0; y < 8; ++y )
-		{
-			for ( int32_t x = 0; x < 8; ++x )
-			{
-				uint8_t bgPixel = 0;
-
-				wtPoint point = { x + attribs.x, y + attribs.y };
-
-				DrawSpritePixel( system->frameBuffer[system->currentFrame], imageRect, attribs, point, bgPixel, false );
-			}
-		}
+		imageBuffer.Set( imageIndex, pixelColor );
+	}
+	else
+	{
+		imageBuffer.Set( imageIndex, pixelColor );
 	}
 }
 
@@ -804,11 +800,11 @@ void PPU::DrawDebugPalette( wtPaletteImage& imageBuffer )
 		Pixel pixel;
 
 		uint32_t color = ReadVram( PaletteBaseAddr + colorIx );
-		Bitmap::CopyToPixel( palette[color], pixel, BITMAP_RGBA );
+		pixel.rgba = palette[color];
 		imageBuffer.Set( colorIx, pixel );
 
 		color = ReadVram( SpritePaletteAddr + colorIx );
-		Bitmap::CopyToPixel( palette[color], pixel, BITMAP_RGBA );
+		pixel.rgba = palette[color];
 		imageBuffer.Set( 16 + colorIx, pixel );
 	}
 }
@@ -832,20 +828,20 @@ void PPU::LoadSecondaryOAM()
 		const bool isLargeSpriteMode = static_cast<bool>( regCtrl.sem.spriteSize );
 		uint32_t spriteHeight = isLargeSpriteMode ? 16 : 8;
 
-		if ( ( beamPosition.y < static_cast<int32_t>( y + spriteHeight ) ) && ( beamPosition.y >= static_cast<int32_t>( y ) ) )
+		if ( ( beamPosition.y >= static_cast<int32_t>( y + spriteHeight ) ) || ( beamPosition.y < static_cast<int32_t>( y ) ) )
+			continue;
+
+		if ( ( y < 8 ) || (y > 232 ) )
+			continue;
+
+		secondaryOAM[destSpriteNum] = GetSpriteData( spriteNum, primaryOAM );
+
+		if( spriteNum == 0 )
 		{
-			secondaryOAM[destSpriteNum * 4]		= y;
-			secondaryOAM[destSpriteNum * 4 + 1] = primaryOAM[spriteNum * 4 + 1];
-			secondaryOAM[destSpriteNum * 4 + 2] = primaryOAM[spriteNum * 4 + 2];
-			secondaryOAM[destSpriteNum * 4 + 3] = primaryOAM[spriteNum * 4 + 3];
-
-			if( spriteNum == 0 )
-			{
-				sprite0InList = true;
-			}
-
-			destSpriteNum++;
+			sprite0InList = true;
 		}
+
+		destSpriteNum++;
 
 		if ( destSpriteNum >= spriteLimit )
 		{
@@ -853,6 +849,7 @@ void PPU::LoadSecondaryOAM()
 		}
 	}
 
+	secondaryOamSpriteCnt = destSpriteNum;
 	loadingSecondaryOAM = false;
 }
 
@@ -1073,10 +1070,6 @@ const ppuCycle_t PPU::Exec()
 
 		if( currentScanline < POSTRENDER_SCANLINE )
 		{
-			wtPoint screenPt;
-			screenPt.x = beamPosition.x & 0xF8;
-			screenPt.y = beamPosition.y & 0xF8;
-
 			// Scanline render
 			imageRect.x = beamPosition.x;
 			imageRect.y = beamPosition.y;
@@ -1091,11 +1084,9 @@ const ppuCycle_t PPU::Exec()
 			if ( !regMask.sem.showBg )
 			{
 				Pixel pixelColor;
-
 				const uint8_t colorIx = ReadVram( PPU::PaletteBaseAddr );
 
-				Bitmap::CopyToPixel( palette[colorIx], pixelColor, BITMAP_RGBA );
-
+				pixelColor.rgba = palette[colorIx];
 				system->frameBuffer[system->currentFrame].Set( imageIx, pixelColor );
 			}
 			else
@@ -1108,28 +1099,17 @@ const ppuCycle_t PPU::Exec()
 
 				// Frame Buffer
 				Pixel pixelColor;
-				Bitmap::CopyToPixel( palette[colorIx], pixelColor, BITMAP_RGBA );
-				/*
-				if( wtSystem::MouseInRegion( { beamPosition.x, beamPosition.y, beamPosition.x + 8, beamPosition.y + 8 } ) )
-				{
-					pixelColor.rawABGR = ~pixelColor.rawABGR;
-					pixelColor.rgba.alpha = 0xFF;
-				}
-				*/
-
+				pixelColor.rgba = palette[colorIx];
 				system->frameBuffer[system->currentFrame].Set( imageIx, pixelColor );
 			}
 
-			for ( uint8_t spriteNum = 0; spriteNum < spriteLimit; ++spriteNum )
+			for ( uint8_t spriteNum = 0; spriteNum < secondaryOamSpriteCnt; ++spriteNum )
 			{
-				PpuSpriteAttrib attribs = GetSpriteData( spriteNum, secondaryOAM );
+				PpuSpriteAttrib& attribs = secondaryOAM[spriteNum];
 
 				if ( ( beamPosition.x < ( attribs.x + 8 ) ) && ( beamPosition.x >= attribs.x ) )
 				{
-					if ( !( attribs.y < 8 || attribs.y > 232 ) )
-					{
-						DrawSpritePixel( system->frameBuffer[system->currentFrame], imageRect, attribs, beamPosition, bgPixel & 0x03, ( spriteNum == 0 ) && sprite0InList );
-					}
+					DrawSpritePixel( system->frameBuffer[system->currentFrame], imageRect, attribs, beamPosition, bgPixel & 0x03, ( spriteNum == 0 ) && sprite0InList );
 				}
 			}
 		}

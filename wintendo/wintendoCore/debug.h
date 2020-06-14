@@ -40,7 +40,7 @@
 #define DEBUG_ADDR_IMMEDIATE if( cpu.logFrameCount > 0 ) \
 	{ \
 		cpu.debugAddr.str( std::string() ); \
-		cpu.debugAddr << uppercase << "#$" << setfill( '0' ) << setw( 2 ) << hex << static_cast< uint32_t >( value ); \
+		cpu.debugAddr << uppercase << "#$" << setfill( '0' ) << setw( 2 ) << hex << static_cast< uint32_t >( cpu.ReadOperand(0) ); \
 	}
 
 #define DEBUG_ADDR_INDIRECT_INDEXED if( cpu.logFrameCount > 0 ) \

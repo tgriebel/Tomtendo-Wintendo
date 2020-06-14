@@ -82,7 +82,6 @@ void wtSystem::LoadProgram( const wtCart& loadCart, const uint32_t resetVectorMa
 	cpu.irqVector = Combine( memory[IrqVectorAddr], memory[IrqVectorAddr + 1] );
 
 	cpu.interruptTriggered = false;
-	cpu.resetTriggered = false;
 	cpu.system = this;
 	cpu.Reset();
 }
@@ -211,14 +210,13 @@ void wtSystem::CaptureInput( const Controller keys )
 
 void wtSystem::GetFrameResult( wtFrameResult& outFrameResult )
 {
-	//assert( finishedFrame.second );
 	const uint32_t lastFrameNumber = finishedFrame.first;
 
-	outFrameResult.frameBuffer = frameBuffer[lastFrameNumber];
-	outFrameResult.nameTableSheet = nameTableSheet;
-	outFrameResult.paletteDebug = paletteDebug;
-	outFrameResult.patternTable0 = patternTable0;
-	outFrameResult.patternTable1 = patternTable1;
+	outFrameResult.frameBuffer		= frameBuffer[lastFrameNumber];
+	outFrameResult.nameTableSheet	= nameTableSheet;
+	outFrameResult.paletteDebug		= paletteDebug;
+	outFrameResult.patternTable0	= patternTable0;
+	outFrameResult.patternTable1	= patternTable1;
 
 	finishedFrame.second = false; // TODO: make atomic
 	frameBuffer[lastFrameNumber].locked = false;
@@ -277,8 +275,6 @@ bool wtSystem::Run( const masterCycles_t& nextCycle )
 
 int wtSystem::RunFrame()
 {
-	//frameBuffer.Clear();
-
 	chrono::milliseconds frameTime = chrono::duration_cast<chrono::milliseconds>( frameRate_t( 1 ) );
 
 	auto targetTime = previousTime + frameTime;
@@ -317,23 +313,6 @@ int wtSystem::RunFrame()
 
 	wtRect imageRect = { 0, 0, wtSystem::ScreenWidth, wtSystem::ScreenHeight };
 
-	static uint8_t line = 0;
-
-	for ( uint32_t scanY = 0; scanY < wtSystem::ScreenHeight; ++scanY )
-	{
-		if ( ( scanY % 2 ) == line ) // lazy scanline effect
-		{
-			//ppu.DrawBlankScanline( frameBuffer, imageRect, scanY );
-			continue;
-		}
-
-		//ppu.DrawScanline( frameBuffer, imageRect, NesSystem::ScreenWidth, scanY );
-	}
-
-	line ^= 1;
-
-	//ppu.DrawSprites( ppu.GetSpritePatternTableId() );
-
 	bool debugNT = debugNTEnable && ( ( (int)frame.count() % 60 ) == 0 );
 
 	if ( debugNT )
@@ -369,8 +348,8 @@ int wtSystem::RunFrame()
 	{
 		for ( int32_t tileX = 0; tileX < 16; ++tileX )
 		{
-			ppu.DrawTile( patternTable0, wtRect{ (int32_t)PPU::TilePixels * tileX, (int32_t)PPU::TilePixels * tileY, PPU::PatternTableWidth, PPU::PatternTableHeight }, (int32_t)( tileX + 16 * tileY ), 0 );
-			ppu.DrawTile( patternTable1, wtRect{ (int32_t)PPU::TilePixels * tileX, (int32_t)PPU::TilePixels * tileY, PPU::PatternTableWidth, PPU::PatternTableHeight }, (int32_t)( tileX + 16 * tileY ), 1 );
+			ppu.DrawTile( &patternTable0, wtRect{ (int32_t)PPU::TilePixels * tileX, (int32_t)PPU::TilePixels * tileY, PPU::PatternTableWidth, PPU::PatternTableHeight }, (int32_t)( tileX + 16 * tileY ), 0 );
+			ppu.DrawTile( &patternTable1, wtRect{ (int32_t)PPU::TilePixels * tileX, (int32_t)PPU::TilePixels * tileY, PPU::PatternTableWidth, PPU::PatternTableHeight }, (int32_t)( tileX + 16 * tileY ), 1 );
 		}
 	}
 
@@ -412,29 +391,12 @@ int wtSystem::RunFrame()
 		attribFile.close();
 	}
 
+	/*
 	Pixel pixel;
 	pixel.rgba.red = 0xFF;
 	pixel.rgba.alpha = 0xFF;
 	frameBuffer[currentFrame].SetPixel( mousePoint.x, mousePoint.y, pixel );
-	
-	/*
-	// Quick and dirty debug
-	wtRawImageInterface* image = &nameTableSheet;
-	Bitmap frameOutput( image->GetWidth(), image->GetHeight(), 0x00 );
-	const uint32_t* buffer = image->GetRawBuffer();
-	uint32_t i = 0;
-	for ( uint32_t y = 0; y < image->GetHeight(); ++y )
-	{
-		for( uint32_t x = 0; x < image->GetWidth(); ++x )
-		{
-			Pixel pixel;
-			pixel.rawABGR = buffer[i++];
-			frameOutput.SetPixel( x, image->GetHeight() - y - 1, pixel.AsHexColor() );
-		}
-	}
-	stringstream fileName;
-	fileName << image->GetName() << frame.count() << ".bmp";
-	frameOutput.Write( "Images/" + fileName.str() );
 	*/
+
 	return isRunning;
 }

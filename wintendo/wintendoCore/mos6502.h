@@ -14,6 +14,20 @@ struct DisassemblerMapTuple;
 class wtSystem;
 struct CpuAddrInfo;
 
+enum struct AddrMode : uint8_t
+{
+	None,
+	Absolute,
+	Zero,
+	Immediate,
+	IndexedIndirect,
+	IndirectIndexed,
+	Accumulator,
+	IndexedAbsoluteX,
+	IndexedAbsoluteY,
+	IndexedZeroX,
+	IndexedZeroY,
+};
 
 #define OP_DECL(name)	template <class AddrMode> \
 						uint8_t name##();
@@ -22,6 +36,7 @@ struct CpuAddrInfo;
 
 #define ADDR_MODE_DECL(name)	struct AddrMode##name \
 								{ \
+									static const AddrMode addrMode = AddrMode::##name; \
 									Cpu6502& cpu; \
 									AddrMode##name( Cpu6502& cpui ) : cpu( cpui ) {}; \
 									inline void operator()( CpuAddrInfo& addrInfo ); \
@@ -115,9 +130,7 @@ struct Cpu6502
 	CpuDebugMetrics dbgMetrics;
 
 	bool forceStop = false;
-	uint16_t forceStopAddr = 0;
 
-	bool resetTriggered;
 	bool interruptTriggered;
 	bool oamInProcess;
 
@@ -141,6 +154,7 @@ struct Cpu6502
 		P.bit.i = 1;
 		P.bit.b = 1;
 
+		instructionCycles = cpuCycle_t( 0 );
 		cycle = cpuCycle_t(0); // FIXME? Test log starts cycles at 7. Is there a BRK at power up?
 	}
 
