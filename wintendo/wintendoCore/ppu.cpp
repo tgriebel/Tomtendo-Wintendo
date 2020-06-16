@@ -532,26 +532,9 @@ static int chrRamAddr = 0;
 
 uint8_t PPU::ReadVram( const uint16_t addr )
 {
-	// TODO: Has CHR-RAM check
-	bool isUnrom = system->cart.header.controlBits0.mapperNumberLower == 2;
-	if ( addr >= 0x2000 )
-	{
-		const uint16_t adjustedAddr = MirrorVram( addr );
-		assert( adjustedAddr < VirtualMemorySize );
-		return vram[adjustedAddr];
-	}
-	else if ( isUnrom && ( addr < 0x2000 ) )
-	{
-		const uint16_t adjustedAddr = MirrorVram( addr );
-		assert( adjustedAddr < VirtualMemorySize );
-		return vram[adjustedAddr];
-	}
-	else
-	{
-		const uint16_t baseAddr = system->cart.header.prgRomBanks * wtSystem::BankSize;
-
-		return system->cart.rom[baseAddr + addr];
-	}
+	const uint16_t adjustedAddr = MirrorVram( addr );
+	assert( adjustedAddr < VirtualMemorySize );
+	return vram[adjustedAddr];
 }
 
 
@@ -571,7 +554,7 @@ void PPU::WriteVram()
 
 			static uint32_t addr = 0x1000;
 			// TODO: Has CHR-RAM check
-			bool isUnrom = system->cart.header.controlBits0.mapperNumberLower == 2;
+			bool isUnrom = system->GetMapperNumber() == 2;
 			if ( isUnrom && ( adjustedAddr < 0x2000 ) )
 			{
 				vram[adjustedAddr] = registers[PPUREG_DATA];
@@ -747,8 +730,8 @@ void PPU::DrawSpritePixel( wtDisplayImage& imageBuffer, const wtRect& imageRect,
 	{
 		spritePt.y = attribs.flippedVertical ? ( 7 - spritePt.y ) : spritePt.y;
 
-		chrRom0 = GetChrRom8x8( attribs.tileId, 0, 0, spritePt.y );
-		chrRom1 = GetChrRom8x8( attribs.tileId, 1, 0, spritePt.y );
+		chrRom0 = GetChrRom8x8( attribs.tileId, 0, GetSpritePatternTableId(), spritePt.y );
+		chrRom1 = GetChrRom8x8( attribs.tileId, 1, GetSpritePatternTableId(), spritePt.y );
 	}
 
 	const uint8_t finalPalette = GetChrRomPalette( chrRom0, chrRom1, spritePt.x );
@@ -1046,8 +1029,6 @@ const ppuCycle_t PPU::Exec()
 					system->finishedFrame = pair<uint32_t, bool>( system->currentFrame, true );	
 					system->currentFrame = nextFrame;
 				}
-				
-				system->frameBuffer[system->currentFrame].Clear();
 			}
 		}
 	}

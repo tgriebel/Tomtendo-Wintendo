@@ -30,6 +30,52 @@ struct wtDebugInfo
 };
 
 
+class wtShiftReg16
+{
+public:
+
+	wtShiftReg16() : reg(0) {}
+
+	void ShiftLeft()
+	{
+		reg <<= 1;
+	}
+
+	void ShiftRight()
+	{
+		reg <<= 1;
+	}
+
+	void ShiftLeftUpper()
+	{
+		reg <<= 8;
+	}
+
+	void ShiftRightUpper()
+	{
+		reg >>= 8;
+	}
+
+	bool GetBitValue( const uint8_t bit )
+	{
+		return ( ( reg >> bit ) & 0x01 );
+	}
+
+	uint16_t GetRawValue() const
+	{
+		return reg;
+	}
+
+	void Clear()
+	{
+		reg = 0;
+	}
+
+private:
+	uint16_t reg;
+};
+
+
 struct wtFrameResult
 {
 	uint32_t			currentFrame;
@@ -155,6 +201,8 @@ public:
 	uint8_t& GetMemoryRef( const uint16_t address );
 	void WritePhysicalMemory( const uint16_t address, const uint8_t value );
 	uint16_t MirrorAddress( const uint16_t address );
+	uint8_t GetMapperNumber();
+	void MemoryMap( const uint16_t address, const uint16_t offset, const uint8_t value );
 
 	int InitSystem( const wstring& filePath );
 	void ShutdownSystem();

@@ -198,9 +198,10 @@ struct PPU
 	static const uint32_t OamSize					= 0x0100;
 	static const uint32_t OamSecondSize				= 0x0020;
 	static const uint32_t NametableMemorySize		= 0x03C0;
+	static const uint32_t PatternTableMemorySize	= 0x2000;
 	static const uint32_t AttributeTableMemorySize	= 0x0040;
 	static const uint32_t NameTableAttribMemorySize	= NametableMemorySize + AttributeTableMemorySize;
-	static const uint16_t NameTable0BaseAddr		= 0x2000;
+	static const uint16_t NameTable0BaseAddr		= PatternTableMemorySize;
 	static const uint16_t AttribTable0BaseAddr		= NameTable0BaseAddr + NametableMemorySize;
 	static const uint16_t PaletteBaseAddr			= 0x3F00;
 	static const uint16_t SpritePaletteAddr			= 0x3F10;
@@ -355,6 +356,12 @@ struct PPU
 
 	PPU()
 	{
+		Reset();
+		GenerateMirrorMap();
+	}
+
+	void Reset()
+	{
 		cycle = ppuCycle_t( 0 );
 
 		genNMI = false;
@@ -399,7 +406,7 @@ struct PPU
 
 		inVBlank = true;
 
-		GenerateMirrorMap();
+		memset( vram, 0, PPU::VirtualMemorySize );
 	}
 
 

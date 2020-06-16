@@ -84,6 +84,15 @@ void wtSystem::LoadProgram( const wtCart& loadCart, const uint32_t resetVectorMa
 	cpu.interruptTriggered = false;
 	cpu.system = this;
 	cpu.Reset();
+
+	const uint16_t baseAddr = loadCart.header.prgRomBanks * wtSystem::BankSize;
+
+	bool isNRom = loadCart.header.controlBits0.mapperNumberLower == 0;
+
+	if( isNRom )
+	{
+		memcpy( ppu.vram, &loadCart.rom[baseAddr], PPU::PatternTableMemorySize );
+	}
 }
 
 
@@ -178,6 +187,12 @@ uint8_t& wtSystem::GetMemoryRef( const uint16_t address )
 }
 
 
+uint8_t wtSystem::GetMapperNumber()
+{
+	return ( cart.header.controlBits1.mappedNumberUpper << 4 ) | cart.header.controlBits0.mapperNumberLower;
+}
+
+
 bool wtSystem::MouseInRegion( const wtRect& region ) // TODO: draft code, kill later
 {
 	return ( ( mousePoint.x >= region.x ) && ( mousePoint.x < region.width ) && ( mousePoint.y >= region.y ) && ( mousePoint.y < region.height ) );
@@ -187,6 +202,24 @@ bool wtSystem::MouseInRegion( const wtRect& region ) // TODO: draft code, kill l
 uint8_t wtSystem::GetMemory( const uint16_t address )
 {
 	return GetMemoryRef( address );
+}
+
+
+void wtSystem::MemoryMap( const uint16_t address, const uint16_t offset, const uint8_t value )
+{
+	uint32_t addr = address + offset;
+	bool isUnrom = GetMapperNumber() == 2;
+	uint32_t bank = ( value & 0x07 );
+	if ( isUnrom && ( addr >= 0x8000 ) && ( addr <= 0xFFFF ) && bank != prgRomBank )
+	{
+		// The bits 0-2 of the byte *written* at $8000-$FFFF not the address
+		memcpy( memory + wtSystem::Bank0, cart.rom + bank * wtSystem::BankSize, wtSystem::BankSize );
+		prgRomBank = bank;
+	}
+	else
+	{
+		WritePhysicalMemory( addr, value );
+	}
 }
 
 
