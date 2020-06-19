@@ -7,9 +7,11 @@
 #include <chrono>
 #include <atomic>
 #include "common.h"
+#include <memory>
 #include "NesSystem.h"
 #include "mos6502.h"
 #include "input.h"
+#include "nesMapper.h"
 
 using namespace std;
 
@@ -20,6 +22,29 @@ typedef std::chrono::time_point<std::chrono::steady_clock> timePoint_t;
 timePoint_t previousTime;
 bool lockFps = true;
 frameRate_t frame( 1 );
+
+
+static void LoadNesFile( const std::wstring& fileName, wtCart& outCart )
+{
+	std::ifstream nesFile;
+	nesFile.open( fileName, std::ios::binary );
+
+	assert( nesFile.good() );
+
+	nesFile.seekg( 0, std::ios::end );
+	size_t len = static_cast<size_t>( nesFile.tellg() );
+
+	nesFile.seekg( 0, std::ios::beg );
+	nesFile.read( reinterpret_cast<char*>( &outCart ), len );
+	nesFile.close();
+
+	assert( outCart.header.type[0] == 'N' );
+	assert( outCart.header.type[1] == 'E' );
+	assert( outCart.header.type[2] == 'S' );
+	assert( outCart.header.magic == 0x1A );
+
+	outCart.size = len - sizeof( outCart.header ); // TODO: trainer needs to be checked
+}
 
 
 int wtSystem::InitSystem( const wstring& filePath )
@@ -41,27 +66,13 @@ void wtSystem::ShutdownSystem()
 }
 
 
-void wtSystem::LoadProgram( const wtCart& loadCart, const uint32_t resetVectorManual )
+void wtSystem::LoadProgram( wtCart& loadCart, const uint32_t resetVectorManual )
 {
 	memset( memory, 0, VirtualMemorySize );
 
-	memcpy( memory + Bank0, loadCart.rom, BankSize );
-
-	// Mapper - 0
-	if ( loadCart.header.prgRomBanks == 1 )
-	{
-		memcpy( memory + Bank1, loadCart.rom, BankSize );
-	}
-	else if ( loadCart.header.prgRomBanks == 2 )
-	{
-		memcpy( memory + Bank1, loadCart.rom + BankSize, BankSize );
-	}
-	else if ( loadCart.header.prgRomBanks > 2 )
-	{
-		// Should be the only logic needed for all cases
-		size_t bank = loadCart.header.prgRomBanks - 1;
-		memcpy( memory + Bank1, loadCart.rom + bank * BankSize, BankSize );
-	}
+	loadCart.mapper = AssignMapper( loadCart.GetMapperId() );
+	loadCart.mapper->system = this;
+	loadCart.mapper->OnLoadCpu();
 
 	if ( resetVectorManual == 0x10000 )
 	{
@@ -72,12 +83,6 @@ void wtSystem::LoadProgram( const wtCart& loadCart, const uint32_t resetVectorMa
 		cpu.resetVector = static_cast< uint16_t >( resetVectorManual & 0xFFFF );
 	}
 
-	prgRomBank = 0;
-
-	//const uint16_t baseAddr = loadCart.header.prgRomBanks * NesSystem::BankSize;
-
-	//memcpy( &ppu.vram[0], &loadCart.rom[baseAddr], 0x2000 );
-
 	cpu.nmiVector = Combine( memory[NmiVectorAddr], memory[NmiVectorAddr + 1] );
 	cpu.irqVector = Combine( memory[IrqVectorAddr], memory[IrqVectorAddr + 1] );
 
@@ -87,11 +92,24 @@ void wtSystem::LoadProgram( const wtCart& loadCart, const uint32_t resetVectorMa
 
 	const uint16_t baseAddr = loadCart.header.prgRomBanks * wtSystem::BankSize;
 
-	bool isNRom = loadCart.header.controlBits0.mapperNumberLower == 0;
+	bool isNRom = loadCart.GetMapperId() == 0;
 
 	if( isNRom )
 	{
 		memcpy( ppu.vram, &loadCart.rom[baseAddr], PPU::PatternTableMemorySize );
+	}
+
+	if ( loadCart.header.controlBits0.fourScreenMirror )
+	{
+		mirrorMode = MIRROR_MODE_FOURSCREEN;
+	}
+	else if ( loadCart.header.controlBits0.mirror )
+	{
+		mirrorMode = MIRROR_MODE_VERTICAL;
+	}
+	else
+	{
+		mirrorMode = MIRROR_MODE_HORIZONTAL;
 	}
 }
 
@@ -187,9 +205,15 @@ uint8_t& wtSystem::GetMemoryRef( const uint16_t address )
 }
 
 
-uint8_t wtSystem::GetMapperNumber()
+uint8_t wtSystem::GetMapperId()
 {
 	return ( cart.header.controlBits1.mappedNumberUpper << 4 ) | cart.header.controlBits0.mapperNumberLower;
+}
+
+
+uint8_t wtSystem::GetMirrorMode()
+{
+	return mirrorMode;
 }
 
 
@@ -202,24 +226,6 @@ bool wtSystem::MouseInRegion( const wtRect& region ) // TODO: draft code, kill l
 uint8_t wtSystem::GetMemory( const uint16_t address )
 {
 	return GetMemoryRef( address );
-}
-
-
-void wtSystem::MemoryMap( const uint16_t address, const uint16_t offset, const uint8_t value )
-{
-	uint32_t addr = address + offset;
-	bool isUnrom = GetMapperNumber() == 2;
-	uint32_t bank = ( value & 0x07 );
-	if ( isUnrom && ( addr >= 0x8000 ) && ( addr <= 0xFFFF ) && bank != prgRomBank )
-	{
-		// The bits 0-2 of the byte *written* at $8000-$FFFF not the address
-		memcpy( memory + wtSystem::Bank0, cart.rom + bank * wtSystem::BankSize, wtSystem::BankSize );
-		prgRomBank = bank;
-	}
-	else
-	{
-		WritePhysicalMemory( addr, value );
-	}
 }
 
 

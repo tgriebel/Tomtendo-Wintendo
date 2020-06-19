@@ -14,9 +14,10 @@
 #include <thread> // TODO: remove for testing
 #include <chrono>
 
-#define NES_MODE 1
-#define DEBUG_MODE 0
-#define DEBUG_ADDR 0
+#define NES_MODE (1)
+#define DEBUG_MODE (0)
+#define DEBUG_ADDR (0)
+#define MIRROR_OPTIMIZATION (1)
 
 inline constexpr uint8_t operator "" _b( uint64_t arg ) noexcept
 {
@@ -35,6 +36,25 @@ using cpuCycle_t	= std::chrono::duration< uint64_t, std::ratio<CpuClockDivide, M
 using scanCycle_t	= std::chrono::duration< uint64_t, std::ratio<PpuCyclesPerScanline * PpuClockDivide, MasterClockHz> >; // TODO: Verify
 using frameRate_t	= std::chrono::duration< double, std::ratio<1, FPS> >;
 
+const uint32_t KB_1		= 1024;
+const uint32_t KB_2		= ( 2 * KB_1 );
+const uint32_t KB_4		= ( 2 * KB_2 );
+const uint32_t KB_8		= ( 2 * KB_4 );
+const uint32_t KB_16	= ( 2 * KB_8 );
+const uint32_t KB_32	= ( 2 * KB_16 );
+
+class wtSystem;
+
+enum wtMirrorMode : uint8_t
+{
+	MIRROR_MODE_SINGLE,
+	MIRROR_MODE_HORIZONTAL,
+	MIRROR_MODE_VERTICAL,
+	MIRROR_MODE_FOURSCREEN,
+	MIRROR_MODE_COUNT
+};
+
+// TODO: bother with endianness?
 struct wtRomHeader
 {
 	uint8_t type[3];
@@ -58,11 +78,42 @@ struct wtRomHeader
 };
 
 
+class wtMapper
+{
+public:
+	wtSystem* system;
+
+	virtual uint8_t OnLoadCpu() = 0;
+	virtual uint8_t OnLoadPpu() = 0;
+	virtual uint8_t Write( const uint16_t addr, const uint16_t offset, const uint8_t value ) = 0;
+	virtual bool InWriteWindow( const uint16_t addr, const uint16_t offset ) = 0;
+};
+
+
 struct wtCart
 {
-	wtRomHeader	header;
-	uint8_t		rom[524288];
-	size_t		size;
+	// WARNING: This data is directly copied into right
+	wtRomHeader				header;
+	uint8_t					rom[524288];
+	// Fine to add data after here
+	size_t					size;
+	unique_ptr<wtMapper>	mapper;
+
+	uint8_t GetPrgRomBank( const uint8_t bankNum )
+	{
+		return rom[bankNum * KB_16];
+	}
+
+	uint8_t GetChrRomBank( const uint8_t bankNum, const bool sizeIs8KB )
+	{
+		const uint32_t chrRomStart = header.prgRomBanks * KB_16;
+		return rom[chrRomStart + bankNum * ( sizeIs8KB ? KB_8 : KB_4 )];
+	}
+
+	uint32_t GetMapperId() const
+	{
+		return ( header.controlBits1.mappedNumberUpper << 4 ) | header.controlBits0.mapperNumberLower;
+	}
 };
 
 
@@ -93,9 +144,8 @@ public:
 	virtual uint32_t GetWidth() const = 0;
 	virtual uint32_t GetHeight() const = 0;
 	virtual uint32_t GetBufferLength() const = 0;
-	virtual uint32_t GetBufferSize() const = 0;
-	virtual const char* GetName() const = 0;
-	virtual void SetName( const char* debugName ) = 0;
+	virtual const char* GetDebugName() const = 0;
+	virtual void SetDebugName( const char* debugName ) = 0;
 };
 
 
@@ -153,7 +203,7 @@ public:
 		}
 	}
 
-	inline void SetName( const char* debugName )
+	inline void SetDebugName( const char* debugName )
 	{
 		name = debugName;
 	}
@@ -188,12 +238,7 @@ public:
 		return length;
 	}
 
-	inline uint32_t GetBufferSize() const
-	{
-		return ( sizeof( buffer[0] ) * length );
-	}
-
-	inline const char* GetName() const
+	inline const char* GetDebugName() const
 	{
 		return name;
 	}
@@ -228,31 +273,85 @@ enum class wtImageTag
 };
 
 
-static void LoadNesFile( const std::wstring& fileName, wtCart& outCart )
+template< uint8_t B >
+class wtShiftReg
 {
-	std::ifstream nesFile;
-	nesFile.open( fileName, std::ios::binary );
+public:
 
-	assert( nesFile.good() );
+	wtShiftReg()
+	{
+		Clear();
+	}
 
-	nesFile.seekg( 0, std::ios::end );
-	size_t len = static_cast<size_t>( nesFile.tellg() );
+	void Shift( const bool bitValue )
+	{
+		reg >>= 1;
+		reg &= LMask;
+		reg |= ( static_cast<uint32_t>( bitValue ) << ( Bits - 1 ) ) & ~LMask;
 
-	nesFile.seekg( 0, std::ios::beg );
-	nesFile.read( reinterpret_cast<char*>( &outCart ), len );
-	nesFile.close();
+		++shifts;
+	}
 
-	assert( outCart.header.type[0] == 'N' );
-	assert( outCart.header.type[1] == 'E' );
-	assert( outCart.header.type[2] == 'S' );
-	assert( outCart.header.magic == 0x1A );
+	uint32_t GetShiftCnt() const
+	{
+		return shifts;
+	}
 
-	outCart.size = len - sizeof( outCart.header ); // TODO: trainer needs to be checked
-}
+	bool IsFull() const
+	{
+		return ( shifts >= Bits );
+	}
+
+	bool GetBitValue( const uint8_t bit ) const
+	{
+		return ( ( reg >> bit ) & 0x01 );
+	}
+
+	uint32_t GetValue() const
+	{
+		return reg & Mask;
+	}
+
+	void Set( const uint32_t value )
+	{
+		reg = value;
+		shifts = 0;
+	}
+
+	void Clear()
+	{
+		reg = 0;
+		shifts = 0;
+	}
+
+private:
+	uint32_t reg;
+	uint32_t shifts;
+	static const uint8_t Bits = B;
+
+	static constexpr uint32_t CalcMask()
+	{
+		uint32_t mask = 0x02;
+		for ( uint32_t i = 1; i < B; ++i )
+		{
+			mask <<= 1;
+		}
+		return ( mask - 1 );
+	}
+
+	static const uint32_t Mask = CalcMask();
+	static const uint32_t LMask = ( Mask >> 1 );
+	static const uint32_t RMask = ~0x01ul;
+};
 
 
 inline uint16_t Combine( const uint8_t lsb, const uint8_t msb )
 {
 	return ( ( ( msb << 8 ) | lsb ) & 0xFFFF );
+}
+
+inline bool InRange( const uint16_t addr, const uint16_t loAddr, const uint16_t hiAddr )
+{
+	return ( addr >= loAddr ) && ( addr <= hiAddr );
 }
 #endif // __COMMONTYPES__

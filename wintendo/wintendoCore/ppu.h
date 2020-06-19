@@ -201,8 +201,16 @@ struct PPU
 	static const uint32_t PatternTableMemorySize	= 0x2000;
 	static const uint32_t AttributeTableMemorySize	= 0x0040;
 	static const uint32_t NameTableAttribMemorySize	= NametableMemorySize + AttributeTableMemorySize;
-	static const uint16_t NameTable0BaseAddr		= PatternTableMemorySize;
-	static const uint16_t AttribTable0BaseAddr		= NameTable0BaseAddr + NametableMemorySize;
+	static const uint32_t PatternTable0BaseAddr		= 0x0000;
+	static const uint32_t PatternTable1BaseAddr		= 0x1000;
+	static const uint16_t NameTable0BaseAddr		= 0x2000;
+	static const uint16_t AttribTable0BaseAddr		= 0x23C0;
+	static const uint16_t NameTable1BaseAddr		= 0x2400;
+	static const uint16_t AttribTable1BaseAddr		= 0x27C0;
+	static const uint16_t NameTable2BaseAddr		= 0x2800;
+	static const uint16_t AttribTable2BaseAddr		= 0x2BC0;
+	static const uint16_t NameTable3BaseAddr		= 0x2C00;
+	static const uint16_t AttribTable3BaseAddr		= 0x2FC0;
 	static const uint16_t PaletteBaseAddr			= 0x3F00;
 	static const uint16_t SpritePaletteAddr			= 0x3F10;
 	static const uint16_t TotalSprites				= 64;
@@ -277,7 +285,7 @@ struct PPU
 	uint16_t attrib;
 
 	uint8_t registers[9]; // no need?
-	uint16_t MirrorMap[4][VirtualMemorySize];
+	uint16_t MirrorMap[MIRROR_MODE_COUNT][VirtualMemorySize];
 
 	uint8_t& PPUCTRL( const uint8_t value );
 	uint8_t& PPUCTRL();
@@ -382,7 +390,7 @@ struct PPU
 		system = nullptr;
 
 		memset( secondaryOAM, 0, sizeof( secondaryOAM ) );
-		memset( vram, 0, sizeof( vram ) );
+		memset( vram, 0, PPU::VirtualMemorySize );
 		memset( debugVramWriteCounter, 0, VirtualMemorySize );
 
 		currentScanline = PRERENDER_SCANLINE;
@@ -405,8 +413,6 @@ struct PPU
 		curShift = 0;
 
 		inVBlank = true;
-
-		memset( vram, 0, PPU::VirtualMemorySize );
 	}
 
 

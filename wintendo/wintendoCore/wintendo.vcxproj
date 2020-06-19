@@ -165,10 +165,13 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="input.h" />
+    <ClInclude Include="mappers\MMC1.h" />
+    <ClInclude Include="mappers\NROM.h" />
+    <ClInclude Include="mappers\UNROM.h" />
     <ClInclude Include="mos6502.h" />
     <ClInclude Include="bitmap.h" />
     <ClInclude Include="debug.h" />
-    <ClInclude Include="nesMemory.h" />
+    <ClInclude Include="nesMapper.h" />
     <ClInclude Include="NesSystem.h" />
     <ClInclude Include="ppu.h" />
     <ClInclude Include="stdafx.h" />
@@ -179,8 +182,6 @@
     <ClCompile Include="mos6502.cpp" />
     <ClCompile Include="bitmap.cpp" />
     <ClCompile Include="mos6502_ops.cpp" />
-    <ClCompile Include="nesMappers.cpp" />
-    <ClCompile Include="nesMemory.cpp" />
     <ClCompile Include="nesSystem.cpp" />
     <ClCompile Include="ppu.cpp" />
     <ClCompile Include="wintendoMain.cpp" />

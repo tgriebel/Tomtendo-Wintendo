@@ -125,7 +125,7 @@ struct Cpu6502
 	std::stringstream debugAddr;
 	std::ofstream logFile;
 	bool printToOutput = false;
-	int logFrameCount = 30;
+	int logFrameCount = 60;
 #endif
 	CpuDebugMetrics dbgMetrics;
 

@@ -30,52 +30,6 @@ struct wtDebugInfo
 };
 
 
-class wtShiftReg16
-{
-public:
-
-	wtShiftReg16() : reg(0) {}
-
-	void ShiftLeft()
-	{
-		reg <<= 1;
-	}
-
-	void ShiftRight()
-	{
-		reg <<= 1;
-	}
-
-	void ShiftLeftUpper()
-	{
-		reg <<= 8;
-	}
-
-	void ShiftRightUpper()
-	{
-		reg >>= 8;
-	}
-
-	bool GetBitValue( const uint8_t bit )
-	{
-		return ( ( reg >> bit ) & 0x01 );
-	}
-
-	uint16_t GetRawValue() const
-	{
-		return reg;
-	}
-
-	void Clear()
-	{
-		reg = 0;
-	}
-
-private:
-	uint16_t reg;
-};
-
-
 struct wtFrameResult
 {
 	uint32_t			currentFrame;
@@ -142,8 +96,6 @@ public:
 	wtPatternTableImage patternTable0;
 	wtPatternTableImage patternTable1;
 
-	uint32_t prgRomBank;
-
 	wstring fileName;
 
 	uint8_t memory[VirtualMemorySize]; // TODO: make physical size
@@ -158,6 +110,8 @@ public:
 	bool	strobeOn;
 	uint8_t	btnShift[2];
 	uint8_t controllerBuffer[2];
+
+	uint8_t mirrorMode;
 
 	wtDebugInfo dbgInfo;
 
@@ -182,15 +136,17 @@ public:
 		controllerBuffer[0] = 0;
 		controllerBuffer[1] = 0;
 
+		mirrorMode = MIRROR_MODE_HORIZONTAL;
+
 		headless = false;
 		debugNTEnable = true;
 		
-		frameBuffer[0].SetName( "FrameBuffer1" );
-		frameBuffer[1].SetName( "FrameBuffer2" );
-		nameTableSheet.SetName( "nameTable" );
-		paletteDebug.SetName( "Palette" );
-		patternTable0.SetName( "PatternTable0" );
-		patternTable1.SetName( "PatternTable1" );
+		frameBuffer[0].SetDebugName( "FrameBuffer1" );
+		frameBuffer[1].SetDebugName( "FrameBuffer2" );
+		nameTableSheet.SetDebugName( "nameTable" );
+		paletteDebug.SetDebugName( "Palette" );
+		patternTable0.SetDebugName( "PatternTable0" );
+		patternTable1.SetDebugName( "PatternTable1" );
 
 		finishedFrame.first = 0;
 		finishedFrame.second = false;
@@ -201,12 +157,13 @@ public:
 	uint8_t& GetMemoryRef( const uint16_t address );
 	void WritePhysicalMemory( const uint16_t address, const uint8_t value );
 	uint16_t MirrorAddress( const uint16_t address );
-	uint8_t GetMapperNumber();
-	void MemoryMap( const uint16_t address, const uint16_t offset, const uint8_t value );
+	uint8_t GetMapperId();
+	uint8_t GetMirrorMode();
 
 	int InitSystem( const wstring& filePath );
 	void ShutdownSystem();
-	void LoadProgram( const wtCart& cart, const uint32_t resetVectorManual = 0x10000 );
+	void LoadProgram( wtCart& cart, const uint32_t resetVectorManual = 0x10000 );
+	unique_ptr<wtMapper> AssignMapper( const uint32_t mapperId );
 	bool Run( const masterCycles_t& nextCycle );
 	int RunFrame();
 	static bool IsInputRegister( const uint16_t address );

@@ -392,25 +392,25 @@ uint16_t PPU::StaticMirrorVram( uint16_t addr, uint32_t mirrorMode )
 	}
 
 	// Nametable Mirroring Modes
-	if ( mirrorMode == 0 ) // Vertical
+	if ( mirrorMode == MIRROR_MODE_HORIZONTAL )
 	{
 		if ( ( addr >= 0x2400 && addr < 0x2800 ) || ( addr >= 0x2C00 && addr < 0x3000 ) )
 		{
 			return ( addr - PPU::NameTableAttribMemorySize );
 		}
 	}
-	else if ( mirrorMode == 1 ) // Horizontal
+	else if ( mirrorMode == MIRROR_MODE_VERTICAL )
 	{
-		if ( addr >= 0x2800 && addr < 0x3000 )
+		if ( addr >= PPU::NameTable2BaseAddr && addr < 0x3000 )
 		{
 			return ( addr - 2 * PPU::NameTableAttribMemorySize );
 		}
 	}
-	else if ( mirrorMode == 2 ) // Four screen
+	else if ( mirrorMode == MIRROR_MODE_FOURSCREEN )
 	{
-		if ( addr >= 0x2000 && addr < 0x3000 )
+		if ( addr >= PPU::NameTable0BaseAddr && addr < 0x3000 )
 		{
-			return 0x2000 + ( addr % PPU::NameTableAttribMemorySize );
+			return PPU::NameTable0BaseAddr + ( addr % PPU::NameTableAttribMemorySize );
 		}
 	}
 
@@ -431,23 +431,26 @@ uint16_t PPU::StaticMirrorVram( uint16_t addr, uint32_t mirrorMode )
 
 void PPU::GenerateMirrorMap()
 {
-	for ( uint16_t mode = 0; mode < 4; ++mode )
+#if MIRROR_OPTIMIZATION
+	for ( uint16_t mode = 0; mode < MIRROR_MODE_COUNT; ++mode )
 	{
 		for ( uint32_t addr = 0; addr < PPU::VirtualMemorySize; ++addr )
 		{
 			MirrorMap[mode][addr] = StaticMirrorVram( addr, mode );
 		}
 	}
+#endif
 }
 
 uint16_t PPU::MirrorVram( uint16_t addr )
 {
-	const wtRomHeader::ControlsBits0 controlBits0 = system->cart.header.controlBits0;
-	const wtRomHeader::ControlsBits1 controlBits1 = system->cart.header.controlBits1;
+	uint32_t mirrorMode = system->GetMirrorMode();
 
-	uint32_t mirrorMode = controlBits0.fourScreenMirror ? 2 : controlBits0.mirror;
-
+#if MIRROR_OPTIMIZATION
 	return MirrorMap[mirrorMode][addr];
+#else
+	return StaticMirrorVram( addr, mirrorMode );
+#endif
 }
 
 
@@ -511,9 +514,9 @@ uint8_t PPU::GetChrRom8x8( const uint32_t tileId, const uint8_t plane, const uin
 
 uint8_t PPU::GetChrRom8x16( const uint32_t tileId, const uint8_t plane, const uint8_t row, const bool isUpper )
 {
-	const uint8_t tileBytes = 16;
-	const uint16_t baseAddr = ( tileId & 0x01 ) * wtSystem::ChrRomSize;
-	const uint16_t chrRomBase = baseAddr + ( ( tileId & ~0x01 ) + isUpper ) * tileBytes;
+	const uint8_t tileBytes		= 16;
+	const uint16_t baseAddr		= ( tileId & 0x01 ) * wtSystem::ChrRomSize;
+	const uint16_t chrRomBase	= baseAddr + ( ( tileId & ~0x01 ) + isUpper ) * tileBytes;
 
 	return ReadVram( chrRomBase + row + 8 * ( plane & 0x01 ) );
 }
@@ -546,21 +549,10 @@ void PPU::WriteVram()
 		{
 			const uint16_t adjustedAddr = MirrorVram( regV.raw );
 
-			if ( adjustedAddr >= 0x2000 )
-			{
-				vram[adjustedAddr] = registers[PPUREG_DATA];
-				debugVramWriteCounter[adjustedAddr]++;
-			}
+			vram[adjustedAddr] = registers[PPUREG_DATA];
+			debugVramWriteCounter[adjustedAddr]++;
 
-			static uint32_t addr = 0x1000;
-			// TODO: Has CHR-RAM check
-			bool isUnrom = system->GetMapperNumber() == 2;
-			if ( isUnrom && ( adjustedAddr < 0x2000 ) )
-			{
-				vram[adjustedAddr] = registers[PPUREG_DATA];
-
-				debugVramWriteCounter[adjustedAddr]++;
-			}
+		//	assert( system->GetMapperNumber() > 0 || adjustedAddr >= 0x2000 ); // TODO: fixed bank check
 		}
 
 		vramWritePending = false;
