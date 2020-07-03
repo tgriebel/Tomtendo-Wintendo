@@ -106,12 +106,20 @@ private:
 
 public:
 
-	MMC1():	ctrlReg( CtrlRegDefault ),
-			chrBank0Reg(0),
-			chrBank1Reg(0),
-			prgBankReg(0)
+	MMC1( const uint32_t _mapperId ) :
+		ctrlReg( CtrlRegDefault ),
+		chrBank0Reg(0),
+		chrBank1Reg(0),
+		prgBankReg(0)
 	{
+		mapperId = _mapperId;
 		shiftRegister.Clear();
+
+		memset( chrRomBank0, 0, KB_4 );
+		memset( chrRomBank1, 0, KB_4 );
+		memset( prgRomBank0, 0, KB_16 );
+		memset( prgRomBank1, 0, KB_16 );
+		memset( prgRamBank, 0, KB_8 );
 	}
 
 	uint8_t OnLoadCpu()
@@ -125,6 +133,8 @@ public:
 
 	uint8_t OnLoadPpu()
 	{
+		const uint16_t chrRomStart = system->cart.header.prgRomBanks * KB_16;
+		memcpy( system->ppu.vram, &system->cart.rom[chrRomStart], PPU::PatternTableMemorySize );
 		return 0;
 	}
 

@@ -5,6 +5,12 @@
 
 class NROM : public wtMapper
 {
+public:
+	NROM( const uint32_t _mapperId )
+	{
+		mapperId = _mapperId;
+	}
+
 	uint8_t OnLoadCpu()
 	{
 		const size_t lastBank = ( system->cart.header.prgRomBanks - 1 );
@@ -14,7 +20,13 @@ class NROM : public wtMapper
 		return 0;
 	};
 
-	uint8_t OnLoadPpu() { return 0; };
+	uint8_t OnLoadPpu()
+	{
+		const uint16_t chrRomStart = system->cart.header.prgRomBanks * KB_16;
+		memcpy( system->ppu.vram, &system->cart.rom[chrRomStart], PPU::PatternTableMemorySize );
+		return 0;
+	};
+
 	uint8_t Write( const uint16_t addr, const uint16_t offset, const uint8_t value ) { return 0; };
 
 	bool InWriteWindow( const uint16_t addr, const uint16_t offset )

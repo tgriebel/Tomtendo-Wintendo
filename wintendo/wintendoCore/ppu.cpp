@@ -59,7 +59,7 @@ uint8_t& PPU::Reg( uint16_t address )
 
 void PPU::GenerateNMI()
 {
-	system->cpu.interruptTriggered = true;
+	system->cpu.interruptRequestNMI = true;
 }
 
 
@@ -704,7 +704,7 @@ void PPU::DrawSpritePixel( wtDisplayImage& imageBuffer, const wtRect& imageRect,
 	uint8_t chrRom0 = 0;
 	uint8_t chrRom1 = 0; 
 
-	if ( regCtrl.sem.spriteSize == SpriteMode::SPRITE_MODE_8x16 )
+	if ( regCtrl.sem.sprite8x16Mode )
 	{
 		bool isUpper = ( spritePt.y >= 8 );
 		uint8_t row = ( spritePt.y % 8 );
@@ -753,7 +753,7 @@ void PPU::DrawSpritePixel( wtDisplayImage& imageBuffer, const wtRect& imageRect,
 	pixelColor.rgba = palette[colorIx];
 	const uint32_t imageIndex = imageX + imageY * imageRect.width;
 
-	uint8_t spriteHeight = (bool)SpriteMode::SPRITE_MODE_8x16 ? 16 : 8;
+	uint8_t spriteHeight = regCtrl.sem.sprite8x16Mode ? 16 : 8;
 	if ( wtSystem::MouseInRegion( { attribs.x, attribs.y, attribs.x + 8, attribs.y + spriteHeight } ) )
 	{
 		pixelColor.rawABGR = ~pixelColor.rawABGR;
@@ -800,7 +800,7 @@ void PPU::LoadSecondaryOAM()
 	for ( uint8_t spriteNum = 0; spriteNum < 64; ++spriteNum )
 	{
 		uint8_t y = 1 + primaryOAM[spriteNum * 4];
-		const bool isLargeSpriteMode = static_cast<bool>( regCtrl.sem.spriteSize );
+		const bool isLargeSpriteMode = static_cast<bool>( regCtrl.sem.sprite8x16Mode );
 		uint32_t spriteHeight = isLargeSpriteMode ? 16 : 8;
 
 		if ( ( beamPosition.y >= static_cast<int32_t>( y + spriteHeight ) ) || ( beamPosition.y < static_cast<int32_t>( y ) ) )

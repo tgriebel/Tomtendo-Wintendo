@@ -43,6 +43,42 @@ const uint32_t KB_8		= ( 2 * KB_4 );
 const uint32_t KB_16	= ( 2 * KB_8 );
 const uint32_t KB_32	= ( 2 * KB_16 );
 
+const uint16_t BIT_0	= 0;
+const uint16_t BIT_1	= 1;
+const uint16_t BIT_2	= 2;
+const uint16_t BIT_3	= 3;
+const uint16_t BIT_4	= 4;
+const uint16_t BIT_5	= 5;
+const uint16_t BIT_6	= 6;
+const uint16_t BIT_7	= 7;
+const uint16_t BIT_8	= 8;
+const uint16_t BIT_9	= 9;
+const uint16_t BIT_10	= 10;
+const uint16_t BIT_11	= 11;
+const uint16_t BIT_12	= 12;
+const uint16_t BIT_13	= 13;
+const uint16_t BIT_14	= 14;
+const uint16_t BIT_15	= 15;
+
+const uint16_t BIT_MASK_0	= ( 1 << 0 );
+const uint16_t BIT_MASK_1	= ( 1 << 1 );
+const uint16_t BIT_MASK_2	= ( 1 << 2 );
+const uint16_t BIT_MASK_3	= ( 1 << 3 );
+const uint16_t BIT_MASK_4	= ( 1 << 4 );
+const uint16_t BIT_MASK_5	= ( 1 << 5 );
+const uint16_t BIT_MASK_6	= ( 1 << 6 );
+const uint16_t BIT_MASK_7	= ( 1 << 7 );
+const uint16_t BIT_MASK_8	= ( 1 << 8 );
+const uint16_t BIT_MASK_9	= ( 1 << 9 );
+const uint16_t BIT_MASK_10	= ( 1 << 10 );
+const uint16_t BIT_MASK_11	= ( 1 << 11 );
+const uint16_t BIT_MASK_12	= ( 1 << 12 );
+const uint16_t BIT_MASK_13	= ( 1 << 13 );
+const uint16_t BIT_MASK_14	= ( 1 << 14 );
+const uint16_t BIT_MASK_15	= ( 1 << 15 );
+
+#define SELECT_BIT( x, y ) ( (x) & (BIT_MASK_##y) ) >> (BIT_##y)
+
 class wtSystem;
 
 enum wtMirrorMode : uint8_t
@@ -51,6 +87,8 @@ enum wtMirrorMode : uint8_t
 	MIRROR_MODE_HORIZONTAL,
 	MIRROR_MODE_VERTICAL,
 	MIRROR_MODE_FOURSCREEN,
+	MIRROR_MODE_SINGLE_LO,
+	MIRROR_MODE_SINGLE_HI,
 	MIRROR_MODE_COUNT
 };
 
@@ -80,6 +118,9 @@ struct wtRomHeader
 
 class wtMapper
 {
+protected:
+	uint32_t mapperId;
+
 public:
 	wtSystem* system;
 

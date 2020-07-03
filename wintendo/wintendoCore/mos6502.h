@@ -131,7 +131,8 @@ struct Cpu6502
 
 	bool forceStop = false;
 
-	bool interruptTriggered;
+	bool interruptRequestNMI;
+	bool interruptRequest;
 	bool oamInProcess;
 
 	uint8_t X;
@@ -165,7 +166,7 @@ struct Cpu6502
 
 	bool Step( const cpuCycle_t& nextCycle );
 
-//private:
+private:
 
 	OP_DECL( Illegal )
 	OP_DECL( STA )
@@ -252,15 +253,15 @@ struct Cpu6502
 	static bool CheckZero( const uint16_t checkValue );
 	static bool CheckOverflow( const uint16_t src, const uint16_t temp, const uint8_t finalValue );
 
-	uint8_t NMI();
-	uint8_t IRQ();
+	void NMI();
+	void IRQ();
 
 	void IndexedAbsolute( const uint8_t& reg, CpuAddrInfo& addrInfo );
 	void IndexedZero( const uint8_t& reg, CpuAddrInfo& addrInfo );
 
 	void Push( const uint8_t value );
 	uint8_t Pull();
-	void PushByte( const uint16_t value );
+	void PushWord( const uint16_t value );
 	uint16_t PullWord();
 
 	void AdvanceProgram( const uint16_t places );

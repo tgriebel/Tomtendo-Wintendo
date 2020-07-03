@@ -57,6 +57,9 @@
     <ClInclude Include="mappers\UNROM.h">
       <Filter>mappers</Filter>
     </ClInclude>
+    <ClInclude Include="mappers\MMC3.h">
+      <Filter>mappers</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">

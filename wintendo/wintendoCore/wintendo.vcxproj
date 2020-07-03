@@ -166,6 +166,7 @@
   <ItemGroup>
     <ClInclude Include="input.h" />
     <ClInclude Include="mappers\MMC1.h" />
+    <ClInclude Include="mappers\MMC3.h" />
     <ClInclude Include="mappers\NROM.h" />
     <ClInclude Include="mappers\UNROM.h" />
     <ClInclude Include="mos6502.h" />

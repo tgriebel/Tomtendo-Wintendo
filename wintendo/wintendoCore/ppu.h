@@ -9,49 +9,6 @@ union Pixel;
 struct RGBA;
 
 
-enum class PatternTable : uint8_t
-{
-	PATTERN_TABLE_0 = 0X00,
-	PATTERN_TABLE_1 = 0X01,
-};
-
-
-enum class SpriteMode : uint8_t
-{
-	SPRITE_MODE_8x8 = 0X00,
-	SPRITE_MODE_8x16 = 0X01,
-};
-
-
-enum class Nametable : uint8_t
-{
-	NAMETABLE_0 = 0X00,
-	NAMETABLE_1 = 0X01,
-	NAMETABLE_2 = 0X02,
-	NAMETABLE_3 = 0X03,
-};
-
-
-enum class VramInc : uint8_t
-{
-	VRAM_INC_0 = 0x00,
-	VRAM_INC_1 = 0x01,
-};
-
-
-enum class MasterSlaveMode : uint8_t
-{
-	MASTER_SLAVE_READ_EXT	= 0x00,
-	MASTER_SLAVE_WRITE_EXT	= 0x01,
-};
-
-enum class NmiVblank : uint8_t
-{
-	NMI_VBLANK_OFF	= 0X00,
-	NMI_VBLANK_ON	= 0X01,
-};
-
-
 enum PpuReg : uint8_t
 {
 	PPUREG_CTRL,
@@ -70,14 +27,14 @@ union PpuCtrl
 {
 	struct PpuCtrlSemantic
 	{
-		Nametable		ntId			: 2;
-		VramInc			vramInc			: 1;
-		PatternTable	spriteTableId	: 1;
+		uint8_t	ntId			: 2;
+		uint8_t	vramInc			: 1;
+		uint8_t	spriteTableId	: 1;
 	
-		PatternTable	bgTableId		: 1;
-		SpriteMode		spriteSize		: 1;
-		MasterSlaveMode	masterSlaveMode	: 1;
-		NmiVblank		nmiVblank		: 1;
+		uint8_t	bgTableId		: 1;
+		uint8_t	sprite8x16Mode		: 1;
+		uint8_t	masterSlaveMode	: 1;
+		uint8_t	nmiVblank		: 1;
 	} sem;
 
 	uint8_t raw;

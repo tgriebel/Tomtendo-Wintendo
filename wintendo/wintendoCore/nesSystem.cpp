@@ -73,6 +73,7 @@ void wtSystem::LoadProgram( wtCart& loadCart, const uint32_t resetVectorManual )
 	loadCart.mapper = AssignMapper( loadCart.GetMapperId() );
 	loadCart.mapper->system = this;
 	loadCart.mapper->OnLoadCpu();
+	loadCart.mapper->OnLoadPpu();
 
 	if ( resetVectorManual == 0x10000 )
 	{
@@ -86,18 +87,9 @@ void wtSystem::LoadProgram( wtCart& loadCart, const uint32_t resetVectorManual )
 	cpu.nmiVector = Combine( memory[NmiVectorAddr], memory[NmiVectorAddr + 1] );
 	cpu.irqVector = Combine( memory[IrqVectorAddr], memory[IrqVectorAddr + 1] );
 
-	cpu.interruptTriggered = false;
+	cpu.interruptRequestNMI = false;
 	cpu.system = this;
 	cpu.Reset();
-
-	const uint16_t baseAddr = loadCart.header.prgRomBanks * wtSystem::BankSize;
-
-	bool isNRom = loadCart.GetMapperId() == 0;
-
-	if( isNRom )
-	{
-		memcpy( ppu.vram, &loadCart.rom[baseAddr], PPU::PatternTableMemorySize );
-	}
 
 	if ( loadCart.header.controlBits0.fourScreenMirror )
 	{
