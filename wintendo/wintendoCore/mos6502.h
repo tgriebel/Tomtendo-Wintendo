@@ -1,7 +1,9 @@
 #pragma once
 
 #include <map>
+#include <string>
 #include <sstream>
+#include <vector>
 #include "common.h"
 
 typedef uint8_t StatusBit;
@@ -27,11 +29,15 @@ enum struct AddrMode : uint8_t
 	IndexedAbsoluteY,
 	IndexedZeroX,
 	IndexedZeroY,
+	Jmp,
+	JmpIndirect,
+	Jsr,
+	Branch
 };
 
-#define OP_DECL(name)	template <class AddrMode> \
+#define OP_DECL(name)	template <class AddrModeT> \
 						uint8_t name##();
-#define OP_DEF(name)	template <class AddrMode> \
+#define OP_DEF(name)	template <class AddrModeT> \
 						uint8_t Cpu6502::##name()
 
 #define ADDR_MODE_DECL(name)	struct AddrMode##name \
@@ -99,10 +105,106 @@ struct CpuAddrInfo
 };
 
 
-struct CpuDebugMetrics
+struct instrDebugInfo
 {
 	uint32_t loadCnt;
 	uint32_t storeCnt;
+
+	AddrMode addrMode;
+	bool isXReg;
+	uint8_t memValue;
+	uint8_t operand;
+	uint16_t address;
+	uint16_t offset;
+	uint16_t targetAddress;
+
+	instrDebugInfo()
+	{
+		loadCnt = 0;
+		storeCnt = 0;
+
+		addrMode = AddrMode::None;
+		isXReg = false;
+		memValue = 0;
+		operand = 0;
+		address = 0;
+		offset = 0;
+		targetAddress = 0;
+	}
+
+	void ToString( string& buffer )
+	{
+		std::stringstream debugStream;
+
+		switch ( addrMode )
+		{
+			default:
+			case AddrMode::Absolute:
+				debugStream << uppercase << "$" << setfill( '0' ) << setw( 4 ) << address;
+				debugStream << " = " << setfill( '0' ) << setw( 2 ) << hex << static_cast<uint32_t>( memValue );
+			break;
+
+			case AddrMode::Zero:
+				debugStream << uppercase << "$" << setfill( '0' ) << setw( 2 ) << address;
+				debugStream << " = " << setfill( '0' ) << setw( 2 ) << hex << static_cast<uint32_t>( memValue );
+			break;
+
+			case AddrMode::IndexedAbsoluteX:
+			case AddrMode::IndexedAbsoluteY:
+				debugStream << uppercase << "$" << setw( 4 ) << hex << targetAddress << ",";
+				debugStream << isXReg ? "X" : "Y";
+				debugStream << setfill( '0' ) << " @ " << setw( 4 ) << hex << address;
+				debugStream << " = " << setw( 2 ) << hex << static_cast<uint32_t>( memValue );
+			break;
+
+			case AddrMode::IndexedZeroX:
+			case AddrMode::IndexedZeroY:
+				debugStream << uppercase << "$" << setw( 2 ) << hex << targetAddress << ",";
+				debugStream << isXReg ? "X" : "Y";
+				debugStream << setfill( '0' ) << " @ " << setw( 2 ) << hex << address;
+				debugStream << " = " << setw( 2 ) << hex << static_cast<uint32_t>( memValue );
+			break;
+
+			case AddrMode::Immediate:			
+				debugStream << uppercase << "#$" << setfill( '0' ) << setw( 2 ) << hex << static_cast<uint32_t>( memValue );
+			break;
+
+			case AddrMode::IndirectIndexed:
+				debugStream << uppercase << "($" << setfill( '0' ) << setw( 2 ) << static_cast<uint32_t>( operand ) << "),Y = ";
+				debugStream << setw( 4 ) << hex << address;
+				debugStream << " @ " << setw( 4 ) << hex << offset << " = " << setw( 2 ) << hex << static_cast<uint32_t>( memValue );
+			break;
+
+			case AddrMode::IndexedIndirect:
+				debugStream << uppercase << "($" << setfill( '0' ) << setw( 2 ) << static_cast<uint32_t>( operand ) << ",X) @ ";
+				debugStream << setw( 2 ) << static_cast<uint32_t>( targetAddress );
+				debugStream << " = " << setw( 4 ) << address << " = " << setw( 2 ) << static_cast<uint32_t>( memValue );
+			break;
+
+			case AddrMode::Accumulator:
+				debugStream << "A";
+			break;
+
+			case AddrMode::Jmp:
+				debugStream << uppercase << setfill( '0' ) << "$" << setw( 2 ) << hex << address;
+			break;
+
+			case AddrMode::JmpIndirect:
+				debugStream << uppercase << setfill( '0' ) << "($" << setw( 4 ) << hex << offset;
+				debugStream << ") = " << setw( 4 ) << hex << address;
+			break;
+
+			case AddrMode::Jsr:
+				debugStream << uppercase << "$" << setfill( '0' ) << setw( 2 ) << hex << address;
+			break;
+
+			case AddrMode::Branch:
+				debugStream << uppercase << "$" << setfill( '0' ) << setw( 2 ) << hex << address;
+			break;
+		}
+
+		buffer = debugStream.str();
+	}
 };
 
 
@@ -125,9 +227,9 @@ struct Cpu6502
 	std::stringstream debugAddr;
 	std::ofstream logFile;
 	bool printToOutput = false;
-	int logFrameCount = 60;
+	int logFrameCount = 2;
 #endif
-	CpuDebugMetrics dbgMetrics;
+	vector<instrDebugInfo> dbgMetrics;
 
 	bool forceStop = false;
 
@@ -161,6 +263,7 @@ struct Cpu6502
 
 	Cpu6502()
 	{
+		dbgMetrics.reserve( 10000000 );
 		Reset();
 	}
 
@@ -282,6 +385,4 @@ private:
 	void Write( const uint8_t value );
 
 	cpuCycle_t LookupFunction( const uint16_t instrBegin, const uint8_t byteCode );
-
-	void DebugPrintIndexZero( const uint8_t& reg, const uint32_t address, const uint32_t targetAddresss );
 };

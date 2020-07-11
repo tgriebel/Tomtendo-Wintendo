@@ -15,8 +15,8 @@
 #include <chrono>
 
 #define NES_MODE (1)
-#define DEBUG_MODE (0)
-#define DEBUG_ADDR (0)
+#define DEBUG_MODE (1)
+#define DEBUG_ADDR (1)
 #define MIRROR_OPTIMIZATION (1)
 
 inline constexpr uint8_t operator "" _b( uint64_t arg ) noexcept
@@ -80,6 +80,11 @@ const uint16_t BIT_MASK_15	= ( 1 << 15 );
 #define SELECT_BIT( x, y ) ( (x) & (BIT_MASK_##y) ) >> (BIT_##y)
 
 class wtSystem;
+
+struct Controller
+{
+};
+
 
 enum wtMirrorMode : uint8_t
 {
@@ -155,6 +160,12 @@ struct wtCart
 	{
 		return ( header.controlBits1.mappedNumberUpper << 4 ) | header.controlBits0.mapperNumberLower;
 	}
+};
+
+
+struct wtDebugInfo
+{
+	uint32_t frameTimeUs;
 };
 
 

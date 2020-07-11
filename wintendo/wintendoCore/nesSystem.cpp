@@ -241,6 +241,8 @@ void wtSystem::CaptureInput( const Controller keys )
 
 void wtSystem::GetFrameResult( wtFrameResult& outFrameResult )
 {
+	static_assert( sizeof( wtFrameResult ) == 1491256, "Update wtSystem::GetFrameResult()" );
+
 	const uint32_t lastFrameNumber = finishedFrame.first;
 
 	outFrameResult.frameBuffer		= frameBuffer[lastFrameNumber];
@@ -252,8 +254,47 @@ void wtSystem::GetFrameResult( wtFrameResult& outFrameResult )
 	finishedFrame.second = false; // TODO: make atomic
 	frameBuffer[lastFrameNumber].locked = false;
 
-	outFrameResult.dbgMetrics = cpu.dbgMetrics;
+	GetState( outFrameResult.state );
+	outFrameResult.dbgMetrics = cpu.dbgMetrics[0];
 	outFrameResult.dbgInfo = dbgInfo;
+	outFrameResult.romHeader = cart.header;
+	outFrameResult.mirrorMode = static_cast<wtMirrorMode>( GetMirrorMode() );
+	outFrameResult.mapperId = GetMapperId();
+}
+
+
+void wtSystem::GetState( wtState& state )
+{
+	static_assert( sizeof( wtState ) == 131080, "Update wtSystem::GetState()" );
+	static_assert( wtState::CpuMemorySize >= VirtualMemorySize, "wtSystem::GetState(): Buffer Overflow." );
+	static_assert( wtState::PpuMemorySize >= PPU::VirtualMemorySize, "wtSystem::GetState(): Buffer Overflow." );
+
+	state.A = cpu.A;
+	state.X = cpu.X;
+	state.Y = cpu.Y;
+	state.P = cpu.P;
+	state.PC = cpu.PC;
+	state.SP = cpu.SP;
+	memcpy( state.cpuMemory, memory, VirtualMemorySize );
+	memcpy( state.ppuMemory, ppu.vram, PPU::VirtualMemorySize );
+}
+
+
+void wtSystem::SyncState( wtState& state )
+{
+	// TODO: Handle safe timing
+	static_assert( sizeof( wtState ) == 131080, "Update wtSystem::SyncState()" );
+	static_assert( VirtualMemorySize >= wtState::CpuMemorySize, "wtSystem::SyncState(): Buffer Overflow." );
+	static_assert( PPU::VirtualMemorySize >= wtState::PpuMemorySize, "wtSystem::SyncState(): Buffer Overflow." );
+
+	cpu.A = state.A;
+	cpu.X = state.X;
+	cpu.Y = state.Y;
+	cpu.P = state.P;
+	cpu.PC = state.PC;
+	cpu.SP = state.SP;
+	memcpy( memory, state.cpuMemory, VirtualMemorySize );
+	memcpy( ppu.vram, state.ppuMemory, PPU::VirtualMemorySize );
 }
 
 
@@ -270,9 +311,6 @@ bool wtSystem::Run( const masterCycles_t& nextCycle )
 	}
 	auto start = chrono::steady_clock::now();
 #endif // #if DEBUG_MODE == 1
-
-	cpu.dbgMetrics.loadCnt = 0;
-	cpu.dbgMetrics.storeCnt = 0;
 
 	// TODO: CHECK WRAP AROUND LOGIC
 	while ( ( sysCycles < nextCycle ) && isRunning )

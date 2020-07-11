@@ -17,32 +17,9 @@
 
 extern const RGBA DefaultPalette[];
 
-struct Controller
-{
-
-
-};
-
-
-struct wtDebugInfo
-{
-	uint32_t frameTimeUs;
-};
-
-
-struct wtFrameResult
-{
-	uint32_t			currentFrame;
-	wtDisplayImage		frameBuffer;
-	wtNameTableImage	nameTableSheet;
-	wtPaletteImage		paletteDebug;
-	wtPatternTableImage patternTable0;
-	wtPatternTableImage patternTable1;
-
-	// Debug
-	CpuDebugMetrics		dbgMetrics;
-	wtDebugInfo			dbgInfo;
-};
+struct wtState;
+struct wtFrameResult;
+struct wtDebugInfo;
 
 
 class wtSystem
@@ -93,7 +70,7 @@ public:
 	wtDisplayImage		frameBuffer[2];
 	wtNameTableImage	nameTableSheet;
 	wtPaletteImage		paletteDebug;
-	wtPatternTableImage patternTable0;
+	wtPatternTableImage	patternTable0;
 	wtPatternTableImage patternTable1;
 
 	wstring fileName;
@@ -166,12 +143,50 @@ public:
 	unique_ptr<wtMapper> AssignMapper( const uint32_t mapperId );
 	bool Run( const masterCycles_t& nextCycle );
 	int RunFrame();
+	void CaptureInput( const Controller keys );
+	void WriteInput( const uint8_t value );
+	void GetFrameResult( wtFrameResult& outFrameResult );
+	void GetState( wtState& state );
+	void SyncState( wtState& state );
+
 	static bool IsInputRegister( const uint16_t address );
 	static bool IsPpuRegister( const uint16_t address );
 	static bool IsApuRegister( const uint16_t address );
 	static bool IsDMA( const uint16_t address );
-	void CaptureInput( const Controller keys );
-	void WriteInput( const uint8_t value );
-	void GetFrameResult( wtFrameResult& outFrameResult );
 	static bool MouseInRegion( const wtRect& region );
+};
+
+
+struct wtState
+{
+	static const uint32_t CpuMemorySize = wtSystem::VirtualMemorySize;
+	static const uint32_t PpuMemorySize = PPU::VirtualMemorySize;
+
+	uint8_t X;
+	uint8_t Y;
+	uint8_t A;
+	uint8_t SP;
+	ProcessorStatus P;
+	uint16_t PC;
+	uint8_t cpuMemory[CpuMemorySize];
+	uint8_t ppuMemory[PpuMemorySize];
+};
+
+
+struct wtFrameResult
+{
+	uint32_t			currentFrame;
+	wtDisplayImage		frameBuffer;
+	wtNameTableImage	nameTableSheet;
+	wtPaletteImage		paletteDebug;
+	wtPatternTableImage patternTable0;
+	wtPatternTableImage patternTable1;
+
+	// Debug
+	instrDebugInfo		dbgMetrics;
+	wtDebugInfo			dbgInfo;
+	wtState				state;
+	wtRomHeader			romHeader;
+	wtMirrorMode		mirrorMode;
+	uint32_t			mapperId;
 };

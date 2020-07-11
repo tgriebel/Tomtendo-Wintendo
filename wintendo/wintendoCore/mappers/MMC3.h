@@ -102,21 +102,15 @@ public:
 			{
 				switch( bankSelect.sem.bankReg )
 				{
-					case 0:
-					case 1:
-						R[bankSelect.sem.bankReg] = value & 0xFE;
-					break;
-
-					default:
-					case 2:
-					case 3:
-					case 4:
-					case 5:
+					default: case 2: case 3: case 4: case 5:
 						R[bankSelect.sem.bankReg] = value;
 					break;
 
-					case 6:
-					case 7:
+					case 0: case 1:
+						R[bankSelect.sem.bankReg] = value & 0xFE;
+					break;
+
+					case 6: case 7:
 						R[bankSelect.sem.bankReg] = value & 0x3F;
 					break;
 				}
