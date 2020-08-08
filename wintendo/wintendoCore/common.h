@@ -16,7 +16,7 @@
 
 #define NES_MODE (1)
 #define DEBUG_MODE (1)
-#define DEBUG_ADDR (1)
+#define DEBUG_ADDR (0)
 #define MIRROR_OPTIMIZATION (1)
 
 inline constexpr uint8_t operator "" _b( uint64_t arg ) noexcept
@@ -145,15 +145,15 @@ struct wtCart
 	size_t					size;
 	unique_ptr<wtMapper>	mapper;
 
-	uint8_t GetPrgRomBank( const uint8_t bankNum )
+	uint8_t* GetPrgRomBank( const uint8_t bankNum )
 	{
-		return rom[bankNum * KB_16];
+		return &rom[bankNum * KB_16];
 	}
 
-	uint8_t GetChrRomBank( const uint8_t bankNum, const bool sizeIs8KB )
+	uint8_t* GetChrRomBank( const uint8_t bankNum, const bool sizeIs8KB )
 	{
 		const uint32_t chrRomStart = header.prgRomBanks * KB_16;
-		return rom[chrRomStart + bankNum * ( sizeIs8KB ? KB_8 : KB_4 )];
+		return &rom[chrRomStart + bankNum * ( sizeIs8KB ? KB_8 : KB_4 )];
 	}
 
 	uint32_t GetMapperId() const

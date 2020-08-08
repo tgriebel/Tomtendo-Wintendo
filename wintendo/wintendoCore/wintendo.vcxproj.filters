@@ -60,6 +60,9 @@
     <ClInclude Include="mappers\MMC3.h">
       <Filter>mappers</Filter>
     </ClInclude>
+    <ClInclude Include="mos6502_ops.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -81,9 +84,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="nesSystem.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="mos6502_ops.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

@@ -16,27 +16,6 @@
 #include "NesSystem.h"
 
 
-const RGBA DefaultPalette[64] =
-{
-	{ 0x75, 0x75, 0x75, 0xFF },{ 0x27, 0x1B, 0x8F, 0xFF },{ 0x00, 0x00, 0xAB, 0xFF },{ 0x47, 0x00, 0x9F, 0xFF },
-	{ 0x8F, 0x00, 0x77, 0xFF },{ 0xAB, 0x00, 0x13, 0xFF },{ 0xA7, 0x00, 0x00, 0xFF },{ 0x7F, 0x0B, 0x00, 0xFF },
-	{ 0x43, 0x2F, 0x00, 0xFF },{ 0x00, 0x47, 0x00, 0xFF },{ 0x00, 0x51, 0x00, 0xFF },{ 0x00, 0x3F, 0x17, 0xFF },
-	{ 0x1B, 0x3F, 0x5F, 0xFF },{ 0x00, 0x00, 0x00, 0xFF },{ 0x00, 0x00, 0x00, 0xFF },{ 0x00, 0x00, 0x00, 0xFF },
-	{ 0xBC, 0xBC, 0xBC, 0xFF },{ 0x00, 0x73, 0xEF, 0xFF },{ 0x23, 0x3B, 0xEF, 0xFF },{ 0x83, 0x00, 0xF3, 0xFF },
-	{ 0xBF, 0x00, 0xBF, 0xFF },{ 0xE7, 0x00, 0x5B, 0xFF },{ 0xDB, 0x2B, 0x00, 0xFF },{ 0xCB, 0x4F, 0x0F, 0xFF },
-	{ 0x8B, 0x73, 0x00, 0xFF },{ 0x00, 0x97, 0x00, 0xFF },{ 0x00, 0xAB, 0x00, 0xFF },{ 0x00, 0x93, 0x3B, 0xFF },
-	{ 0x00, 0x83, 0x8B, 0xFF },{ 0x00, 0x00, 0x00, 0xFF },{ 0x00, 0x00, 0x00, 0xFF },{ 0x00, 0x00, 0x00, 0xFF },
-	{ 0xFF, 0xFF, 0xFF, 0xFF },{ 0x3F, 0xBF, 0xFF, 0xFF },{ 0x5F, 0x97, 0xFF, 0xFF },{ 0xA7, 0x8B, 0xFD, 0xFF },
-	{ 0xF7, 0x7B, 0xFF, 0xFF },{ 0xFF, 0x77, 0xB7, 0xFF },{ 0xFF, 0x77, 0x63, 0xFF },{ 0xFF, 0x9B, 0x3B, 0xFF },
-	{ 0xF3, 0xBF, 0x3F, 0xFF },{ 0x83, 0xD3, 0x13, 0xFF },{ 0x4F, 0xDF, 0x4B, 0xFF },{ 0x58, 0xF8, 0x98, 0xFF },
-	{ 0x00, 0xEB, 0xDB, 0xFF },{ 0x00, 0x00, 0x00, 0xFF },{ 0x00, 0x00, 0x00, 0xFF },{ 0x00, 0x00, 0x00, 0xFF },
-	{ 0xFF, 0xFF, 0xFF, 0xFF },{ 0xAB, 0xE7, 0xFF, 0xFF },{ 0xC7, 0xD7, 0xFF, 0xFF },{ 0xD7, 0xCB, 0xFF, 0xFF },
-	{ 0xFF, 0xC7, 0xFF, 0xFF },{ 0xFF, 0xC7, 0xDB, 0xFF },{ 0xFF, 0xBF, 0xB3, 0xFF },{ 0xFF, 0xDB, 0xAB, 0xFF },
-	{ 0xFF, 0xE7, 0xA3, 0xFF },{ 0xE3, 0xFF, 0xA3, 0xFF },{ 0xAB, 0xF3, 0xBF, 0xFF },{ 0xB3, 0xFF, 0xCF, 0xFF },
-	{ 0x9F, 0xFF, 0xF3, 0xFF },{ 0x00, 0x00, 0x00, 0xFF },{ 0x00, 0x00, 0x00, 0xFF },{ 0x00, 0x00, 0x00, 0xFF },
-};
-
-
 uint8_t& PPU::Reg( uint16_t address, uint8_t value )
 {
 	const uint16_t regNum = ( address % 8 ); // Mirror: 2008-4000
@@ -522,6 +501,17 @@ uint8_t PPU::GetChrRom8x16( const uint32_t tileId, const uint8_t plane, const ui
 }
 
 
+uint8_t PPU::GetChrRomBank8x8( const uint32_t tileId, const uint8_t plane, const uint8_t bankId, const uint8_t row )
+{
+	const uint8_t tileBytes = 16;
+	const uint16_t baseAddr = bankId * wtSystem::ChrRomSize;
+	const uint16_t chrRomBase = baseAddr + tileId * tileBytes;
+	uint8_t* bank = system->cart.GetChrRomBank( bankId, KB_16 );
+
+	return bank[chrRomBase + row + 8 * ( plane & 0x01 )];
+}
+
+
 uint8_t PPU::GetChrRomPalette( const uint8_t plane0, const uint8_t plane1, const uint8_t col )
 {
 	const uint16_t xBitMask = ( 0x80 >> col );
@@ -636,7 +626,7 @@ void PPU::DrawTile( wtNameTableImage& imageBuffer, const wtRect& imageRect, cons
 	}
 }
 
-void PPU::DrawTile( wtRawImageInterface* imageBuffer, const wtRect& imageRect, const uint32_t tileId, const uint32_t ptrnTableId )
+void PPU::DrawChrRomTile( wtRawImageInterface* imageBuffer, const wtRect& imageRect, const RGBA palette[4], const uint32_t tileId, const uint32_t ptrnTableId )
 {
 	for ( uint32_t y = 0; y < PPU::TilePixels; ++y )
 	{
@@ -649,18 +639,16 @@ void PPU::DrawTile( wtRawImageInterface* imageBuffer, const wtRect& imageRect, c
 
 			static uint32_t toggleTable = 0;
 
-			const uint8_t chrRom0 = toggleTable == 1 ? 0 : GetChrRom8x8( tileId, 0, ptrnTableId, chrRomPoint.y );
-			const uint8_t chrRom1 = toggleTable == 2 ? 0 : GetChrRom8x8( tileId, 1, ptrnTableId, chrRomPoint.y );
+			const uint8_t chrRom0 = toggleTable == 1 ? 0 : GetChrRomBank8x8( tileId, 0, ptrnTableId, chrRomPoint.y );
+			const uint8_t chrRom1 = toggleTable == 2 ? 0 : GetChrRomBank8x8( tileId, 1, ptrnTableId, chrRomPoint.y );
 
 			const uint16_t chrRomColor = GetChrRomPalette( chrRom0, chrRom1, chrRomPoint.x );
 
 			const uint32_t imageX = imageRect.x + x;
 			const uint32_t imageY = imageRect.y + y;
 
-			const uint8_t colorIx = ReadVram( PPU::PaletteBaseAddr + chrRomColor );
-
 			Pixel pixelColor;
-			pixelColor.rgba = palette[colorIx];
+			pixelColor.rgba = palette[chrRomColor];
 			imageBuffer->Set( imageX + imageY * imageRect.width, pixelColor );
 		}
 	}
@@ -764,6 +752,48 @@ void PPU::DrawSpritePixel( wtDisplayImage& imageBuffer, const wtRect& imageRect,
 	else
 	{
 		imageBuffer.Set( imageIndex, pixelColor );
+	}
+}
+
+
+void PPU::DrawDebugPatternTables( wtPatternTableImage& imageBuffer, const RGBA palette[4], const uint32_t tableID )
+{
+	for ( int32_t tileY = 0; tileY < 16; ++tileY )
+	{
+		for ( int32_t tileX = 0; tileX < 16; ++tileX )
+		{
+			DrawChrRomTile( &imageBuffer, wtRect{ (int32_t)PPU::TilePixels * tileX, (int32_t)PPU::TilePixels * tileY, PPU::PatternTableWidth, PPU::PatternTableHeight }, palette, (int32_t)( tileX + 16 * tileY ), tableID );
+		}
+	}
+}
+
+
+void PPU::DrawDebugNametable( wtNameTableImage& imageBuffer )
+{
+	wtRect ntRects[4] = {		{ 0,						0,							2 * wtSystem::ScreenWidth,	2 * wtSystem::ScreenHeight },
+								{ wtSystem::ScreenWidth,	0,							2 * wtSystem::ScreenWidth,	2 * wtSystem::ScreenHeight },
+								{ 0,						wtSystem::ScreenHeight,		2 * wtSystem::ScreenWidth,	2 * wtSystem::ScreenHeight },
+								{ wtSystem::ScreenWidth,	wtSystem::ScreenHeight,		2 * wtSystem::ScreenWidth,	2 * wtSystem::ScreenHeight }, };
+
+	wtPoint ntCorners[4] = {	{0,							0 },
+								{ wtSystem::ScreenWidth,	0 },
+								{ 0,						wtSystem::ScreenHeight },
+								{ wtSystem::ScreenWidth,	wtSystem::ScreenHeight }, };
+
+	for ( uint32_t ntId = 0; ntId < 4; ++ntId )
+	{
+		for ( int32_t tileY = 0; tileY < (int)PPU::NameTableHeightTiles; ++tileY )
+		{
+			for ( int32_t tileX = 0; tileX < (int)PPU::NameTableWidthTiles; ++tileX )
+			{
+				DrawTile( imageBuffer, ntRects[ntId], wtPoint{ tileX, tileY }, ntId, GetBgPatternTableId() );
+
+				ntRects[ntId].x += static_cast<uint32_t>( PPU::TilePixels );
+			}
+
+			ntRects[ntId].x = ntCorners[ntId].x;
+			ntRects[ntId].y += static_cast<uint32_t>( PPU::TilePixels );
+		}
 	}
 }
 

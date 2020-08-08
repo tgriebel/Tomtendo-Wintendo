@@ -47,6 +47,22 @@ static void LoadNesFile( const std::wstring& fileName, wtCart& outCart )
 }
 
 
+void wtSystem::DebugPrintFlushLog()
+{
+#if DEBUG_ADDR == 1
+	if ( cpu.logFrameCount == 0 )
+	{
+		for( InstrDebugInfo& dbgInfo : cpu.dbgMetrics )
+		{
+			string dbgString;
+			dbgInfo.ToString( dbgString );
+			cpu.logFile << dbgString << endl;
+		}
+	}
+#endif
+}
+
+
 int wtSystem::InitSystem( const wstring& filePath )
 {
 	LoadNesFile( filePath, cart );
@@ -241,7 +257,7 @@ void wtSystem::CaptureInput( const Controller keys )
 
 void wtSystem::GetFrameResult( wtFrameResult& outFrameResult )
 {
-	static_assert( sizeof( wtFrameResult ) == 1491256, "Update wtSystem::GetFrameResult()" );
+	static_assert( sizeof( wtFrameResult ) == 1491320, "Update wtSystem::GetFrameResult()" );
 
 	const uint32_t lastFrameNumber = finishedFrame.first;
 
@@ -255,7 +271,9 @@ void wtSystem::GetFrameResult( wtFrameResult& outFrameResult )
 	frameBuffer[lastFrameNumber].locked = false;
 
 	GetState( outFrameResult.state );
+#if DEBUG_ADDR
 	outFrameResult.dbgMetrics = cpu.dbgMetrics[0];
+#endif
 	outFrameResult.dbgInfo = dbgInfo;
 	outFrameResult.romHeader = cart.header;
 	outFrameResult.mirrorMode = static_cast<wtMirrorMode>( GetMirrorMode() );
@@ -304,13 +322,15 @@ bool wtSystem::Run( const masterCycles_t& nextCycle )
 
 	static const masterCycles_t ticks( CpuClockDivide );
 
-#if DEBUG_MODE == 1
+#if DEBUG_ADDR == 1
 	if( ( cpu.logFrameCount > 0 ) && !cpu.logFile.is_open() )
 	{
 		cpu.logFile.open( "tomTendo.log" );
 	}
+#endif
+#if DEBUG_MODE == 1
 	auto start = chrono::steady_clock::now();
-#endif // #if DEBUG_MODE == 1
+#endif
 
 	// TODO: CHECK WRAP AROUND LOGIC
 	while ( ( sysCycles < nextCycle ) && isRunning )
@@ -339,6 +359,69 @@ bool wtSystem::Run( const masterCycles_t& nextCycle )
 #endif // #if DEBUG_ADDR == 1
 
 	return isRunning;
+}
+
+
+string wtSystem::GetPrgBankDissambly( const uint8_t bankNum )
+{
+	std::stringstream debugStream;
+	uint8_t* bankMem = cart.GetPrgRomBank( bankNum );
+	uint16_t curByte = 0;
+
+	while( curByte < KB_16 )
+	{
+		stringstream hexString;
+		const uint32_t instrAddr = curByte;
+		const uint32_t opCode = bankMem[curByte];
+
+		IntrInfo instrInfo = cpu.instLookup[opCode];
+		const uint32_t operandCnt = instrInfo.operands;
+		const char* mnemonic = instrInfo.mnemonic;
+
+		if ( operandCnt == 1 )
+		{
+			const uint32_t op0 = bankMem[curByte + 1];
+			hexString << uppercase << setfill( '0' ) << setw( 2 ) << hex << opCode << " " << setw( 2 ) << op0;
+		}
+		else if ( operandCnt == 2 )
+		{
+			const uint32_t op0 = bankMem[curByte + 1];
+			const uint32_t op1 = bankMem[curByte + 2];
+			hexString << uppercase << setfill( '0' ) << setw( 2 ) << hex << opCode << " " << setw( 2 ) << op0 << " " << setw( 2 ) << op1;
+		}
+		else
+		{
+			hexString << uppercase << setfill( '0' ) << setw( 2 ) << hex << opCode;
+		}
+
+		debugStream << "0x" << uppercase << setfill( '0' ) << setw( 4 ) << hex << instrAddr << setfill( ' ' ) << "  " << setw( 10 ) << left << hexString.str() << mnemonic << std::endl;
+
+		curByte += 1 + operandCnt;
+		assert( curByte <= ( KB_16 + 1 ) );
+	}
+
+	return debugStream.str();
+}
+
+
+void wtSystem::GenerateRomDissambly( string prgRomAsm[16] )
+{
+	assert( cart.header.prgRomBanks <= 16 );
+	for( uint32_t bankNum = 0; bankNum < cart.header.prgRomBanks; ++bankNum )
+	{
+		prgRomAsm[bankNum] = GetPrgBankDissambly( bankNum );
+	}
+}
+
+
+void wtSystem::GenerateChrRomTables( wtPatternTableImage chrRom[16] )
+{
+	RGBA palette[] = { { 0x00, 0x00, 0x00, 0xFF }, { 0xFF, 0x00, 0x00, 0xFF }, { 0x00, 0xFF, 0x00, 0xFF }, { 0x00, 0x00, 0xFF, 0xFF } };
+	assert( cart.header.chrRomBanks <= 16 );
+	for ( uint32_t bankNum = 0; bankNum < cart.header.chrRomBanks; ++bankNum )
+	{
+		ppu.DrawDebugPatternTables( chrRom[bankNum], palette, bankNum );
+	}
 }
 
 
@@ -380,92 +463,21 @@ int wtSystem::RunFrame()
 		return false;
 	}
 
-	wtRect imageRect = { 0, 0, wtSystem::ScreenWidth, wtSystem::ScreenHeight };
+	RGBA palette[4];
+	for( uint32_t i = 0; i < 4; ++i )
+	{
+		palette[i] = ppu.palette[ppu.ReadVram( PPU::PaletteBaseAddr + i )];
+	}
+
+	ppu.DrawDebugPatternTables( patternTable0, palette, 0 );
+	ppu.DrawDebugPatternTables( patternTable1, palette, 1 );
 
 	bool debugNT = debugNTEnable && ( ( (int)frame.count() % 60 ) == 0 );
-
-	if ( debugNT )
-	{
-		wtRect ntRects[4] = { { 0,						0,							2 * wtSystem::ScreenWidth,	2 * wtSystem::ScreenHeight },
-								{ wtSystem::ScreenWidth,	0,							2 * wtSystem::ScreenWidth,	2 * wtSystem::ScreenHeight },
-								{ 0,						wtSystem::ScreenHeight,	2 * wtSystem::ScreenWidth, 2 * wtSystem::ScreenHeight },
-								{ wtSystem::ScreenWidth,	wtSystem::ScreenHeight,	2 * wtSystem::ScreenWidth, 2 * wtSystem::ScreenHeight }, };
-
-		wtPoint ntCorners[4] = { {0,							0 },
-									{ wtSystem::ScreenWidth,	0 },
-									{ 0,						wtSystem::ScreenHeight },
-									{ wtSystem::ScreenWidth,	wtSystem::ScreenHeight }, };
-
-		for ( uint32_t ntId = 0; ntId < 4; ++ntId )
-		{
-			for ( int32_t tileY = 0; tileY < (int)PPU::NameTableHeightTiles; ++tileY )
-			{
-				for ( int32_t tileX = 0; tileX < (int)PPU::NameTableWidthTiles; ++tileX )
-				{
-					ppu.DrawTile( nameTableSheet, ntRects[ntId], wtPoint{ tileX, tileY }, ntId, ppu.GetBgPatternTableId() );
-
-					ntRects[ntId].x += static_cast<uint32_t>( PPU::TilePixels );
-				}
-
-				ntRects[ntId].x = ntCorners[ntId].x;
-				ntRects[ntId].y += static_cast<uint32_t>( PPU::TilePixels );
-			}
-		}
-	}
-
-	for ( int32_t tileY = 0; tileY < 16; ++tileY )
-	{
-		for ( int32_t tileX = 0; tileX < 16; ++tileX )
-		{
-			ppu.DrawTile( &patternTable0, wtRect{ (int32_t)PPU::TilePixels * tileX, (int32_t)PPU::TilePixels * tileY, PPU::PatternTableWidth, PPU::PatternTableHeight }, (int32_t)( tileX + 16 * tileY ), 0 );
-			ppu.DrawTile( &patternTable1, wtRect{ (int32_t)PPU::TilePixels * tileX, (int32_t)PPU::TilePixels * tileY, PPU::PatternTableWidth, PPU::PatternTableHeight }, (int32_t)( tileX + 16 * tileY ), 1 );
-		}
-	}
-
+	if( debugNT )
+		ppu.DrawDebugNametable( nameTableSheet );
 	ppu.DrawDebugPalette( paletteDebug );
 
-	static bool debugAttribs = false;
-
-	if ( debugAttribs )
-	{
-		ofstream attribFile;
-
-		stringstream attribName;
-		attribName << "Palettes/" << "attrib_" << frame.count() << ".txt";
-
-		attribFile.open( attribName.str() );
-
-		attribFile << "Frame: " << frame.count() << endl;
-
-		const uint16_t attribAddr = 0x23C0;
-
-		for ( int attribY = 0; attribY < 8; ++attribY )
-		{
-			for ( int attribX = 0; attribX < 8; ++attribX )
-			{
-				const uint16_t attribTable = ppu.vram[attribAddr + attribY * 8 + attribX];
-				const uint16_t tL = ( attribTable >> 6 ) & 0x03;
-				const uint16_t tR = ( attribTable >> 4 ) & 0x03;
-				const uint16_t bL = ( attribTable >> 2 ) & 0x03;
-				const uint16_t bR = ( attribTable >> 0 ) & 0x03;
-
-				attribFile << "[" << setfill( '0' ) << hex << setw( 2 ) << tL << " " << setw( 2 ) << tR << " " << setw( 2 ) << bL << " " << setw( 2 ) << bR << "]";
-			}
-
-			attribFile << endl;
-		}
-
-		attribFile << endl;
-
-		attribFile.close();
-	}
-
-	/*
-	Pixel pixel;
-	pixel.rgba.red = 0xFF;
-	pixel.rgba.alpha = 0xFF;
-	frameBuffer[currentFrame].SetPixel( mousePoint.x, mousePoint.y, pixel );
-	*/
+	DebugPrintFlushLog();
 
 	return isRunning;
 }

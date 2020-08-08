@@ -35,6 +35,16 @@ enum struct AddrMode : uint8_t
 	Branch
 };
 
+typedef uint8_t( Cpu6502::* OpCodeFn )();
+struct IntrInfo
+{
+	const char*	mnemonic;
+	uint8_t		operands;
+	uint8_t		baseCycles;
+	uint8_t		pcInc;
+	OpCodeFn	func;
+};
+
 #define OP_DECL(name)	template <class AddrModeT> \
 						uint8_t name##();
 #define OP_DEF(name)	template <class AddrModeT> \
@@ -50,18 +60,16 @@ enum struct AddrMode : uint8_t
 
 #define ADDR_MODE_DEF(name)	void Cpu6502::AddrMode##name::operator()( CpuAddrInfo& addrInfo )
 
-#define _OP_ADDR(num,name,address,ops,advance,cycles)	case num: \
-												{ \
-													opCode = num; \
-													retVal = cpuCycle_t( cycles + Cpu6502::##name<AddrMode##address>() ); \
-													mnemonic = #name; \
-													operands = ops; \
-													AdvanceProgram(advance); \
-												} break;
+#define _OP_ADDR(num,name,address,ops,advance,cycles) { \
+													instLookup[num].mnemonic = #name; \
+													instLookup[num].operands = ops; \
+													instLookup[num].baseCycles = cycles; \
+													instLookup[num].pcInc = advance; \
+													instLookup[num].func = &Cpu6502::##name<AddrMode##address>; \
+												}
 #define OP_ADDR(num,name,address,ops,cycles) _OP_ADDR(num,name,address,ops,ops,cycles)
 #define OP(num,name,ops,cycles) _OP_ADDR(num,name,None,ops,ops,cycles)
 #define OP_JMP(num,name,ops,cycles) _OP_ADDR(num,name,None,ops,0,cycles)
-#define OP_ILLEGAL(num) case num: { ; } break;
 
 
 const StatusBit	STATUS_NONE			= 0x00;
@@ -105,7 +113,18 @@ struct CpuAddrInfo
 };
 
 
-struct instrDebugInfo
+struct RegDebugInfo
+{
+	uint8_t X;
+	uint8_t Y;
+	uint8_t A;
+	uint8_t SP;
+	ProcessorStatus P;
+	uint16_t PC;
+};
+
+
+struct InstrDebugInfo
 {
 	uint32_t loadCnt;
 	uint32_t storeCnt;
@@ -117,8 +136,23 @@ struct instrDebugInfo
 	uint16_t address;
 	uint16_t offset;
 	uint16_t targetAddress;
+	uint8_t byteCode;
+	uint16_t instrBegin;
 
-	instrDebugInfo()
+	uint8_t operands;
+	uint8_t op0;
+	uint8_t op1;
+
+	const char* mnemonic;
+
+	RegDebugInfo regInfo;
+
+	int32_t curScanline;
+	cpuCycle_t cpuCycles;
+	ppuCycle_t ppuCycles;
+	cpuCycle_t instrCycles;
+
+	InstrDebugInfo()
 	{
 		loadCnt = 0;
 		storeCnt = 0;
@@ -130,11 +164,43 @@ struct instrDebugInfo
 		address = 0;
 		offset = 0;
 		targetAddress = 0;
+		instrBegin = 0;
+		curScanline = 0;
+		cpuCycles = cpuCycle_t(0);
+		ppuCycles = ppuCycle_t(0);
+		instrCycles = cpuCycle_t(0);
+
+		op0 = 0;
+		op1 = 0;
+
+		mnemonic = "";
+		operands = 0;
+		byteCode = 0;
+
+		regInfo = { 0, 0, 0, 0, 0, 0 };
 	}
 
-	void ToString( string& buffer )
+	void ToString( string& buffer, bool registerDebug = true )
 	{
 		std::stringstream debugStream;
+
+		int disassemblyBytes[6] = { byteCode, op0, op1,'\0' };
+		stringstream hexString;
+
+		if ( operands == 1 )
+		{
+			hexString << uppercase << setfill( '0' ) << setw( 2 ) << hex << disassemblyBytes[0] << " " << setw( 2 ) << disassemblyBytes[1];
+		}
+		else if ( operands == 2 )
+		{
+			hexString << uppercase << setfill( '0' ) << setw( 2 ) << hex << disassemblyBytes[0] << " " << setw( 2 ) << disassemblyBytes[1] << " " << setw( 2 ) << disassemblyBytes[2];
+		}
+		else
+		{
+			hexString << uppercase << setfill( '0' ) << setw( 2 ) << hex << disassemblyBytes[0];
+		}
+
+		debugStream << uppercase << setfill( '0' ) << setw( 4 ) << hex << instrBegin << setfill( ' ' ) << "  " << setw( 10 ) << left << hexString.str() << mnemonic << " ";
 
 		switch ( addrMode )
 		{
@@ -203,6 +269,18 @@ struct instrDebugInfo
 			break;
 		}
 
+		if( registerDebug )
+		{
+			debugStream << setfill( ' ' ) << setw( 28 ) << right;
+			debugStream << uppercase << "A:" << setfill( '0' ) << setw( 2 ) << hex << static_cast<int>( regInfo.A ) << setw( 1 ) << " ";
+			debugStream << uppercase << "X:" << setfill( '0' ) << setw( 2 ) << hex << static_cast<int>( regInfo.X ) << setw( 1 ) << " ";
+			debugStream << uppercase << "Y:" << setfill( '0' ) << setw( 2 ) << hex << static_cast<int>( regInfo.Y ) << setw( 1 ) << " ";
+			debugStream << uppercase << "P:" << setfill( '0' ) << setw( 2 ) << hex << static_cast<int>( regInfo.P.byte ) << setw( 1 ) << " ";
+			debugStream << uppercase << "SP:" << setfill( '0' ) << setw( 2 ) << hex << static_cast<int>( regInfo.SP ) << setw( 1 ) << " ";
+			debugStream << uppercase << "PPU:" << setfill( ' ' ) << setw( 3 ) << dec << ppuCycles.count() << "," << setw( 3 ) << ( curScanline + 1 ) << " ";
+			debugStream << uppercase << "CYC:" << dec << ( 7 + cpuCycles.count() ) << "\0"; // 7 is to match the init value from the nintendolator log
+		}
+
 		buffer = debugStream.str();
 	}
 };
@@ -229,13 +307,15 @@ struct Cpu6502
 	bool printToOutput = false;
 	int logFrameCount = 2;
 #endif
-	vector<instrDebugInfo> dbgMetrics;
+	vector<InstrDebugInfo> dbgMetrics;
 
 	bool forceStop = false;
 
 	bool interruptRequestNMI;
 	bool interruptRequest;
 	bool oamInProcess;
+
+	IntrInfo instLookup[256];
 
 	uint8_t X;
 	uint8_t Y;
@@ -259,6 +339,9 @@ struct Cpu6502
 
 		instructionCycles = cpuCycle_t( 0 );
 		cycle = cpuCycle_t(0); // FIXME? Test log starts cycles at 7. Is there a BRK at power up?
+
+		dbgMetrics.resize(0);
+		BuildInstructionMap();
 	}
 
 	Cpu6502()
@@ -367,7 +450,7 @@ private:
 	void PushWord( const uint16_t value );
 	uint16_t PullWord();
 
-	void AdvanceProgram( const uint16_t places );
+	void AdvancePC( const uint16_t places );
 	uint8_t ReadOperand( const uint16_t offset ) const;
 	uint16_t ReadAddressOperand() const;
 
@@ -384,5 +467,6 @@ private:
 	template <class AddrFunctor>
 	void Write( const uint8_t value );
 
-	cpuCycle_t LookupFunction( const uint16_t instrBegin, const uint8_t byteCode );
+	cpuCycle_t LookupFunction( const uint16_t instrBegin, const uint8_t opCode );
+	void BuildInstructionMap();
 };

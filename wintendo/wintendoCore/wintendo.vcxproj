@@ -172,6 +172,7 @@
     <ClInclude Include="mos6502.h" />
     <ClInclude Include="bitmap.h" />
     <ClInclude Include="debug.h" />
+    <ClInclude Include="mos6502_ops.h" />
     <ClInclude Include="nesMapper.h" />
     <ClInclude Include="NesSystem.h" />
     <ClInclude Include="ppu.h" />
@@ -182,7 +183,6 @@
   <ItemGroup>
     <ClCompile Include="mos6502.cpp" />
     <ClCompile Include="bitmap.cpp" />
-    <ClCompile Include="mos6502_ops.cpp" />
     <ClCompile Include="nesSystem.cpp" />
     <ClCompile Include="ppu.cpp" />
     <ClCompile Include="wintendoMain.cpp" />

@@ -15,8 +15,6 @@
 #include "bitmap.h"
 
 
-extern const RGBA DefaultPalette[];
-
 struct wtState;
 struct wtFrameResult;
 struct wtDebugInfo;
@@ -105,7 +103,6 @@ public:
 		memset( memory, 0, sizeof( memory ) );
 
 		ppu.system = this;
-		ppu.palette= &DefaultPalette[0];
 
 		strobeOn = false;
 		btnShift[0] = 0;
@@ -140,6 +137,9 @@ public:
 	int InitSystem( const wstring& filePath );
 	void ShutdownSystem();
 	void LoadProgram( wtCart& cart, const uint32_t resetVectorManual = 0x10000 );
+	string GetPrgBankDissambly( const uint8_t bankNum );
+	void GenerateRomDissambly( string prgRomAsm[16] );
+	void GenerateChrRomTables( wtPatternTableImage chrRom[16] );
 	unique_ptr<wtMapper> AssignMapper( const uint32_t mapperId );
 	bool Run( const masterCycles_t& nextCycle );
 	int RunFrame();
@@ -148,6 +148,8 @@ public:
 	void GetFrameResult( wtFrameResult& outFrameResult );
 	void GetState( wtState& state );
 	void SyncState( wtState& state );
+
+	void DebugPrintFlushLog();
 
 	static bool IsInputRegister( const uint16_t address );
 	static bool IsPpuRegister( const uint16_t address );
@@ -183,7 +185,7 @@ struct wtFrameResult
 	wtPatternTableImage patternTable1;
 
 	// Debug
-	instrDebugInfo		dbgMetrics;
+	InstrDebugInfo		dbgMetrics;
 	wtDebugInfo			dbgInfo;
 	wtState				state;
 	wtRomHeader			romHeader;
