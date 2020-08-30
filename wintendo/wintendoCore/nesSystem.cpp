@@ -254,11 +254,8 @@ void wtSystem::CaptureInput( const Controller keys )
 	controller.exchange( keys );
 }
 
-
 void wtSystem::GetFrameResult( wtFrameResult& outFrameResult )
 {
-	static_assert( sizeof( wtFrameResult ) == 1491320, "Update wtSystem::GetFrameResult()" );
-
 	const uint32_t lastFrameNumber = finishedFrame.first;
 
 	outFrameResult.frameBuffer		= frameBuffer[lastFrameNumber];
@@ -278,6 +275,16 @@ void wtSystem::GetFrameResult( wtFrameResult& outFrameResult )
 	outFrameResult.romHeader = cart.header;
 	outFrameResult.mirrorMode = static_cast<wtMirrorMode>( GetMirrorMode() );
 	outFrameResult.mapperId = GetMapperId();
+
+	if( apu.finishedSoundOutput != nullptr )
+	{
+		outFrameResult.soundOutput = *apu.finishedSoundOutput;
+		outFrameResult.apuDebug = apu.GetDebugInfo();
+	}
+	else
+	{
+		outFrameResult.soundOutput.currentIndex = 0;
+	}
 }
 
 
@@ -316,6 +323,27 @@ void wtSystem::SyncState( wtState& state )
 }
 
 
+void wtSystem::InitConfig()
+{
+	config.apu.frequencyScale = 1.0f;
+	config.apu.volume = 20.0f;
+}
+
+
+void wtSystem::GetConfig( wtConfig& systemConfig )
+{
+	systemConfig.apu.frequencyScale = config.apu.frequencyScale;
+	systemConfig.apu.volume = config.apu.volume;
+}
+
+
+void wtSystem::SyncConfig( wtConfig& systemConfig )
+{
+	config.apu.frequencyScale = systemConfig.apu.frequencyScale;
+	config.apu.volume = systemConfig.apu.volume;
+}
+
+
 bool wtSystem::Run( const masterCycles_t& nextCycle )
 {
 	bool isRunning = true;
@@ -328,9 +356,10 @@ bool wtSystem::Run( const masterCycles_t& nextCycle )
 		cpu.logFile.open( "tomTendo.log" );
 	}
 #endif
-#if DEBUG_MODE == 1
-	auto start = chrono::steady_clock::now();
-#endif
+
+	// cpu.Begin(); // TODO
+	// ppu.Begin(); // TODO
+	apu.Begin();
 
 	// TODO: CHECK WRAP AROUND LOGIC
 	while ( ( sysCycles < nextCycle ) && isRunning )
@@ -339,15 +368,17 @@ bool wtSystem::Run( const masterCycles_t& nextCycle )
 
 		isRunning = cpu.Step( chrono::duration_cast<cpuCycle_t>( sysCycles ) );
 		ppu.Step( chrono::duration_cast<ppuCycle_t>( cpu.cycle ) );
+		apu.Step( chrono::duration_cast<apuCycle_t>( cpu.cycle ) );
 	}
 
+	// cpu.End(); // TODO
+	// ppu.End(); // TODO
+	apu.End();
+
 #if DEBUG_MODE == 1
-	auto end = chrono::steady_clock::now();
-
-	auto elapsed = end - start;
-	auto dur = chrono::duration <double, milli>( elapsed ).count();
-
-	//	cout << "Elapsed:" << dur << ": Cycles: " << cpu.cycle.count() << endl;
+	dbgInfo.masterCpu = chrono::duration_cast<masterCycles_t>( cpu.cycle );
+	dbgInfo.masterPpu = chrono::duration_cast<masterCycles_t>( ppu.cycle );
+	dbgInfo.masterApu = chrono::duration_cast<masterCycles_t>( apu.cycle );
 #endif // #if DEBUG_MODE == 1
 
 #if DEBUG_ADDR == 1
@@ -394,7 +425,7 @@ string wtSystem::GetPrgBankDissambly( const uint8_t bankNum )
 			hexString << uppercase << setfill( '0' ) << setw( 2 ) << hex << opCode;
 		}
 
-		debugStream << "0x" << uppercase << setfill( '0' ) << setw( 4 ) << hex << instrAddr << setfill( ' ' ) << "  " << setw( 10 ) << left << hexString.str() << mnemonic << std::endl;
+		debugStream << "0x" << right << uppercase << setfill( '0' ) << setw( 4 ) << hex << instrAddr << setfill( ' ' ) << "  " << setw( 10 ) << left << hexString.str() << mnemonic << std::endl;
 
 		curByte += 1 + operandCnt;
 		assert( curByte <= ( KB_16 + 1 ) );
@@ -462,6 +493,8 @@ int wtSystem::RunFrame()
 	{
 		return false;
 	}
+
+	++frameNumber;
 
 	RGBA palette[4];
 	for( uint32_t i = 0; i < 4; ++i )

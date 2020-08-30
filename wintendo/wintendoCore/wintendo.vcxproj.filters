@@ -63,6 +63,9 @@
     <ClInclude Include="mos6502_ops.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="apu.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -84,6 +87,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="nesSystem.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="apu.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

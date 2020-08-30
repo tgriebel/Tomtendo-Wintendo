@@ -164,6 +164,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="apu.h" />
     <ClInclude Include="input.h" />
     <ClInclude Include="mappers\MMC1.h" />
     <ClInclude Include="mappers\MMC3.h" />
@@ -181,6 +182,7 @@
     <ClInclude Include="common.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="apu.cpp" />
     <ClCompile Include="mos6502.cpp" />
     <ClCompile Include="bitmap.cpp" />
     <ClCompile Include="nesSystem.cpp" />

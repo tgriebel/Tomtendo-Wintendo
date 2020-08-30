@@ -12,13 +12,14 @@
 #include "common.h"
 #include "mos6502.h"
 #include "ppu.h"
+#include "apu.h"
 #include "bitmap.h"
 
 
 struct wtState;
 struct wtFrameResult;
 struct wtDebugInfo;
-
+struct wtConfig;
 
 class wtSystem
 {
@@ -59,12 +60,14 @@ public:
 
 	Cpu6502			cpu;
 	PPU				ppu;
+	APU				apu;
 	masterCycles_t	sysCycles;
 
 	wtCart cart;
 
 	pair<uint32_t,bool>	finishedFrame;
 	uint32_t			currentFrame;
+	uint64_t			frameNumber;
 	wtDisplayImage		frameBuffer[2];
 	wtNameTableImage	nameTableSheet;
 	wtPaletteImage		paletteDebug;
@@ -89,6 +92,7 @@ public:
 	uint8_t mirrorMode;
 
 	wtDebugInfo dbgInfo;
+	wtConfig	config;
 
 #if DEBUG_ADDR == 1
 	std::map<uint16_t, uint8_t> memoryDebug;
@@ -96,6 +100,8 @@ public:
 
 	wtSystem()
 	{
+		InitConfig();
+
 		cpu.forceStop = false;
 		cpu.cycle = cpuCycle_t(0);
 		sysCycles = masterCycles_t(0);
@@ -103,6 +109,7 @@ public:
 		memset( memory, 0, sizeof( memory ) );
 
 		ppu.system = this;
+		apu.system = this;
 
 		strobeOn = false;
 		btnShift[0] = 0;
@@ -124,6 +131,7 @@ public:
 
 		finishedFrame.first = 0;
 		finishedFrame.second = false;
+		frameNumber = 0;
 	}
 
 	uint8_t& GetStack();
@@ -148,6 +156,9 @@ public:
 	void GetFrameResult( wtFrameResult& outFrameResult );
 	void GetState( wtState& state );
 	void SyncState( wtState& state );
+	void GetConfig( wtConfig& config );
+	void SyncConfig( wtConfig& config );
+	void InitConfig();
 
 	void DebugPrintFlushLog();
 
@@ -191,4 +202,6 @@ struct wtFrameResult
 	wtRomHeader			romHeader;
 	wtMirrorMode		mirrorMode;
 	uint32_t			mapperId;
+	wtApuOutput			soundOutput;
+	wtApuDebug			apuDebug;
 };
