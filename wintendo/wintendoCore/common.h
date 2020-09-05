@@ -38,6 +38,10 @@ using apuCycle_t	= std::chrono::duration< uint64_t, std::ratio<ApuClockDivide, M
 using scanCycle_t	= std::chrono::duration< uint64_t, std::ratio<PpuCyclesPerScanline * PpuClockDivide, MasterClockHz> >; // TODO: Verify
 using frameRate_t	= std::chrono::duration< double, std::ratio<1, FPS> >;
 
+static constexpr float CPU_HZ = static_cast<float>( chrono::duration_cast<cpuCycle_t>( chrono::seconds( 1 ) ).count() );
+static constexpr float APU_HZ = static_cast<float>( chrono::duration_cast<apuCycle_t>( chrono::seconds( 1 ) ).count() );
+static constexpr float PPU_HZ = static_cast<float>( chrono::duration_cast<apuCycle_t>( chrono::seconds( 1 ) ).count() );
+
 const uint32_t KB_1		= 1024;
 const uint32_t KB_2		= ( 2 * KB_1 );
 const uint32_t KB_4		= ( 2 * KB_2 );
@@ -181,6 +185,11 @@ struct wtConfig
 		float volume;
 		float frequencyScale;
 	} apu;
+
+	struct PPU
+	{
+		int32_t chrPalette;
+	} ppu;
 };
 
 

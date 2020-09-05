@@ -315,6 +315,11 @@ struct Cpu6502
 	bool interruptRequest;
 	bool oamInProcess;
 
+	cpuCycle_t dbgStartCycle;
+	cpuCycle_t dbgTargetCycle;
+	masterCycles_t dbgSysStartCycle;
+	masterCycles_t dbgSysTargetCycle;
+
 	IntrInfo instLookup[256];
 
 	uint8_t X;

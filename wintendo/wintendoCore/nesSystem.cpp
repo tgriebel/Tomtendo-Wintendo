@@ -283,7 +283,9 @@ void wtSystem::GetFrameResult( wtFrameResult& outFrameResult )
 	}
 	else
 	{
-		outFrameResult.soundOutput.currentIndex = 0;
+		outFrameResult.soundOutput.master.currentIndex = 0;
+		outFrameResult.soundOutput.pulse1.currentIndex = 0;
+		outFrameResult.soundOutput.pulse2.currentIndex = 0;
 	}
 }
 
@@ -325,22 +327,31 @@ void wtSystem::SyncState( wtState& state )
 
 void wtSystem::InitConfig()
 {
-	config.apu.frequencyScale = 1.0f;
-	config.apu.volume = 20.0f;
+	// PPU
+	config.ppu.chrPalette		= 0;
+	// APU
+	config.apu.frequencyScale	= 1.0f;
+	config.apu.volume			= 1.0f;
 }
 
 
 void wtSystem::GetConfig( wtConfig& systemConfig )
 {
-	systemConfig.apu.frequencyScale = config.apu.frequencyScale;
-	systemConfig.apu.volume = config.apu.volume;
+	// PPU
+	systemConfig.ppu.chrPalette		= config.ppu.chrPalette;
+	// APU
+	systemConfig.apu.frequencyScale	= config.apu.frequencyScale;
+	systemConfig.apu.volume			= config.apu.volume;
 }
 
 
 void wtSystem::SyncConfig( wtConfig& systemConfig )
 {
-	config.apu.frequencyScale = systemConfig.apu.frequencyScale;
-	config.apu.volume = systemConfig.apu.volume;
+	// PPU
+	config.ppu.chrPalette		= systemConfig.ppu.chrPalette;
+	// APU
+	config.apu.frequencyScale	= systemConfig.apu.frequencyScale;
+	config.apu.volume			= systemConfig.apu.volume;
 }
 
 
@@ -367,7 +378,7 @@ bool wtSystem::Run( const masterCycles_t& nextCycle )
 		sysCycles += ticks;
 
 		isRunning = cpu.Step( chrono::duration_cast<cpuCycle_t>( sysCycles ) );
-		ppu.Step( chrono::duration_cast<ppuCycle_t>( cpu.cycle ) );
+		ppu.Step( chrono::duration_cast<ppuCycle_t>( sysCycles ) );
 		apu.Step( chrono::duration_cast<apuCycle_t>( cpu.cycle ) );
 	}
 
@@ -378,7 +389,7 @@ bool wtSystem::Run( const masterCycles_t& nextCycle )
 #if DEBUG_MODE == 1
 	dbgInfo.masterCpu = chrono::duration_cast<masterCycles_t>( cpu.cycle );
 	dbgInfo.masterPpu = chrono::duration_cast<masterCycles_t>( ppu.cycle );
-	dbgInfo.masterApu = chrono::duration_cast<masterCycles_t>( apu.cycle );
+	dbgInfo.masterApu = chrono::duration_cast<masterCycles_t>( apu.cpuCycle );
 #endif // #if DEBUG_MODE == 1
 
 #if DEBUG_ADDR == 1
@@ -447,7 +458,19 @@ void wtSystem::GenerateRomDissambly( string prgRomAsm[16] )
 
 void wtSystem::GenerateChrRomTables( wtPatternTableImage chrRom[16] )
 {
-	RGBA palette[] = { { 0x00, 0x00, 0x00, 0xFF }, { 0xFF, 0x00, 0x00, 0xFF }, { 0x00, 0xFF, 0x00, 0xFF }, { 0x00, 0x00, 0xFF, 0xFF } };
+	const uint16_t baseAddr = ( config.ppu.chrPalette > 3 ) ? PPU::SpritePaletteAddr: PPU::PaletteBaseAddr;
+	const uint16_t baseOffset = 4 * ( config.ppu.chrPalette % 4 );
+	const uint8_t p0 = ppu.ReadVram( baseAddr + baseOffset + 0 );
+	const uint8_t p1 = ppu.ReadVram( baseAddr + baseOffset + 1 );
+	const uint8_t p2 = ppu.ReadVram( baseAddr + baseOffset + 2 );
+	const uint8_t p3 = ppu.ReadVram( baseAddr + baseOffset + 3 );
+
+	RGBA palette[4];
+	palette[0] = ppu.palette[p0];
+	palette[1] = ppu.palette[p1];
+	palette[2] = ppu.palette[p2];
+	palette[3] = ppu.palette[p3];
+
 	assert( cart.header.chrRomBanks <= 16 );
 	for ( uint32_t bankNum = 0; bankNum < cart.header.chrRomBanks; ++bankNum )
 	{

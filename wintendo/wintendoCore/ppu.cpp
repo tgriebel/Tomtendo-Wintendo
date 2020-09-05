@@ -626,7 +626,7 @@ void PPU::DrawTile( wtNameTableImage& imageBuffer, const wtRect& imageRect, cons
 	}
 }
 
-void PPU::DrawChrRomTile( wtRawImageInterface* imageBuffer, const wtRect& imageRect, const RGBA palette[4], const uint32_t tileId, const uint32_t ptrnTableId )
+void PPU::DrawChrRomTile( wtRawImageInterface* imageBuffer, const wtRect& imageRect, const RGBA dbgPalette[4], const uint32_t tileId, const uint32_t ptrnTableId )
 {
 	for ( uint32_t y = 0; y < PPU::TilePixels; ++y )
 	{
@@ -648,7 +648,7 @@ void PPU::DrawChrRomTile( wtRawImageInterface* imageBuffer, const wtRect& imageR
 			const uint32_t imageY = imageRect.y + y;
 
 			Pixel pixelColor;
-			pixelColor.rgba = palette[chrRomColor];
+			pixelColor.rgba = dbgPalette[chrRomColor];
 			imageBuffer->Set( imageX + imageY * imageRect.width, pixelColor );
 		}
 	}

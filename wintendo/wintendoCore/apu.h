@@ -122,107 +122,204 @@ union DmcLoad
 	uint8_t raw;
 };
 
-static const uint8_t pulseWaves[4] = { 0x40, 0x60, 0x78, 0x9F };
 
-static const uint32_t ApuSamplesPerSec = 44100;
-static const uint32_t ApuBufferSeconds = 10;
+struct FrameCounter
+{
+	struct FrameCounterSemantic
+	{
+		uint8_t unused		: 6;
+		uint8_t interrupt	: 1;
+		uint8_t mode		: 1;
+	} sem;
+
+	uint8_t raw;
+};
+
+
+enum pulseChannel_t : uint8_t
+{
+	PULSE_1 = 1,
+	PULSE_2 = 2,
+};
+
+
+struct PulseChannel
+{
+	PulseCtrl	ctrl;
+	PulseRamp	ramp;
+	TimerCtrl	tune;
+	TimerCtrl	timer;
+
+	void Clear()
+	{
+		ctrl.raw = 0;
+		ramp.raw = 0;
+		tune.raw = 0;
+		timer.raw = 0;
+	}
+};
+
+
+struct TriangleChannel
+{
+	TriangleCtrl	ctrl1;
+	TriangleCtrl	ctrl2;
+	TimerCtrl		freq;
+	TimerCtrl		timer;
+
+	void Clear()
+	{
+		ctrl1.raw = 0;
+		ctrl2.raw = 0;
+		freq.raw = 0;
+	}
+};
+
+
+struct NoiseChannel
+{
+	NoiseCtrl	ctrl;
+	NoiseFreq1	freq1;
+	NoiseFreq2	freq2;
+
+	void Clear()
+	{
+		ctrl.raw = 0;
+		freq1.raw = 0;
+		freq2.raw = 0;
+	}
+};
+
+
+struct DmcChannel
+{
+	DmcCtrl	ctrl;
+	DmcLoad	load;
+	uint8_t	addr;
+	uint8_t	length;
+
+	void Clear()
+	{
+		ctrl.raw = 0;
+		load.raw = 0;
+		addr = 0;
+		length = 0;
+	}
+};
+
+
+// https://wiki.nesdev.com/w/index.php/APU_Pulse
+static const uint8_t pulseWaves[4][8] = 
+{
+	{ 0, 1, 0, 0, 0, 0, 0, 0 },
+	{ 0, 1, 1, 0, 0, 0, 0, 0 },
+	{ 0, 1, 1, 1, 1, 0, 0, 0 },
+	{ 1, 0, 0, 1, 1, 1, 1, 1 },
+};
+
+static const uint32_t ApuSamplesPerSec = CPU_HZ;
+static const uint32_t ApuBufferSeconds = 5;
 static const uint32_t ApuBufferSize = ApuBufferSeconds * ApuSamplesPerSec;
 
-struct wtApuOutput
+struct wtSoundBuffer
 {
-	uint8_t soundBuffer[ApuBufferSize];
 	float samples[ApuBufferSize];
 	float frequency;
 	float period;
 	uint32_t currentIndex;
+
+	void Clear()
+	{
+		Reset();
+		memset( samples, 0, sizeof( ApuBufferSize * samples[0] ) );
+	}
+
+	void Reset()
+	{
+		currentIndex = 0;
+	}
+
+	void Write( const float sample )
+	{
+		samples[currentIndex] = sample;
+		currentIndex++;
+		assert( currentIndex <= ApuBufferSize );
+	}
+
+	float Read( const uint32_t index )
+	{
+		assert( index <= ApuBufferSize );
+		return samples[index];
+	}
 };
+
+
+struct wtApuOutput
+{
+	wtSoundBuffer pulse1;
+	wtSoundBuffer pulse2;
+	wtSoundBuffer master;
+};
+
 
 struct wtApuDebug
 {
-	PulseCtrl		pulseCtrl1;
-	PulseRamp		pulseRamp1;
-	TimerCtrl		pulseTune1;
-	PulseCtrl		pulseCtrl2;
-	PulseRamp		pulseRamp2;
-	TimerCtrl		pulseTune2;
-	TriangleCtrl	triangleCtrl1;
-	TriangleCtrl	triangleCtrl2;
-	TimerCtrl		triangleFreq;
-	NoiseCtrl		noiseCtrl;
-	NoiseFreq1		noiseFreq1;
-	NoiseFreq2		noiseFreq2;
-	DmcCtrl			dmcCtrl;
-	DmcLoad			dmcLoad;
-	uint8_t			dmcAddr;
-	uint8_t			dmcLength;
+	PulseChannel	pulse1;
+	PulseChannel	pulse2;
+	TriangleChannel	triangle;
+	NoiseChannel	noise;
+	DmcChannel		dmc;
 };
+
 
 struct APU
 {
-	static const uint32_t SoundBufferCnt = 2;
+	static const uint32_t SoundBufferCnt = 3;
 
-	PulseCtrl		pulseCtrl1;
-	PulseRamp		pulseRamp1;
-	TimerCtrl		pulseTune1;
-	PulseCtrl		pulseCtrl2;
-	PulseRamp		pulseRamp2;
-	TimerCtrl		pulseTune2;
-	TriangleCtrl	triangleCtrl1;
-	TriangleCtrl	triangleCtrl2;
-	TimerCtrl		triangleFreq;
-	NoiseCtrl		noiseCtrl;
-	NoiseFreq1		noiseFreq1;
-	NoiseFreq2		noiseFreq2;
-	DmcCtrl			dmcCtrl;
-	DmcLoad			dmcLoad;
-	uint8_t			dmcAddr;
-	uint8_t			dmcLength;
-	// TODO: 0x4015
-	// TODO: 0x4017
+	PulseChannel	pulse1;
+	PulseChannel	pulse2;
+	TriangleChannel	triangle;
+	NoiseChannel	noise;
+	DmcChannel		dmc;
+	FrameCounter	frameCounter;
 
-	apuCycle_t		cycle;
-	TimerCtrl		pulseTimer1;
-	TimerCtrl		pulseTimer2;
+	cpuCycle_t		cpuCycle;
+	apuCycle_t		apuCycle;
 
-	wtApuOutput		soundOutputBuffers[2];
+	wtApuOutput		soundOutputBuffers[SoundBufferCnt];
 	wtApuOutput*	soundOutput;
 	wtApuOutput*	finishedSoundOutput;
 	uint32_t		currentBuffer;
+
+	apuCycle_t		dbgStartCycle;
+	apuCycle_t		dbgTargetCycle;
+	masterCycles_t	dbgSysStartCycle;
+	masterCycles_t	dbgSysTargetCycle;
+
+	uint32_t		startSoundIndex;
+	uint32_t		apuTicks;
 
 	wtSystem*		system;
 
 	APU()
 	{
-		cycle = apuCycle_t(0);
-		pulseCtrl1.raw = 0;
-		pulseRamp1.raw = 0;
-		pulseTune1.raw = 0;
-		pulseTimer1.raw = 0;
-		pulseCtrl2.raw = 0;
-		pulseRamp2.raw = 0;
-		pulseTune2.raw = 0;
-		pulseTimer2.raw = 0;
-		triangleCtrl1.raw = 0;
-		triangleCtrl2.raw = 0;
-		triangleFreq.raw = 0;
-		noiseCtrl.raw = 0;
-		noiseFreq1.raw = 0;
-		noiseFreq2.raw = 0;
-		dmcCtrl.raw = 0;
-		dmcLoad.raw = 0;
-		dmcAddr = 0;
-		dmcLength = 0;
-		
+		cpuCycle = apuCycle_t(0);
+		pulse1.Clear();
+		pulse2.Clear();
+		triangle.Clear();
+		noise.Clear();
+		dmc.Clear();
+
+		frameCounter.raw = 0;
 		currentBuffer = 0;
 		soundOutput = &soundOutputBuffers[0];
 		finishedSoundOutput = nullptr;
 
-		for( uint32_t i = 0; i < 2; ++i )
+		for( uint32_t i = 0; i < SoundBufferCnt; ++i )
 		{
-			soundOutputBuffers[i].frequency = 0.0f;
-			soundOutputBuffers[i].period = 0.0f;
-			soundOutputBuffers[i].currentIndex = 0;
-			memset( soundOutputBuffers[i].soundBuffer, 0, sizeof( soundOutputBuffers[i].soundBuffer[0] ) * ApuBufferSize );
+			soundOutputBuffers[i].master.Clear();
+			soundOutputBuffers[i].pulse1.Clear();
+			soundOutputBuffers[i].pulse2.Clear();
 		}
 
 		system = nullptr;
@@ -230,14 +327,17 @@ struct APU
 
 	void Begin();
 	void End();
-	const apuCycle_t Exec();
-	bool Step( const apuCycle_t& nextCycle );
+	bool Step( const cpuCycle_t& nextCpuCycle );
 	void WriteReg( const uint16_t addr, const uint8_t value );
 
 	float GetPulseFrequency();
 	float GetPulsePeriod();
 	wtApuDebug GetDebugInfo();
 private:
+	void ExecPulseChannel( const pulseChannel_t channel );
+	void ExecChannelTri();
+	void ExecChannelNoise();
+	void ExecChannelDMC();
 	float PulseMixer( const float pulse1, const float pulse2 );
-	void GeneratePulseSamples( const uint8_t dutyCycle );
+	void GeneratePulseSamples( PulseChannel* pulse, wtSoundBuffer* buffer, const uint8_t waveForm[8] );
 };
