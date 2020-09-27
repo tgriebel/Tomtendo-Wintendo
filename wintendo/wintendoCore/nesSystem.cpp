@@ -379,7 +379,7 @@ bool wtSystem::Run( const masterCycles_t& nextCycle )
 
 		isRunning = cpu.Step( chrono::duration_cast<cpuCycle_t>( sysCycles ) );
 		ppu.Step( chrono::duration_cast<ppuCycle_t>( sysCycles ) );
-		apu.Step( chrono::duration_cast<apuCycle_t>( cpu.cycle ) );
+		apu.Step( cpu.cycle );
 	}
 
 	// cpu.End(); // TODO

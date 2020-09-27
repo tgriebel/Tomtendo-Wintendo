@@ -27,16 +27,18 @@ inline constexpr uint8_t operator "" _b( uint64_t arg ) noexcept
 const uint64_t MasterClockHz		= 21477272;
 const uint64_t CpuClockDivide		= 12;
 const uint64_t ApuClockDivide		= 24;
+const uint64_t ApuSequenceDivide	= 89490;
 const uint64_t PpuClockDivide		= 4;
 const uint64_t PpuCyclesPerScanline	= 341;
 const uint64_t FPS					= 60;
 
-using masterCycles_t = std::chrono::duration< uint64_t, std::ratio<1, MasterClockHz> >;
-using ppuCycle_t	= std::chrono::duration< uint64_t, std::ratio<PpuClockDivide, MasterClockHz> >;
-using cpuCycle_t	= std::chrono::duration< uint64_t, std::ratio<CpuClockDivide, MasterClockHz> >;
-using apuCycle_t	= std::chrono::duration< uint64_t, std::ratio<ApuClockDivide, MasterClockHz> >;
-using scanCycle_t	= std::chrono::duration< uint64_t, std::ratio<PpuCyclesPerScanline * PpuClockDivide, MasterClockHz> >; // TODO: Verify
-using frameRate_t	= std::chrono::duration< double, std::ratio<1, FPS> >;
+using masterCycles_t	= std::chrono::duration< uint64_t, std::ratio<1, MasterClockHz> >;
+using ppuCycle_t		= std::chrono::duration< uint64_t, std::ratio<PpuClockDivide, MasterClockHz> >;
+using cpuCycle_t		= std::chrono::duration< uint64_t, std::ratio<CpuClockDivide, MasterClockHz> >;
+using apuCycle_t		= std::chrono::duration< uint64_t, std::ratio<ApuClockDivide, MasterClockHz> >;
+using apuSeqCycle_t		= std::chrono::duration< uint64_t, std::ratio<ApuSequenceDivide, MasterClockHz> >;
+using scanCycle_t		= std::chrono::duration< uint64_t, std::ratio<PpuCyclesPerScanline * PpuClockDivide, MasterClockHz> >; // TODO: Verify
+using frameRate_t		= std::chrono::duration< double, std::ratio<1, FPS> >;
 
 static constexpr float CPU_HZ = static_cast<float>( chrono::duration_cast<cpuCycle_t>( chrono::seconds( 1 ) ).count() );
 static constexpr float APU_HZ = static_cast<float>( chrono::duration_cast<apuCycle_t>( chrono::seconds( 1 ) ).count() );

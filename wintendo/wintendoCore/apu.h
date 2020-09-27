@@ -149,13 +149,19 @@ struct PulseChannel
 	PulseRamp	ramp;
 	TimerCtrl	tune;
 	TimerCtrl	timer;
+	uint8_t		waveForm[15000]; // TODO: buffer size
+	uint8_t		waveFormIx;
+	apuCycle_t	lastCycle;
 
 	void Clear()
 	{
+		lastCycle = apuCycle_t( 0 );
 		ctrl.raw = 0;
 		ramp.raw = 0;
 		tune.raw = 0;
 		timer.raw = 0;
+		waveFormIx = 0;
+		memset( waveForm, 0, 15000 );
 	}
 };
 
@@ -211,10 +217,10 @@ struct DmcChannel
 // https://wiki.nesdev.com/w/index.php/APU_Pulse
 static const uint8_t pulseWaves[4][8] = 
 {
-	{ 0, 1, 0, 0, 0, 0, 0, 0 },
-	{ 0, 1, 1, 0, 0, 0, 0, 0 },
-	{ 0, 1, 1, 1, 1, 0, 0, 0 },
-	{ 1, 0, 0, 1, 1, 1, 1, 1 },
+	{ 0, 0, 0, 0, 0, 0, 0, 1 },
+	{ 0, 0, 0, 0, 0, 0, 1, 1 },
+	{ 0, 0, 0, 0, 1, 1, 1, 1 },
+	{ 1, 1, 1, 1, 1, 1, 0, 0 },
 };
 
 static const uint32_t ApuSamplesPerSec = CPU_HZ;
@@ -285,6 +291,9 @@ struct APU
 
 	cpuCycle_t		cpuCycle;
 	apuCycle_t		apuCycle;
+	apuSeqCycle_t	seqCycle;
+
+	uint8_t			frameSeqStep;
 
 	wtApuOutput		soundOutputBuffers[SoundBufferCnt];
 	wtApuOutput*	soundOutput;
@@ -310,6 +319,7 @@ struct APU
 		noise.Clear();
 		dmc.Clear();
 
+		frameSeqStep = 0;
 		frameCounter.raw = 0;
 		currentBuffer = 0;
 		soundOutput = &soundOutputBuffers[0];
@@ -330,14 +340,16 @@ struct APU
 	bool Step( const cpuCycle_t& nextCpuCycle );
 	void WriteReg( const uint16_t addr, const uint8_t value );
 
-	float GetPulseFrequency();
-	float GetPulsePeriod();
+	float GetPulseFrequency( PulseChannel* pulse );
+	float GetPulsePeriod( PulseChannel* pulse );
 	wtApuDebug GetDebugInfo();
 private:
 	void ExecPulseChannel( const pulseChannel_t channel );
 	void ExecChannelTri();
 	void ExecChannelNoise();
 	void ExecChannelDMC();
+	void ExecFrameCounter();
 	float PulseMixer( const float pulse1, const float pulse2 );
-	void GeneratePulseSamples( PulseChannel* pulse, wtSoundBuffer* buffer, const uint8_t waveForm[8] );
+	void GeneratePulseSamples( PulseChannel* pulse, wtSoundBuffer* buffer );
+	void GeneratePulseSamples2( PulseChannel* pulse, wtSoundBuffer* buffer );
 };
