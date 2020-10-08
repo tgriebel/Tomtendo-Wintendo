@@ -3,7 +3,6 @@
 #include "NesSystem.h"
 #include <algorithm>
 
-
 float APU::GetPulseFrequency( PulseChannel* pulse )
 {
 	float freq = CPU_HZ / ( 16.0f * pulse->tune.sem0.timer + 1 );
@@ -55,7 +54,6 @@ void APU::WriteReg( const uint16_t addr, const uint8_t value )
 void APU::GeneratePulseSamples2( PulseChannel* pulse, wtSoundBuffer* buffer )
 {
 	const int samples = ( apuCycle - pulse->lastCycle ).count();
-	const float sampleStep = samples / 8.0f;
 	float volume = 1.0f;
 
 	if ( pulse->ctrl.sem.isConstant )
@@ -67,8 +65,7 @@ void APU::GeneratePulseSamples2( PulseChannel* pulse, wtSoundBuffer* buffer )
 
 	for ( int sample = 0; sample < samples; sample++ )
 	{
-		uint8_t srcSample = static_cast<uint8_t>( sample / sampleStep );
-		const float pulseSample = pulse->waveForm[srcSample] ? -amplitude : amplitude;
+		const float pulseSample = pulseWaves[pulse->ctrl.sem.duty][pulse->sequenceStep] ? -amplitude : amplitude;
 		if ( pulse->timer.sem0.counter == 0 )
 		{
 			buffer->Write( 0.0f );
@@ -80,7 +77,7 @@ void APU::GeneratePulseSamples2( PulseChannel* pulse, wtSoundBuffer* buffer )
 	}
 
 	pulse->lastCycle = apuCycle;
-//	frameSeqStep = ( frameSeqStep + 1 ) % 8;
+	pulse->sequenceStep = ( pulse->sequenceStep + 1 ) % 8;
 }
 
 
@@ -99,8 +96,6 @@ void APU::GeneratePulseSamples( PulseChannel* pulse, wtSoundBuffer* buffer )
 
 	for ( int sample = 0; sample < samples; sample++ )
 	{
-		// TODO: I think the sequencer moves step-by-step through the 8bit waveform
-		// this is important for duty dycle switches since the sequencer does not reset position
 		uint8_t srcSample = static_cast<uint8_t>( sample / sampleStep );
 		const float pulseSample = pulseWaves[pulse->ctrl.sem.duty][srcSample] ? -amplitude : amplitude;
 		if ( pulse->timer.sem0.counter == 0 )
@@ -138,14 +133,11 @@ void APU::ExecPulseChannel( const pulseChannel_t channel )
 	
 	if ( pulse->timer.sem0.timer == 0 )
 	{
-		buffer->frequency = GetPulseFrequency( pulse );
-		buffer->period = pulse->tune.sem0.timer;
+		buffer->avgFrequency = GetPulseFrequency( pulse );
+		buffer->avgPeriod = pulse->tune.sem0.timer;
 		pulse->timer.sem0.timer = pulse->tune.sem0.timer;
 		GeneratePulseSamples2( pulse, buffer );
 	}
-
-	pulse->waveForm[frameSeqStep] = pulseWaves[pulse->ctrl.sem.duty][frameSeqStep];
-	frameSeqStep = ( frameSeqStep + 1 ) % 8;
 }
 
 void APU::ExecChannelTri()
@@ -190,7 +182,7 @@ void APU::ExecFrameCounter()
 		}
 	}
 
-	++frameSeqStep;
+	//++frameSeqStep;
 }
 
 
@@ -259,18 +251,37 @@ void APU::Begin()
 
 void APU::End()
 {
-	const float masterVolume = 10000.0f * system->config.apu.volume;
-	for ( uint32_t i = 0; i < soundOutput->pulse1.currentIndex; i += 1 ) // FIXME: end index
+	// TODO: audio frame is not in sync with the frame sync
+	const uint8_t sampleStride = 20;
+	assert( sampleStride > 0 );
+	const float masterVolume = system->config.apu.volume;
+
+	for( uint32_t i = 0; i < soundOutput->pulse1.GetSampleCnt(); ++i )
 	{
 		const float pulse1Sample = soundOutput->pulse1.Read( i );
 		const float pulse2Sample = soundOutput->pulse2.Read( i );
-		soundOutput->master.Write( masterVolume * PulseMixer( pulse1Sample, pulse2Sample ) );
+		const float mixedSample = PulseMixer( pulse1Sample, pulse2Sample );
+		assert( pulse1Sample <= 15);
+
+		soundOutput->master.Write( mixedSample * 3.868f * 4096 );
+		soundOutput->master.hz = 894886.0f;
 	}
 
-	finishedSoundOutput = &soundOutputBuffers[currentBuffer];
-	currentBuffer = ( currentBuffer + 1 ) % SoundBufferCnt;
-	soundOutput = &soundOutputBuffers[currentBuffer];
-	soundOutput->pulse1.Clear();
-	soundOutput->pulse2.Clear();
-	soundOutput->master.Clear();
+	static int frameCnt = 0;
+	const int bufferedFrames = 4;
+	++frameCnt;
+	if ( frameCnt == bufferedFrames )
+	{
+		frameCnt = 0;
+
+		pulse1.waveFormIx = 0;
+		pulse2.waveFormIx = 0;
+
+		finishedSoundOutput = &soundOutputBuffers[currentBuffer];
+		currentBuffer = ( currentBuffer + 1 ) % SoundBufferCnt;
+		soundOutput = &soundOutputBuffers[currentBuffer];
+		soundOutput->pulse1.Clear();
+		soundOutput->pulse2.Clear();
+		soundOutput->master.Clear();
+	}
 }

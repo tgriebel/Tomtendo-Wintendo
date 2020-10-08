@@ -152,6 +152,7 @@ struct PulseChannel
 	uint8_t		waveForm[15000]; // TODO: buffer size
 	uint8_t		waveFormIx;
 	apuCycle_t	lastCycle;
+	uint8_t		sequenceStep;
 
 	void Clear()
 	{
@@ -217,10 +218,20 @@ struct DmcChannel
 // https://wiki.nesdev.com/w/index.php/APU_Pulse
 static const uint8_t pulseWaves[4][8] = 
 {
+//	{ 1, 0, 0, 0, 0, 0, 0, 0 },
+//	{ 1, 1, 0, 0, 0, 0, 0, 0 },
+//	{ 1, 1, 1, 1, 0, 0, 0, 0 },
+//	{ 0, 0, 0, 0, 0, 0, 1, 1 },
+//
 	{ 0, 0, 0, 0, 0, 0, 0, 1 },
 	{ 0, 0, 0, 0, 0, 0, 1, 1 },
 	{ 0, 0, 0, 0, 1, 1, 1, 1 },
 	{ 1, 1, 1, 1, 1, 1, 0, 0 },
+//
+//	{ 0, 1, 0, 0, 0, 0, 0, 0 },
+//	{ 0, 1, 1, 0, 0, 0, 0, 0 },
+//	{ 0, 1, 1, 1, 1, 0, 0, 0 },
+//	{ 1, 0, 0, 1, 1, 1, 1, 1 },
 };
 
 static const uint32_t ApuSamplesPerSec = CPU_HZ;
@@ -230,8 +241,9 @@ static const uint32_t ApuBufferSize = ApuBufferSeconds * ApuSamplesPerSec;
 struct wtSoundBuffer
 {
 	float samples[ApuBufferSize];
-	float frequency;
-	float period;
+	float avgFrequency;
+	float hz;
+	float avgPeriod;
 	uint32_t currentIndex;
 
 	void Clear()
@@ -256,6 +268,11 @@ struct wtSoundBuffer
 	{
 		assert( index <= ApuBufferSize );
 		return samples[index];
+	}
+
+	uint32_t GetSampleCnt()
+	{
+		return currentIndex;
 	}
 };
 

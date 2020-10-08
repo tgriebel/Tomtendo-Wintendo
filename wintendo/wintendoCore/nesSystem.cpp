@@ -329,7 +329,7 @@ void wtSystem::InitConfig()
 {
 	// PPU
 	config.ppu.chrPalette		= 0;
-	// APU
+	// APUZ
 	config.apu.frequencyScale	= 1.0f;
 	config.apu.volume			= 1.0f;
 }
