@@ -5,7 +5,7 @@
 
 float APU::GetPulseFrequency( PulseChannel* pulse )
 {
-	float freq = CPU_HZ / ( 16.0f * pulse->tune.sem0.timer + 1 );
+	float freq = CPU_HZ / ( 16.0f * pulse->regTune.sem0.timer + 1 );
 	freq *= system->config.apu.frequencyScale;
 	return freq;
 }
@@ -13,7 +13,7 @@ float APU::GetPulseFrequency( PulseChannel* pulse )
 
 float APU::GetPulsePeriod( PulseChannel* pulse )
 {
-	return ( 1.0f / system->config.apu.frequencyScale ) * ( pulse->tune.sem0.timer );
+	return ( 1.0f / system->config.apu.frequencyScale ) * ( pulse->regTune.sem0.timer );
 }
 
 
@@ -21,51 +21,112 @@ void APU::WriteReg( const uint16_t addr, const uint8_t value )
 {
 	switch( addr )
 	{
-		case 0x4000:	pulse1.ctrl.raw				= value;	break;
-		case 0x4001:	pulse1.ramp.raw				= value;	break;
-		case 0x4002:	pulse1.tune.sem1.lower		= value;	break;
-		case 0x4003:	pulse1.tune.sem1.upper		= value;	break;
-		case 0x4004:	pulse2.ctrl.raw				= value;	break;
-		case 0x4005:	pulse2.ramp.raw				= value;	break;
-		case 0x4006:	pulse2.tune.sem1.lower		= value;	break;
-		case 0x4007:	pulse2.tune.sem1.upper		= value;	break;
-		case 0x4008:	triangle.ctrl1.raw			= value;	break;
-		case 0x4009:	triangle.ctrl2.raw			= value;	break;
-		case 0x400A:	triangle.freq.sem1.lower	= value;	break;
-		case 0x400B:	triangle.freq.sem1.upper	= value;	break;
-		case 0x400C:	noise.ctrl.raw				= value;	break;
-		case 0x400E:	noise.freq1.raw				= value;	break;
-		case 0x400F:	noise.freq2.raw				= value;	break;
-		case 0x4010:	dmc.ctrl.raw				= value;	break;
-		case 0x4011:	dmc.load.raw				= value;	break;
-		case 0x4012:	dmc.addr					= value;	break;
-		case 0x4013:	dmc.length					= value;	break;
+		case 0x4000:	pulse1.regCtrl.raw				= value;	break;
+		case 0x4001:	pulse1.regRamp.raw				= value;	break;
+		case 0x4002:	pulse1.regTune.sem1.lower		= value;	break;
+
+		case 0x4003:
+		{
+			pulse1.regTune.sem1.upper = value;
+			pulse1.sequenceStep = 0;
+			pulse1.envelope.startFlag = true;
+		} break;
+
+		case 0x4004:	pulse2.regCtrl.raw				= value;	break;
+		case 0x4005:	pulse2.regRamp.raw				= value;	break;
+		case 0x4006:	pulse2.regTune.sem1.lower		= value;	break;
+
+		case 0x4007:
+		{
+			pulse2.regTune.sem1.upper = value;
+			pulse2.sequenceStep = 0;
+			pulse2.envelope.startFlag = true;
+		} break;
+
+		case 0x4008:	triangle.regCtrl1.raw		= value;	break;
+		case 0x4009:	triangle.regCtrl2.raw		= value;	break;
+		case 0x400A:	triangle.regFreq.sem1.lower	= value;	break;
+		case 0x400B:	triangle.regFreq.sem1.upper	= value;	break;
+		case 0x400C:	noise.regCtrl.raw			= value;	break;
+		case 0x400E:	noise.regFreq1.raw			= value;	break;
+		case 0x400F:	noise.regFreq2.raw			= value;	break;
+		case 0x4010:	dmc.regCtrl.raw				= value;	break;
+		case 0x4011:	dmc.regLoad.raw				= value;	break;
+		case 0x4012:	dmc.regAddr					= value;	break;
+		case 0x4013:	dmc.regLength				= value;	break;
 		// TODO: 0x4015
 		case 0x4017:
 		{
+			// TODO: Takes effect after 3/4 cycles
+			// https://wiki.nesdev.com/w/index.php/APU - Frame Counter
+			// https://wiki.nesdev.com/w/index.php/APU_Frame_Counter
 			frameCounter.raw = value;
 			frameSeqStep = 0;
+			if( frameCounter.sem.mode )
+			{
+				// Trigger half and quarter clocks
+			}
 		} break;
 		default: break;
 	}
 }
 
 
-void APU::GeneratePulseSamples2( PulseChannel* pulse, wtSoundBuffer* buffer )
+void APU::EnvelopeGenerater( Envelope& envelope, const uint8_t volume, const bool loop )
+{
+	if( !quarterClk )
+		return;
+
+	if( envelope.startFlag )
+	{
+		envelope.startFlag = false;
+		envelope.decayLevel = 15;
+		envelope.divCounter = envelope.divPeriod;
+	}
+	else
+	{
+		if( envelope.divCounter == 0 )
+		{
+			envelope.divPeriod = volume;
+			envelope.divCounter = ( envelope.divCounter - 1 ) & 0x0F; // TODO: wrap allowed?
+			if( loop )
+			{
+				envelope.decayLevel = 15;
+			}
+		}
+		else
+		{
+			envelope.divCounter = ( envelope.divCounter - 1 ) & 0x0F; // TODO: wrap allowed?
+		}
+	}
+}
+
+
+void APU::PulseSequencer( PulseChannel* pulse, wtSoundBuffer* buffer )
 {
 	const int samples = ( apuCycle - pulse->lastCycle ).count();
 	float volume = 1.0f;
 
-	if ( pulse->ctrl.sem.isConstant )
+	if ( pulse->regCtrl.sem.isConstant )
 	{
-		volume = pulse->ctrl.sem.volume;
+		volume = pulse->regCtrl.sem.volume;
+	}
+	else
+	{
+		volume = pulse->envelope.decayLevel;
+	}
+	assert( volume >= 0 && volume <= 15 );
+
+	if( pulse->regTune.sem0.timer < 8 )
+	{
+		volume = 0;
 	}
 
 	const float amplitude = volume;
 
 	for ( int sample = 0; sample < samples; sample++ )
 	{
-		const float pulseSample = pulseWaves[pulse->ctrl.sem.duty][pulse->sequenceStep] ? -amplitude : amplitude;
+		const float pulseSample = pulseWaves[pulse->regCtrl.sem.duty][pulse->sequenceStep] ? -amplitude : amplitude;
 		if ( pulse->timer.sem0.counter == 0 )
 		{
 			buffer->Write( 0.0f );
@@ -78,35 +139,6 @@ void APU::GeneratePulseSamples2( PulseChannel* pulse, wtSoundBuffer* buffer )
 
 	pulse->lastCycle = apuCycle;
 	pulse->sequenceStep = ( pulse->sequenceStep + 1 ) % 8;
-}
-
-
-void APU::GeneratePulseSamples( PulseChannel* pulse, wtSoundBuffer* buffer )
-{
-	const int samples = 1 + static_cast<int>( GetPulsePeriod( pulse ) ); // TODO: rounding errors?
-	const float sampleStep = samples / 8.0f;
-	float volume = 1.0f;
-
-	if ( pulse->ctrl.sem.isConstant )
-	{
-		volume = pulse->ctrl.sem.volume;
-	}
-
-	const float amplitude = volume;
-
-	for ( int sample = 0; sample < samples; sample++ )
-	{
-		uint8_t srcSample = static_cast<uint8_t>( sample / sampleStep );
-		const float pulseSample = pulseWaves[pulse->ctrl.sem.duty][srcSample] ? -amplitude : amplitude;
-		if ( pulse->timer.sem0.counter == 0 )
-		{
-			buffer->Write( 0.0f );
-		}
-		else
-		{
-			buffer->Write( pulseSample );
-		}
-	}
 }
 
 
@@ -125,8 +157,10 @@ void APU::ExecPulseChannel( const pulseChannel_t channel )
 		buffer = &soundOutput->pulse2;
 	}
 
+	EnvelopeGenerater( pulse->envelope, pulse->regCtrl.sem.volume, pulse->regCtrl.sem.counterHalt );
+
 	pulse->timer.sem0.timer--;
-	if ( !pulse->ctrl.sem.counterHalt )
+	if ( !pulse->regCtrl.sem.counterHalt )
 	{
 		pulse->timer.sem0.counter--;
 	}
@@ -134,9 +168,9 @@ void APU::ExecPulseChannel( const pulseChannel_t channel )
 	if ( pulse->timer.sem0.timer == 0 )
 	{
 		buffer->avgFrequency = GetPulseFrequency( pulse );
-		buffer->avgPeriod = pulse->tune.sem0.timer;
-		pulse->timer.sem0.timer = pulse->tune.sem0.timer;
-		GeneratePulseSamples2( pulse, buffer );
+		buffer->avgPeriod = pulse->regTune.sem0.timer;
+		pulse->timer.sem0.timer = pulse->regTune.sem0.timer;
+		PulseSequencer( pulse, buffer );
 	}
 }
 
@@ -160,41 +194,44 @@ void APU::ExecChannelDMC()
 
 void APU::ExecFrameCounter()
 {
-	if( frameCounter.sem.mode == 0 )
-	{
-		if ( ( frameSeqStep == 1 ) || ( frameSeqStep == 3 ) )
-		{
-		}
+	halfClk		= false;
+	quarterClk	= false;
+	irqClk		= false;
 
-		if ( ( frameSeqStep == 3 ) && frameCounter.sem.interrupt )
-		{
-			assert( 0 ); // TODO: implement
-		}
-	}
-	else
+	const uint32_t mode = frameCounter.sem.mode;
+	FrameSeqEvent& event = FrameSeqEvents[frameSeqStep][mode];
+	if( frameSeqTick == event.cycle )
 	{
-		if ( ( frameSeqStep == 0 ) || ( frameSeqStep == 2 ) )
-		{
-		}
-
-		if ( frameSeqStep != 4 )
-		{
-		}
+		halfClk		= event.clkHalf;
+		quarterClk	= event.clkQuarter;
+		irqClk		= ( event.irq && !frameCounter.sem.interrupt );
+		++frameSeqStep;
 	}
 
-	//++frameSeqStep;
+	if ( frameSeqStep >= 6 )
+	{
+		frameSeqStep = 0;
+		frameSeqTick = 0;
+	}
 }
 
 
 bool APU::Step( const cpuCycle_t& nextCpuCycle )
 {
 	const apuCycle_t nextApuCycle = chrono::duration_cast<apuCycle_t>( nextCpuCycle );
-	const apuSeqCycle_t nextSeqCycle = chrono::duration_cast<apuSeqCycle_t>( nextCpuCycle );
 
 	dbgStartCycle		= apuCycle;
 	dbgTargetCycle		= nextApuCycle;
 	dbgSysStartCycle	= chrono::duration_cast<masterCycles_t>( dbgStartCycle );
 	dbgSysTargetCycle	= chrono::duration_cast<masterCycles_t>( dbgTargetCycle );
+
+	while ( cpuCycle < nextCpuCycle )
+	{
+		ExecFrameCounter();
+		ExecChannelTri();
+		++cpuCycle;
+		++frameSeqTick;
+	}
 
 	while ( apuCycle < nextApuCycle )
 	{
@@ -204,18 +241,6 @@ bool APU::Step( const cpuCycle_t& nextCpuCycle )
 		ExecChannelDMC();
 		++apuTicks;
 		++apuCycle;
-	}
-
-	while ( cpuCycle < nextCpuCycle )
-	{
-		ExecChannelTri();
-		++cpuCycle;
-	}
-
-	while ( seqCycle < nextSeqCycle )
-	{
-		ExecFrameCounter();
-		++seqCycle;
 	}
 
 	return true;
@@ -246,6 +271,10 @@ void APU::Begin()
 {
 	apuTicks = 0;
 	startSoundIndex = soundOutput->pulse1.currentIndex;
+
+	soundOutput->pulse1.Begin();
+	soundOutput->pulse2.Begin();
+	soundOutput->master.Begin();
 }
 
 
@@ -256,16 +285,25 @@ void APU::End()
 	assert( sampleStride > 0 );
 	const float masterVolume = system->config.apu.volume;
 
-	for( uint32_t i = 0; i < soundOutput->pulse1.GetSampleCnt(); ++i )
+	soundOutput->pulse1.End();
+	soundOutput->pulse2.End();
+
+	const uint32_t sampleStart = min( soundOutput->pulse1.GetFrameBegin(), soundOutput->pulse2.GetFrameBegin() );
+	const uint32_t sampleCnt = min( soundOutput->pulse1.GetFrameEnd(), soundOutput->pulse2.GetFrameEnd() );
+	for( uint32_t i = sampleStart; i < sampleCnt; ++i )
 	{
-		const float pulse1Sample = soundOutput->pulse1.Read( i );
+		const float pulse1Sample = soundOutput->pulse1.Read( i ); // TODO: use a 'ReadNext()' function
 		const float pulse2Sample = soundOutput->pulse2.Read( i );
 		const float mixedSample = PulseMixer( pulse1Sample, pulse2Sample );
 		assert( pulse1Sample <= 15);
+		assert( pulse2Sample <= 15 );
+		assert( mixedSample < 0.3f );
 
 		soundOutput->master.Write( mixedSample * 3.868f * 4096 );
 		soundOutput->master.hz = 894886.0f;
 	}
+
+	soundOutput->master.End();
 
 	static int frameCnt = 0;
 	const int bufferedFrames = 4;
@@ -273,9 +311,6 @@ void APU::End()
 	if ( frameCnt == bufferedFrames )
 	{
 		frameCnt = 0;
-
-		pulse1.waveFormIx = 0;
-		pulse2.waveFormIx = 0;
 
 		finishedSoundOutput = &soundOutputBuffers[currentBuffer];
 		currentBuffer = ( currentBuffer + 1 ) % SoundBufferCnt;

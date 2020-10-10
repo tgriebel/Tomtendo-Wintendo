@@ -136,6 +136,23 @@ struct FrameCounter
 };
 
 
+struct Envelope
+{
+	bool	startFlag;
+	uint8_t	divider;
+	uint8_t	decayLevel;
+	uint8_t	divPeriod;
+	uint8_t	divCounter;
+};
+
+
+struct Sweep
+{
+	bool	reloadFlag;
+	uint8_t	divider;
+};
+
+
 enum pulseChannel_t : uint8_t
 {
 	PULSE_1 = 1,
@@ -145,88 +162,114 @@ enum pulseChannel_t : uint8_t
 
 struct PulseChannel
 {
-	PulseCtrl	ctrl;
-	PulseRamp	ramp;
-	TimerCtrl	tune;
+	pulseChannel_t	channelNum;
+
+	PulseCtrl	regCtrl;
+	PulseRamp	regRamp;
+	TimerCtrl	regTune;
 	TimerCtrl	timer;
-	uint8_t		waveForm[15000]; // TODO: buffer size
-	uint8_t		waveFormIx;
 	apuCycle_t	lastCycle;
 	uint8_t		sequenceStep;
+	Envelope	envelope;
 
 	void Clear()
 	{
 		lastCycle = apuCycle_t( 0 );
-		ctrl.raw = 0;
-		ramp.raw = 0;
-		tune.raw = 0;
+		regCtrl.raw = 0;
+		regRamp.raw = 0;
+		regTune.raw = 0;
 		timer.raw = 0;
-		waveFormIx = 0;
-		memset( waveForm, 0, 15000 );
+		envelope.decayLevel = 0;
+		envelope.divCounter = 0;
+		envelope.divider = 0;
+		envelope.divPeriod = 0;
+		envelope.startFlag = false;
 	}
 };
 
 
 struct TriangleChannel
 {
-	TriangleCtrl	ctrl1;
-	TriangleCtrl	ctrl2;
-	TimerCtrl		freq;
+	TriangleCtrl	regCtrl1;
+	TriangleCtrl	regCtrl2;
+	TimerCtrl		regFreq;
 	TimerCtrl		timer;
 
 	void Clear()
 	{
-		ctrl1.raw = 0;
-		ctrl2.raw = 0;
-		freq.raw = 0;
+		regCtrl1.raw = 0;
+		regCtrl2.raw = 0;
+		regFreq.raw = 0;
 	}
 };
 
 
 struct NoiseChannel
 {
-	NoiseCtrl	ctrl;
-	NoiseFreq1	freq1;
-	NoiseFreq2	freq2;
+	NoiseCtrl	regCtrl;
+	NoiseFreq1	regFreq1;
+	NoiseFreq2	regFreq2;
 
 	void Clear()
 	{
-		ctrl.raw = 0;
-		freq1.raw = 0;
-		freq2.raw = 0;
+		regCtrl.raw = 0;
+		regFreq1.raw = 0;
+		regFreq2.raw = 0;
 	}
 };
 
 
 struct DmcChannel
 {
-	DmcCtrl	ctrl;
-	DmcLoad	load;
-	uint8_t	addr;
-	uint8_t	length;
+	DmcCtrl	regCtrl;
+	DmcLoad	regLoad;
+	uint8_t	regAddr;
+	uint8_t	regLength;
 
 	void Clear()
 	{
-		ctrl.raw = 0;
-		load.raw = 0;
-		addr = 0;
-		length = 0;
+		regCtrl.raw = 0;
+		regLoad.raw = 0;
+		regAddr = 0;
+		regLength = 0;
 	}
+};
+
+
+struct FrameSeqEvent
+{
+	uint32_t	cycle;
+	bool		clkQuarter;
+	bool		clkHalf;
+	bool		irq;
+};
+
+static const uint32_t FrameSeqEventCnt = 6;
+static const uint32_t FrameSeqModeCnt = 2;
+
+static FrameSeqEvent FrameSeqEvents[FrameSeqEventCnt][FrameSeqModeCnt] =
+{
+	FrameSeqEvent{ 7457,	true,	false,	false },	FrameSeqEvent{ 7457,	true,	false,	false },
+	FrameSeqEvent{ 14913,	true,	true,	false },	FrameSeqEvent{ 14913,	true,	true,	false },
+	FrameSeqEvent{ 22371,	true,	false,	false },	FrameSeqEvent{ 22371,	true,	false,	false },
+	FrameSeqEvent{ 29828,	false,	false,	true },		FrameSeqEvent{ 29829,	false,	false,	false },
+	FrameSeqEvent{ 29829,	true,	true,	true },		FrameSeqEvent{ 37281,	true,	true,	false },
+	FrameSeqEvent{ 29830,	false,	false,	true },		FrameSeqEvent{ 37282,	false,	false,	false },
 };
 
 
 // https://wiki.nesdev.com/w/index.php/APU_Pulse
 static const uint8_t pulseWaves[4][8] = 
 {
-//	{ 1, 0, 0, 0, 0, 0, 0, 0 },
-//	{ 1, 1, 0, 0, 0, 0, 0, 0 },
-//	{ 1, 1, 1, 1, 0, 0, 0, 0 },
-//	{ 0, 0, 0, 0, 0, 0, 1, 1 },
-//
-	{ 0, 0, 0, 0, 0, 0, 0, 1 },
+	{ 1, 0, 0, 0, 0, 0, 0, 0 },
+	{ 1, 1, 0, 0, 0, 0, 0, 0 },
+	{ 1, 1, 1, 1, 0, 0, 0, 0 },
 	{ 0, 0, 0, 0, 0, 0, 1, 1 },
-	{ 0, 0, 0, 0, 1, 1, 1, 1 },
-	{ 1, 1, 1, 1, 1, 1, 0, 0 },
+//
+//	{ 0, 0, 0, 0, 0, 0, 0, 1 },
+//	{ 0, 0, 0, 0, 0, 0, 1, 1 },
+//	{ 0, 0, 0, 0, 1, 1, 1, 1 },
+//	{ 1, 1, 1, 1, 1, 1, 0, 0 },
 //
 //	{ 0, 1, 0, 0, 0, 0, 0, 0 },
 //	{ 0, 1, 1, 0, 0, 0, 0, 0 },
@@ -234,9 +277,9 @@ static const uint8_t pulseWaves[4][8] =
 //	{ 1, 0, 0, 1, 1, 1, 1, 1 },
 };
 
-static const uint32_t ApuSamplesPerSec = CPU_HZ;
-static const uint32_t ApuBufferSeconds = 5;
-static const uint32_t ApuBufferSize = ApuBufferSeconds * ApuSamplesPerSec;
+static const uint32_t ApuSamplesPerSec	= CPU_HZ;
+static const uint32_t ApuBufferMs		= 250;
+static const uint32_t ApuBufferSize		= ApuSamplesPerSec * ( 1000.0f / ApuBufferMs );
 
 struct wtSoundBuffer
 {
@@ -245,6 +288,28 @@ struct wtSoundBuffer
 	float hz;
 	float avgPeriod;
 	uint32_t currentIndex;
+	uint32_t frameBegin;
+	uint32_t frameEnd;
+
+	void Begin()
+	{
+		frameBegin = currentIndex;
+	}
+
+	void End()
+	{
+		frameEnd = currentIndex;
+	}
+
+	uint32_t GetFrameBegin()
+	{
+		return frameBegin;
+	}
+
+	uint32_t GetFrameEnd()
+	{
+		return frameEnd;
+	}
 
 	void Clear()
 	{
@@ -310,7 +375,12 @@ struct APU
 	apuCycle_t		apuCycle;
 	apuSeqCycle_t	seqCycle;
 
+	uint32_t		frameSeqTick;
 	uint8_t			frameSeqStep;
+
+	bool			halfClk;
+	bool			quarterClk;
+	bool			irqClk;
 
 	wtApuOutput		soundOutputBuffers[SoundBufferCnt];
 	wtApuOutput*	soundOutput;
@@ -336,11 +406,18 @@ struct APU
 		noise.Clear();
 		dmc.Clear();
 
+		pulse1.channelNum = PULSE_1;
+		pulse2.channelNum = PULSE_2;
+
 		frameSeqStep = 0;
 		frameCounter.raw = 0;
 		currentBuffer = 0;
 		soundOutput = &soundOutputBuffers[0];
 		finishedSoundOutput = nullptr;
+
+		halfClk = false;
+		quarterClk = false;
+		irqClk = false;
 
 		for( uint32_t i = 0; i < SoundBufferCnt; ++i )
 		{
@@ -365,8 +442,8 @@ private:
 	void ExecChannelTri();
 	void ExecChannelNoise();
 	void ExecChannelDMC();
-	void ExecFrameCounter();
+	void ExecFrameCounter();	
+	void EnvelopeGenerater( Envelope& envelope, const uint8_t volume, const bool loop );
+	void PulseSequencer( PulseChannel* pulse, wtSoundBuffer* buffer );
 	float PulseMixer( const float pulse1, const float pulse2 );
-	void GeneratePulseSamples( PulseChannel* pulse, wtSoundBuffer* buffer );
-	void GeneratePulseSamples2( PulseChannel* pulse, wtSoundBuffer* buffer );
 };
