@@ -180,11 +180,29 @@ uint8_t& wtSystem::GetStack()
 }
 
 
-uint8_t& wtSystem::GetMemoryRef( const uint16_t address )
+uint8_t wtSystem::GetMapperId()
+{
+	return ( cart.header.controlBits1.mappedNumberUpper << 4 ) | cart.header.controlBits0.mapperNumberLower;
+}
+
+
+uint8_t wtSystem::GetMirrorMode()
+{
+	return mirrorMode;
+}
+
+
+bool wtSystem::MouseInRegion( const wtRect& region ) // TODO: draft code, kill later
+{
+	return ( ( mousePoint.x >= region.x ) && ( mousePoint.x < region.width ) && ( mousePoint.y >= region.y ) && ( mousePoint.y < region.height ) );
+}
+
+
+uint8_t wtSystem::GetMemory( const uint16_t address )
 {
 	if ( IsPpuRegister( address ) )
 	{
-		return ppu.Reg( address );
+		return ppu.ReadReg( address );
 	}
 	else if ( IsInputRegister( address ) )
 	{
@@ -208,7 +226,7 @@ uint8_t& wtSystem::GetMemoryRef( const uint16_t address )
 
 		return controllerBuffer[controllerIndex];
 	}
-	else if( IsApuRegister( address ) )
+	else if ( IsApuRegister( address ) )
 	{
 		return apuDummyRegister;
 	}
@@ -216,30 +234,6 @@ uint8_t& wtSystem::GetMemoryRef( const uint16_t address )
 	{
 		return memory[MirrorAddress( address )];
 	}
-}
-
-
-uint8_t wtSystem::GetMapperId()
-{
-	return ( cart.header.controlBits1.mappedNumberUpper << 4 ) | cart.header.controlBits0.mapperNumberLower;
-}
-
-
-uint8_t wtSystem::GetMirrorMode()
-{
-	return mirrorMode;
-}
-
-
-bool wtSystem::MouseInRegion( const wtRect& region ) // TODO: draft code, kill later
-{
-	return ( ( mousePoint.x >= region.x ) && ( mousePoint.x < region.width ) && ( mousePoint.y >= region.y ) && ( mousePoint.y < region.height ) );
-}
-
-
-uint8_t wtSystem::GetMemory( const uint16_t address )
-{
-	return GetMemoryRef( address );
 }
 
 

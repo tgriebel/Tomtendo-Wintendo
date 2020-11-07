@@ -16,23 +16,39 @@
 #include "NesSystem.h"
 
 
-uint8_t& PPU::Reg( uint16_t address, uint8_t value )
+void PPU::WriteReg( const uint16_t addr, const uint8_t value )
 {
-	const uint16_t regNum = ( address % 8 ); // Mirror: 2008-4000
-
-	PpuRegWriteFunc regFunc = PpuRegWriteMap[regNum];
-
-	return ( this->*regFunc )( value );
+	const uint16_t regNum = ( addr % 8 ); // Mirror: 2008-4000
+	switch ( regNum )
+	{
+		case 0: PPUCTRL( value );	break;
+		case 1: PPUMASK( value );	break;
+		case 2:	PPUSTATUS( value );	break;
+		case 3:	OAMADDR( value );	break;
+		case 4:	OAMDATA( value );	break;
+		case 5:	PPUSCROLL( value );	break;
+		case 6: PPUADDR( value );	break;
+		case 7:	PPUDATA( value );	break;
+		default: break;
+	}
 }
 
 
-uint8_t& PPU::Reg( uint16_t address )
+uint8_t PPU::ReadReg( uint16_t addr )
 {
-	const uint16_t regNum = ( address % 8 ); // Mirror: 2008-4000
-
-	PpuRegReadFunc regFunc = PpuRegReadMap[regNum];
-
-	return ( this->*regFunc )( );
+	const uint16_t regNum = ( addr % 8 ); // Mirror: 2008-4000
+	switch ( regNum )
+	{
+		case 0: return PPUCTRL();
+		case 1: return PPUMASK( );
+		case 2:	return PPUSTATUS();
+		case 3:	return OAMADDR();
+		case 4:	return OAMDATA();
+		case 5:	return PPUSCROLL();
+		case 6: return PPUADDR();
+		case 7:	return PPUDATA();
+		default: break;
+	}
 }
 
 
@@ -48,47 +64,44 @@ void PPU::GenerateDMA()
 }
 
 
-uint8_t PPU::DMA( const uint16_t address )
+void PPU::DMA( const uint16_t address )
 {
-	const void* memoryAddress = &system->GetMemoryRef( wtSystem::PageSize * static_cast<uint8_t>( address ) );
-	memcpy( primaryOAM, memoryAddress, wtSystem::PageSize );
-	return 0;
+	for( uint32_t i = 0; i < wtSystem::PageSize; ++i )
+	{
+		primaryOAM[i] = system->GetMemory( i + wtSystem::PageSize * static_cast<uint8_t>( address ) );
+	}
 }
 
 
-uint8_t& PPU::PPUCTRL( const uint8_t value )
+void PPU::PPUCTRL( const uint8_t value )
 {
 	regCtrl.raw = value;
 	regStatus.current.sem.lastReadLsb = ( value & 0x1F );
 
 	regT.sem.ntId = static_cast<uint8_t>( regCtrl.sem.ntId );
-
-	return regCtrl.raw;
 }
 
 
-uint8_t& PPU::PPUCTRL()
+uint8_t PPU::PPUCTRL()
 {
 	return regCtrl.raw;
 }
 
 
-uint8_t& PPU::PPUMASK( const uint8_t value )
+void PPU::PPUMASK( const uint8_t value )
 {
 	regMask.raw = value;
 	regStatus.current.sem.lastReadLsb = ( value & 0x1F );
-
-	return regMask.raw;
 }
 
 
-uint8_t& PPU::PPUMASK()
+uint8_t PPU::PPUMASK()
 {
 	return regMask.raw;
 }
 
 
-uint8_t& PPU::PPUSTATUS( const uint8_t value )
+void PPU::PPUSTATUS( const uint8_t value )
 {
 	// TODO: need to redesign to not return reference
 	assert( value == 0 );
@@ -99,12 +112,10 @@ uint8_t& PPU::PPUSTATUS( const uint8_t value )
 	regStatus.hasLatch = true;
 	registers[PPUREG_ADDR] = 0;
 	registers[PPUREG_DATA] = 0;
-	
-	return regStatus.current.raw;
 }
 
 
-uint8_t& PPU::PPUSTATUS()
+uint8_t PPU::PPUSTATUS()
 {
 	regStatus.latched = regStatus.current;
 	regStatus.latched.sem.vBlank = 0;
@@ -119,7 +130,7 @@ uint8_t& PPU::PPUSTATUS()
 }
 
 
-uint8_t& PPU::OAMADDR( const uint8_t value )
+void PPU::OAMADDR( const uint8_t value )
 {
 	assert( value == 0x00 ); // TODO: implement other modes
 
@@ -127,35 +138,32 @@ uint8_t& PPU::OAMADDR( const uint8_t value )
 
 	regStatus.current.sem.lastReadLsb = ( value & 0x1F );
 
-	return registers[PPUREG_OAMADDR];
 }
 
 
-uint8_t& PPU::OAMADDR()
+uint8_t PPU::OAMADDR()
 {
 	return registers[PPUREG_OAMADDR];
 }
 
 
-uint8_t& PPU::OAMDATA( const uint8_t value )
+void PPU::OAMDATA( const uint8_t value )
 {
 	assert( 0 );
 
 	registers[PPUREG_OAMDATA] = value;
 
 	regStatus.current.sem.lastReadLsb = ( value & 0x1F );
-
-	return registers[PPUREG_OAMDATA];
 }
 
 
-uint8_t& PPU::OAMDATA()
+uint8_t PPU::OAMDATA()
 {
 	return registers[PPUREG_OAMDATA];
 }
 
 
-uint8_t& PPU::PPUSCROLL( const uint8_t value )
+void PPU::PPUSCROLL( const uint8_t value )
 {
 	registers[PPUREG_SCROLL] = value;
 
@@ -173,18 +181,16 @@ uint8_t& PPU::PPUSCROLL( const uint8_t value )
 	regW ^= 0x01;
 
 	regStatus.current.sem.lastReadLsb = ( value & 0x1F );
-
-	return registers[PPUREG_SCROLL];
 }
 
 
-uint8_t& PPU::PPUSCROLL()
+uint8_t PPU::PPUSCROLL()
 {
 	return registers[PPUREG_SCROLL];
 }
 
 
-uint8_t& PPU::PPUADDR( const uint8_t value )
+void PPU::PPUADDR( const uint8_t value )
 {
 	registers[PPUREG_ADDR] = value;
 
@@ -201,18 +207,16 @@ uint8_t& PPU::PPUADDR( const uint8_t value )
 	}
 
 	regW ^= 1;
-
-	return registers[PPUREG_ADDR];
 }
 
 
-uint8_t& PPU::PPUADDR()
+uint8_t PPU::PPUADDR()
 {
 	return registers[PPUREG_ADDR];
 }
 
 
-uint8_t& PPU::PPUDATA( const uint8_t value )
+void PPU::PPUDATA( const uint8_t value )
 {
 	if( DataportEnabled() )
 	{
@@ -223,12 +227,10 @@ uint8_t& PPU::PPUDATA( const uint8_t value )
 		vramAccessed = true;
 		vramWritePending = true;
 	}
-
-	return registers[PPUREG_DATA];
 }
 
 
-uint8_t& PPU::PPUDATA()
+uint8_t PPU::PPUDATA()
 {
 	// ppuReadBuffer[1] is the internal read buffer but ppuReadBuffer[0] is used to return a 'safe' writable byte
 	// This is due to the current (wonky) memory design
@@ -250,16 +252,14 @@ uint8_t& PPU::PPUDATA()
 }
 
 
-uint8_t& PPU::OAMDMA( const uint8_t value )
+void PPU::OAMDMA( const uint8_t value )
 {
 	GenerateDMA();
 	DMA( value );
-
-	return registers[PPUREG_OAMDMA];
 }
 
 
-uint8_t& PPU::OAMDMA()
+uint8_t PPU::OAMDMA()
 {
 	GenerateDMA();
 	return registers[PPUREG_OAMDMA];
@@ -658,13 +658,10 @@ void PPU::DrawChrRomTile( wtRawImageInterface* imageBuffer, const wtRect& imageR
 PpuSpriteAttrib PPU::GetSpriteData( const uint8_t spriteId, const uint8_t oam[] )
 {
 	PpuSpriteAttrib attribs;
-
-	attribs.y				= 1 + oam[spriteId * 4];
-	attribs.tileId			= oam[spriteId * 4 + 1];
-	attribs.x				= oam[spriteId * 4 + 3];
-
-	const uint8_t attrib	= oam[spriteId * 4 + 2]; // TODO: finish attrib features
-
+	const uint8_t attrib		= oam[spriteId * 4 + 2]; // TODO: finish attrib features
+	attribs.tileId				= oam[spriteId * 4 + 1];
+	attribs.x					= oam[spriteId * 4 + 3];
+	attribs.y					= 1 + oam[spriteId * 4];
 	attribs.palette				= ( attrib & 0x03 ) << 2;
 	attribs.priority			= ( attrib & 0x20 ) >> 5;
 	attribs.flippedHorizontal	= ( attrib & 0x40 ) >> 6;
@@ -861,46 +858,46 @@ void PPU::LoadSecondaryOAM()
 
 void PPU::AdvanceXScroll( const uint64_t cycleCount )
 {
-	if ( RenderEnabled() )
+	if ( !RenderEnabled() )
+		return;
+	
+	if ( regV.sem.coarseX == 0x001F )
 	{
-		if ( regV.sem.coarseX == 0x001F )
-		{
-			regV.sem.coarseX = 0;
-			regV.sem.ntId ^= 0x1;
-		}
-		else
-		{
-			regV.sem.coarseX++;
-		}
+		regV.sem.coarseX = 0;
+		regV.sem.ntId ^= 0x1;
+	}
+	else
+	{
+		regV.sem.coarseX++;
 	}
 }
 
 
 void PPU::AdvanceYScroll( const uint64_t cycleCount )
 {
-	if ( RenderEnabled() )
+	if ( !RenderEnabled() )
+		return;
+	
+	if ( regV.sem.fineY < 7 )
 	{
-		if ( regV.sem.fineY < 7 )
+		regV.sem.fineY++;
+	}
+	else
+	{
+		regV.sem.fineY = 0;
+
+		if ( regV.sem.coarseY == 29 ) // > 240 vertical pixel
 		{
-			regV.sem.fineY++;
+			regV.sem.coarseY = 0;
+			regV.sem.ntId ^= 0x2;
+		}
+		else if ( regV.sem.coarseY == 31 ) // This is legal to set, but causes odd behavior
+		{
+			regV.sem.coarseY = 0;
 		}
 		else
 		{
-			regV.sem.fineY = 0;
-
-			if ( regV.sem.coarseY == 29 ) // > 240 vertical pixel
-			{
-				regV.sem.coarseY = 0;
-				regV.sem.ntId ^= 0x2;
-			}
-			else if ( regV.sem.coarseY == 31 ) // This is legal to set, but causes odd behavior
-			{
-				regV.sem.coarseY = 0;
-			}
-			else
-			{
-				regV.sem.coarseY++;
-			}
+			regV.sem.coarseY++;
 		}
 	}
 }
@@ -909,9 +906,7 @@ void PPU::AdvanceYScroll( const uint64_t cycleCount )
 void PPU::BgPipelineShiftRegisters()
 {
 	if ( !BgDataFetchEnabled() )
-	{
 		return;
-	}
 
 	chrShifts[0] <<= 1;
 	chrShifts[1] <<= 1;
@@ -925,9 +920,7 @@ void PPU::BgPipelineShiftRegisters()
 void PPU::BgPipelineDebugPrefetchFetchTiles()
 {
 	if ( !BgDataFetchEnabled() )
-	{
 		return;
-	}
 
 	if ( debugPrefetchTiles )
 	{

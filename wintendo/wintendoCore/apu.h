@@ -556,24 +556,24 @@ public:
 		system = nullptr;
 	}
 
-	void Begin();
-	void End();
-	bool Step( const cpuCycle_t& nextCpuCycle );
-	void WriteReg( const uint16_t addr, const uint8_t value );
+	void	Begin();
+	void	End();
+	bool	Step( const cpuCycle_t& nextCpuCycle );
+	void	WriteReg( const uint16_t addr, const uint8_t value );
 
-	float GetPulseFrequency( PulseChannel* pulse );
-	float GetPulsePeriod( PulseChannel* pulse );
-	void GetDebugInfo( wtApuDebug& apuDebug );
+	float	GetPulseFrequency( PulseChannel* pulse );
+	float	GetPulsePeriod( PulseChannel* pulse );
+	void	GetDebugInfo( wtApuDebug& apuDebug );
 private:
-	void ExecPulseChannel( PulseChannel* pulse );
-	void ExecChannelTri();
-	void ExecChannelNoise();
-	void ExecChannelDMC();
-	void ExecFrameCounter();
-	void EnvelopeGenerater( Envelope& envelope, const uint8_t volume, const bool loop, const bool constant );
-	bool IsPulseDutyHigh( PulseChannel* pulse );
-	void PulseSweep( PulseChannel* pulse );
-	void PulseSequencer( PulseChannel* pulse );
-	void InitMixerLUT();
-	float PulseMixer( const uint32_t pulse1, const uint32_t pulse2 );
+	void	ExecPulseChannel( PulseChannel* pulse );
+	void	ExecChannelTri();
+	void	ExecChannelNoise();
+	void	ExecChannelDMC();
+	void	ExecFrameCounter();
+	void	EnvelopeGenerater( Envelope& envelope, const uint8_t volume, const bool loop, const bool constant );
+	bool	IsPulseDutyHigh( PulseChannel* pulse );
+	void	PulseSweep( PulseChannel* pulse );
+	void	PulseSequencer( PulseChannel* pulse );
+	void	InitMixerLUT();
+	float	PulseMixer( const uint32_t pulse1, const uint32_t pulse2 );
 };

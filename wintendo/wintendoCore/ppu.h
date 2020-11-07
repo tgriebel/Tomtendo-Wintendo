@@ -1,10 +1,5 @@
 #pragma once
 
-struct PPU;
-
-typedef uint8_t&( PPU::* PpuRegWriteFunc )( const uint8_t value );
-typedef uint8_t&( PPU::* PpuRegReadFunc )();
-
 union Pixel;
 struct RGBA;
 
@@ -167,8 +162,9 @@ enum PpuScanLine
 };
 
 
-struct PPU
+class PPU
 {
+public:
 	static const uint32_t VirtualMemorySize			= 0x10000;
 	static const uint32_t PhysicalMemorySize		= 0x4000;
 	static const uint32_t OamSize					= 0x0100;
@@ -207,139 +203,142 @@ struct PPU
 	static const uint32_t ScanlineCycles			= 341;
 	//static const ppuCycle_t VBlankCycles = ppuCycle_t( 20 * 341 * 5 );
 
-	PpuCtrl regCtrl;
-	PpuMask regMask;
-	PpuStatus regStatus;
+private:
+	PpuCtrl			regCtrl;
+	PpuMask			regMask;
+	PpuStatus		regStatus;
 
-	bool genNMI = false;
+	wtPoint			beamPosition;
 
-	int currentScanline = 0;
-	ppuCycle_t scanelineCycle;
+	ppuCycle_t		scanelineCycle;
+	int				currentScanline = 0;
 
-	wtPoint beamPosition;
+	bool			debugPrefetchTiles = false;
 
-	bool loadingSecondaryOAM = false;
-
-	bool nmiOccurred;
-
-	ppuCycle_t cycle;
-
-	wtSystem* system;
-	const RGBA* palette;
-
-	bool debugPrefetchTiles = false;
-
-	bool vramWritePending;
-	bool vramAccessed = false;
+	bool			genNMI = false;
+	bool			nmiOccurred;
+	bool			vramWritePending;
+	bool			vramAccessed = false;
+	bool			loadingSecondaryOAM = false;
 
 	// Internal registers
-	PpuScrollReg regV;
-	PpuScrollReg regT;
-	uint16_t regX = 0x0000;
-	uint16_t regW = 0x0000;
-	uint8_t spriteLimit = SecondarySprites;
+	PpuScrollReg	regV;
+	PpuScrollReg	regT;
+	uint16_t		regX = 0x0000;
+	uint16_t		regW = 0x0000;
+	uint8_t			spriteLimit = SecondarySprites;
 
-	uint32_t debugVramWriteCounter[VirtualMemorySize];
-	uint8_t vram[VirtualMemorySize];
-	uint8_t primaryOAM[OamSize];
-	PpuSpriteAttrib secondaryOAM[OamSize];
-	uint8_t secondaryOamSpriteCnt;
-	bool sprite0InList; // In secondary OAM
+	uint32_t		debugVramWriteCounter[VirtualMemorySize];
+	uint8_t			primaryOAM[OamSize];
+	PpuSpriteAttrib	secondaryOAM[OamSize];
+	uint8_t			secondaryOamSpriteCnt;
+	bool			sprite0InList; // In secondary OAM
 
-	uint8_t ppuReadBuffer[2];
+	uint8_t			ppuReadBuffer[2];
 
-	bool inVBlank; // This is for internal state tracking not for reporting to the CPU
+	bool			inVBlank; // This is for internal state tracking not for reporting to the CPU
 
 	TilePipeLineData plLatches;
 	TilePipeLineData plShifts[2];
-	uint16_t chrShifts[2];
-	uint8_t palShifts[2];
-	uint8_t palLatch[2];
-	uint8_t chrLatch[2];
+	uint16_t		chrShifts[2];
+	uint8_t			palShifts[2];
+	uint8_t			palLatch[2];
+	uint8_t			chrLatch[2];
 
-	uint8_t curShift;
-	uint16_t attrib;
+	uint8_t			curShift;
+	uint16_t		attrib;
 
-	uint8_t registers[9]; // no need?
-	uint16_t MirrorMap[MIRROR_MODE_COUNT][VirtualMemorySize];
+	uint8_t			registers[9]; // no need?
+	uint16_t		MirrorMap[MIRROR_MODE_COUNT][VirtualMemorySize];
 
-	uint8_t& PPUCTRL( const uint8_t value );
-	uint8_t& PPUCTRL();
+public:
+	wtSystem*		system;
+	ppuCycle_t		cycle;
+	const RGBA*		palette;
+	uint8_t			vram[VirtualMemorySize];
 
-	uint8_t& PPUMASK( const uint8_t value );
-	uint8_t& PPUMASK();
+private:
+	void	BgPipelineShiftRegisters();
+	void	BgPipelineDebugPrefetchFetchTiles();
+	uint8_t	BgPipelineDecodePalette();
+	void	BgPipelineFetch( const uint64_t cycle );
+	void	AdvanceXScroll( const uint64_t cycleCount );
+	void	AdvanceYScroll( const uint64_t cycleCount );
 
-	uint8_t& PPUSTATUS( const uint8_t value );
-	uint8_t& PPUSTATUS();
+	void	IncRenderAddr();
 
-	uint8_t& OAMADDR( const uint8_t value );
-	uint8_t& OAMADDR();
+	bool	BgDataFetchEnabled();
+	bool	RenderEnabled();
+	bool	DataportEnabled();
+	bool	InVBlank();
 
-	uint8_t& OAMDATA( const uint8_t value );
-	uint8_t& OAMDATA();
+	uint8_t	GetBgPatternTableId();
+	uint8_t	GetSpritePatternTableId();
+	uint8_t	GetNameTableId();
 
-	uint8_t& PPUSCROLL( const uint8_t value );
-	uint8_t& PPUSCROLL();
+public:
+	void PPUCTRL( const uint8_t value );
+	uint8_t PPUCTRL();
 
-	uint8_t& PPUADDR( const uint8_t value );
-	uint8_t& PPUADDR();
+	void PPUMASK( const uint8_t value );
+	uint8_t PPUMASK();
 
-	uint8_t& PPUDATA( const uint8_t value );
-	uint8_t& PPUDATA();
+	void PPUSTATUS( const uint8_t value );
+	uint8_t PPUSTATUS();
 
-	uint8_t& OAMDMA( const uint8_t value );
-	uint8_t& OAMDMA();
+	void OAMADDR( const uint8_t value );
+	uint8_t OAMADDR();
 
-	void BgPipelineShiftRegisters();
-	void BgPipelineDebugPrefetchFetchTiles();
-	uint8_t BgPipelineDecodePalette();
-	void BgPipelineFetch( const uint64_t cycle );
-	void AdvanceXScroll( const uint64_t cycleCount );
-	void AdvanceYScroll( const uint64_t cycleCount );
+	void OAMDATA( const uint8_t value );
+	uint8_t OAMDATA();
 
-	void IncRenderAddr();
+	void PPUSCROLL( const uint8_t value );
+	uint8_t PPUSCROLL();
 
-	bool BgDataFetchEnabled();
-	bool RenderEnabled();
-	bool DataportEnabled();
-	bool InVBlank();
+	void PPUADDR( const uint8_t value );
+	uint8_t PPUADDR();
 
-	uint8_t GetBgPatternTableId();
-	uint8_t GetSpritePatternTableId();
-	uint8_t GetNameTableId();
+	void PPUDATA( const uint8_t value );
+	uint8_t PPUDATA();
 
-	void DrawBlankScanline( wtDisplayImage& imageBuffer, const wtRect& imageRect, const uint8_t scanY );
-	void DrawTile( wtNameTableImage& imageBuffer, const wtRect& imageRect, const wtPoint& nametableTile, const uint32_t ntId, const uint32_t ptrnTableId );
-	void DrawChrRomTile( wtRawImageInterface* imageBuffer, const wtRect& imageRect, const RGBA palette[4], const uint32_t tileId, const uint32_t ptrnTableId );
-	void DrawSpritePixel( wtDisplayImage& imageBuffer, const wtRect& imageRect, const PpuSpriteAttrib attribs, const wtPoint& point, const uint8_t bgPixel, bool sprite0 );
-	void DrawDebugPatternTables( wtPatternTableImage& imageBuffer, const RGBA palette[4], const uint32_t tableID );
-	void DrawDebugNametable( wtNameTableImage& nameTableSheet );
-	void DrawDebugPalette( wtPaletteImage& imageBuffer );
+	void OAMDMA( const uint8_t value );
+	uint8_t OAMDMA();
 
-	void GenerateNMI();
-	void GenerateDMA();
-	uint8_t DMA( const uint16_t address );
+	void		WriteReg( const uint16_t addr, const uint8_t value );
+	uint8_t		ReadReg( uint16_t address );
 
-	uint16_t StaticMirrorVram( uint16_t addr, uint32_t mirrorMode );
-	uint16_t MirrorVram( uint16_t addr );
-	void	GenerateMirrorMap();
-	uint8_t ReadVram( const uint16_t addr );
-	uint8_t GetNtTile( const uint32_t ntId, const wtPoint& tileCoord );
-	uint8_t GetArribute( const uint32_t ntId, const wtPoint& tileCoord );
-	uint8_t GetTilePaletteId( const uint32_t attribTable, const wtPoint& tileCoord );
-	uint8_t GetChrRom8x8( const uint32_t tileId, const uint8_t plane, const uint8_t ptrnTableId, const uint8_t row );
-	uint8_t GetChrRom8x16( const uint32_t tileId, const uint8_t plane, const uint8_t row, const bool isUpper );
-	uint8_t GetChrRomBank8x8( const uint32_t tileId, const uint8_t plane, const uint8_t bankId, const uint8_t row );
+	void		DrawBlankScanline( wtDisplayImage& imageBuffer, const wtRect& imageRect, const uint8_t scanY );
+	void		DrawTile( wtNameTableImage& imageBuffer, const wtRect& imageRect, const wtPoint& nametableTile, const uint32_t ntId, const uint32_t ptrnTableId );
+	void		DrawChrRomTile( wtRawImageInterface* imageBuffer, const wtRect& imageRect, const RGBA palette[4], const uint32_t tileId, const uint32_t ptrnTableId );
+	void		DrawSpritePixel( wtDisplayImage& imageBuffer, const wtRect& imageRect, const PpuSpriteAttrib attribs, const wtPoint& point, const uint8_t bgPixel, bool sprite0 );
+	void		DrawDebugPatternTables( wtPatternTableImage& imageBuffer, const RGBA palette[4], const uint32_t tableID );
+	void		DrawDebugNametable( wtNameTableImage& nameTableSheet );
+	void		DrawDebugPalette( wtPaletteImage& imageBuffer );
 
-	void LoadSecondaryOAM();
-	PpuSpriteAttrib GetSpriteData( const uint8_t spriteId, const uint8_t oam[] );
+	void		GenerateNMI();
+	void		GenerateDMA();
+	void		DMA( const uint16_t address );
 
-	static uint8_t GetChrRomPalette( const uint8_t plane0, const uint8_t plane1, const uint8_t col );
+	uint16_t	StaticMirrorVram( uint16_t addr, uint32_t mirrorMode );
+	uint16_t	MirrorVram( uint16_t addr );
+	void		GenerateMirrorMap();
+	uint8_t		ReadVram( const uint16_t addr );
+	uint8_t		GetNtTile( const uint32_t ntId, const wtPoint& tileCoord );
+	uint8_t		GetArribute( const uint32_t ntId, const wtPoint& tileCoord );
+	uint8_t		GetTilePaletteId( const uint32_t attribTable, const wtPoint& tileCoord );
+	uint8_t		GetChrRom8x8( const uint32_t tileId, const uint8_t plane, const uint8_t ptrnTableId, const uint8_t row );
+	uint8_t		GetChrRom8x16( const uint32_t tileId, const uint8_t plane, const uint8_t row, const bool isUpper );
+	uint8_t		GetChrRomBank8x8( const uint32_t tileId, const uint8_t plane, const uint8_t bankId, const uint8_t row );
 
-	void WriteVram();
+	void		LoadSecondaryOAM();
+	PpuSpriteAttrib	GetSpriteData( const uint8_t spriteId, const uint8_t oam[] );
+
+	static uint8_t	GetChrRomPalette( const uint8_t plane0, const uint8_t plane1, const uint8_t col );
+
+	void		WriteVram();
 
 	const ppuCycle_t Exec();
-	bool Step( const ppuCycle_t& nextCycle );
+	bool		Step( const ppuCycle_t& nextCycle );
 
 	PPU()
 	{
@@ -394,35 +393,5 @@ struct PPU
 
 		inVBlank = true;
 	}
-
-
-	uint8_t& Reg( uint16_t address, uint8_t value );
-	uint8_t& Reg( uint16_t address );
-};
-
-static const PpuRegWriteFunc PpuRegWriteMap[PPU::RegisterCount] =
-{
-	&PPU::PPUCTRL,
-	&PPU::PPUMASK,
-	&PPU::PPUSTATUS,
-	&PPU::OAMADDR,
-	&PPU::OAMDATA,
-	&PPU::PPUSCROLL,
-	&PPU::PPUADDR,
-	&PPU::PPUDATA,
-};
-
-
-
-static const PpuRegReadFunc PpuRegReadMap[PPU::RegisterCount] =
-{
-	&PPU::PPUCTRL,
-	&PPU::PPUMASK,
-	&PPU::PPUSTATUS,
-	&PPU::OAMADDR,
-	&PPU::OAMDATA,
-	&PPU::PPUSCROLL,
-	&PPU::PPUADDR,
-	&PPU::PPUDATA,
 };
 

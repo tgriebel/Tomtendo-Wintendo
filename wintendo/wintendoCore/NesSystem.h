@@ -24,7 +24,6 @@ struct wtConfig;
 class wtSystem
 {
 public:
-
 	// Buffer and partition sizes
 	static const uint32_t VirtualMemorySize		= 0x10000;
 	static const uint32_t PhysicalMemorySize	= 0x0800;
@@ -73,31 +72,32 @@ public:
 	wtNameTableImage	nameTableSheet;
 	wtPaletteImage		paletteDebug;
 	wtPatternTableImage	patternTable0;
-	wtPatternTableImage patternTable1;
+	wtPatternTableImage	patternTable1;
 
-	wstring fileName;
+	wstring				fileName;
 
-	uint8_t memory[VirtualMemorySize]; // TODO: make physical size
+	uint8_t				memory[VirtualMemorySize]; // TODO: make physical size
 
-	uint8_t apuDummyRegister;
+	uint8_t				apuDummyRegister;
 
-	bool headless;
-	bool debugNTEnable;
+	bool				headless;
+	bool				debugNTEnable;
 
 	// TODO: Need to support two controllers and clean this up
 	std::atomic<Controller> controller;
-	bool	strobeOn;
-	uint8_t	btnShift[2];
-	uint8_t controllerBuffer[2];
+	bool				strobeOn;
+	uint8_t				btnShift[2];
+	uint8_t				controllerBuffer[2];
 
-	uint8_t mirrorMode;
+	uint8_t				mirrorMode;
 
-	wtDebugInfo dbgInfo;
-	wtConfig	config;
+	wtDebugInfo			dbgInfo;
+	wtConfig			config;
 
 #if DEBUG_ADDR == 1
 	std::map<uint16_t, uint8_t> memoryDebug;
 #endif // #if DEBUG_ADDR == 1
+
 
 	wtSystem()
 	{
@@ -137,39 +137,38 @@ public:
 		frameNumber = 0;
 	}
 
-	uint8_t& GetStack();
-	uint8_t GetMemory( const uint16_t address );
-	uint8_t& GetMemoryRef( const uint16_t address );
-	void WritePhysicalMemory( const uint16_t address, const uint8_t value );
-	uint16_t MirrorAddress( const uint16_t address );
-	uint8_t GetMapperId();
-	uint8_t GetMirrorMode();
+	uint8_t&	GetStack();
+	uint8_t		GetMemory( const uint16_t address );
+	void		WritePhysicalMemory( const uint16_t address, const uint8_t value );
+	uint16_t	MirrorAddress( const uint16_t address );
+	uint8_t		GetMapperId();
+	uint8_t		GetMirrorMode();
 
-	int InitSystem( const wstring& filePath );
-	void ShutdownSystem();
-	void LoadProgram( wtCart& cart, const uint32_t resetVectorManual = 0x10000 );
-	string GetPrgBankDissambly( const uint8_t bankNum );
-	void GenerateRomDissambly( string prgRomAsm[16] );
-	void GenerateChrRomTables( wtPatternTableImage chrRom[16] );
+	int			InitSystem( const wstring& filePath );
+	void		ShutdownSystem();
+	void		LoadProgram( wtCart& cart, const uint32_t resetVectorManual = 0x10000 );
+	string		GetPrgBankDissambly( const uint8_t bankNum );
+	void		GenerateRomDissambly( string prgRomAsm[16] );
+	void		GenerateChrRomTables( wtPatternTableImage chrRom[16] );
 	unique_ptr<wtMapper> AssignMapper( const uint32_t mapperId );
-	bool Run( const masterCycles_t& nextCycle );
-	int RunFrame();
-	void CaptureInput( const Controller keys );
-	void WriteInput( const uint8_t value );
-	void GetFrameResult( wtFrameResult& outFrameResult );
-	void GetState( wtState& state );
-	void SyncState( wtState& state );
-	void GetConfig( wtConfig& config );
-	void SyncConfig( wtConfig& config );
-	void InitConfig();
+	bool		Run( const masterCycles_t& nextCycle );
+	int			RunFrame();
+	void		CaptureInput( const Controller keys );
+	void		WriteInput( const uint8_t value );
+	void		GetFrameResult( wtFrameResult& outFrameResult );
+	void		GetState( wtState& state );
+	void		SyncState( wtState& state );
+	void		GetConfig( wtConfig& config );
+	void		SyncConfig( wtConfig& config );
+	void		InitConfig();
 
-	void DebugPrintFlushLog();
+	void		DebugPrintFlushLog();
 
-	static bool IsInputRegister( const uint16_t address );
-	static bool IsPpuRegister( const uint16_t address );
-	static bool IsApuRegister( const uint16_t address );
-	static bool IsDMA( const uint16_t address );
-	static bool MouseInRegion( const wtRect& region );
+	static bool	IsInputRegister( const uint16_t address );
+	static bool	IsPpuRegister( const uint16_t address );
+	static bool	IsApuRegister( const uint16_t address );
+	static bool	IsDMA( const uint16_t address );
+	static bool	MouseInRegion( const wtRect& region );
 };
 
 
