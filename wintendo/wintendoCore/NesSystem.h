@@ -101,16 +101,18 @@ public:
 
 	wtSystem()
 	{
+		Reset();
+	}
+
+	void Reset()
+	{
 		InitConfig();
 
 		cpu.forceStop = false;
-		cpu.cycle = cpuCycle_t(0);
-		sysCycles = masterCycles_t(0);
+		cpu.cycle = cpuCycle_t( 0 );
+		sysCycles = masterCycles_t( 0 );
 
 		memset( memory, 0, sizeof( memory ) );
-
-		ppu.system = this;
-		apu.system = this;
 
 		strobeOn = false;
 		btnShift[0] = 0;
@@ -122,7 +124,7 @@ public:
 
 		headless = false;
 		debugNTEnable = true;
-		
+
 		frameBuffer[0].SetDebugName( "FrameBuffer1" );
 		frameBuffer[1].SetDebugName( "FrameBuffer2" );
 		nameTableSheet.SetDebugName( "nameTable" );
@@ -191,10 +193,8 @@ struct wtFrameResult
 {
 	uint32_t			currentFrame;
 	wtDisplayImage		frameBuffer;
-	wtNameTableImage	nameTableSheet;
-	wtPaletteImage		paletteDebug;
-	wtPatternTableImage patternTable0;
-	wtPatternTableImage patternTable1;
+	wtApuOutput			soundOutput;
+	bool				sndReady;
 
 	// Debug
 	InstrDebugInfo		dbgMetrics;
@@ -203,6 +203,9 @@ struct wtFrameResult
 	wtRomHeader			romHeader;
 	wtMirrorMode		mirrorMode;
 	uint32_t			mapperId;
-	wtApuOutput			soundOutput;
+	wtNameTableImage	nameTableSheet;
+	wtPaletteImage		paletteDebug;
+	wtPatternTableImage patternTable0;
+	wtPatternTableImage patternTable1;
 	wtApuDebug			apuDebug;
 };

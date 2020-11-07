@@ -8,6 +8,7 @@
 #include <fstream>
 #include <iostream>
 #include <map>
+#include <queue>
 #include <iomanip>
 #include "bitmap.h"
 
@@ -184,8 +185,11 @@ struct wtConfig
 {
 	struct APU
 	{
-		float volume;
-		float frequencyScale;
+		float		volume;
+		float		frequencyScale;
+		int32_t	waveShift;
+		bool		disableSweep;
+		bool		disableEnvelope;
 	} apu;
 
 	struct PPU
@@ -245,8 +249,6 @@ public:
 		locked = true;
 		name = name_;
 	}
-
-	//wtRawImage( const wtRawImage& _image ) = delete;
 
 	wtRawImage& operator=( const wtRawImage& _image )
 	{

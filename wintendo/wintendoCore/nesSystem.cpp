@@ -67,6 +67,12 @@ int wtSystem::InitSystem( const wstring& filePath )
 {
 	LoadNesFile( filePath, cart );
 
+	ppu.Reset();
+	ppu.system = this;
+
+	apu.Reset();
+	apu.system = this;
+
 	LoadProgram( cart );
 	fileName = filePath;
 
@@ -104,8 +110,8 @@ void wtSystem::LoadProgram( wtCart& loadCart, const uint32_t resetVectorManual )
 	cpu.irqVector = Combine( memory[IrqVectorAddr], memory[IrqVectorAddr + 1] );
 
 	cpu.interruptRequestNMI = false;
+	cpu.Reset(); // TODO: move this
 	cpu.system = this;
-	cpu.Reset();
 
 	if ( loadCart.header.controlBits0.fourScreenMirror )
 	{
@@ -264,7 +270,7 @@ void wtSystem::GetFrameResult( wtFrameResult& outFrameResult )
 	outFrameResult.patternTable0	= patternTable0;
 	outFrameResult.patternTable1	= patternTable1;
 
-	finishedFrame.second = false; // TODO: make atomic
+	finishedFrame.second = false;
 	frameBuffer[lastFrameNumber].locked = false;
 
 	GetState( outFrameResult.state );
@@ -276,17 +282,16 @@ void wtSystem::GetFrameResult( wtFrameResult& outFrameResult )
 	outFrameResult.mirrorMode = static_cast<wtMirrorMode>( GetMirrorMode() );
 	outFrameResult.mapperId = GetMapperId();
 
-	if( apu.finishedSoundOutput != nullptr )
+	outFrameResult.soundOutput.locked = false;
+	if( apu.frameOutput != nullptr )
 	{
-		outFrameResult.soundOutput = *apu.finishedSoundOutput;
-		outFrameResult.apuDebug = apu.GetDebugInfo();
+		outFrameResult.soundOutput = *apu.frameOutput;
+		apu.GetDebugInfo( outFrameResult.apuDebug );
+		apu.frameOutput->locked = false;
+		apu.frameOutput = nullptr;
 	}
-	else
-	{
-		outFrameResult.soundOutput.master.currentIndex = 0;
-		outFrameResult.soundOutput.pulse1.currentIndex = 0;
-		outFrameResult.soundOutput.pulse2.currentIndex = 0;
-	}
+
+	outFrameResult.currentFrame = frameNumber;
 }
 
 
@@ -329,9 +334,12 @@ void wtSystem::InitConfig()
 {
 	// PPU
 	config.ppu.chrPalette		= 0;
-	// APUZ
+	// APU
 	config.apu.frequencyScale	= 1.0f;
 	config.apu.volume			= 1.0f;
+	config.apu.waveShift		= 0;
+	config.apu.disableSweep		= false;
+	config.apu.disableEnvelope	= false;
 }
 
 
@@ -342,6 +350,9 @@ void wtSystem::GetConfig( wtConfig& systemConfig )
 	// APU
 	systemConfig.apu.frequencyScale	= config.apu.frequencyScale;
 	systemConfig.apu.volume			= config.apu.volume;
+	systemConfig.apu.waveShift		= config.apu.waveShift;
+	systemConfig.apu.disableSweep	= config.apu.disableSweep;
+	systemConfig.apu.disableEnvelope = config.apu.disableEnvelope;
 }
 
 
@@ -352,6 +363,9 @@ void wtSystem::SyncConfig( wtConfig& systemConfig )
 	// APU
 	config.apu.frequencyScale	= systemConfig.apu.frequencyScale;
 	config.apu.volume			= systemConfig.apu.volume;
+	config.apu.waveShift		= systemConfig.apu.waveShift;
+	config.apu.disableSweep		= systemConfig.apu.disableSweep;
+	config.apu.disableEnvelope	= systemConfig.apu.disableEnvelope;
 }
 
 

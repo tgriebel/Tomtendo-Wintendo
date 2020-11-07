@@ -5,7 +5,7 @@
 
 float APU::GetPulseFrequency( PulseChannel* pulse )
 {
-	float freq = CPU_HZ / ( 16.0f * pulse->regTune.sem0.timer + 1 );
+	float freq = CPU_HZ / ( 16.0f * pulse->period.count + 1 );
 	freq *= system->config.apu.frequencyScale;
 	return freq;
 }
@@ -13,7 +13,7 @@ float APU::GetPulseFrequency( PulseChannel* pulse )
 
 float APU::GetPulsePeriod( PulseChannel* pulse )
 {
-	return ( 1.0f / system->config.apu.frequencyScale ) * ( pulse->regTune.sem0.timer );
+	return ( 1.0f / system->config.apu.frequencyScale ) * ( pulse->period.count );
 }
 
 
@@ -72,8 +72,14 @@ void APU::WriteReg( const uint16_t addr, const uint8_t value )
 }
 
 
-void APU::EnvelopeGenerater( Envelope& envelope, const uint8_t volume, const bool loop )
+void APU::EnvelopeGenerater( Envelope& envelope, const uint8_t volume, const bool loop, const bool constant )
 {
+	if ( system->config.apu.disableEnvelope )
+	{
+		envelope.output = volume;
+		return;
+	}
+
 	if( !quarterClk )
 		return;
 
@@ -99,25 +105,79 @@ void APU::EnvelopeGenerater( Envelope& envelope, const uint8_t volume, const boo
 			envelope.divCounter = ( envelope.divCounter - 1 ) & 0x0F; // TODO: wrap allowed?
 		}
 	}
-}
 
-
-void APU::PulseSequencer( PulseChannel* pulse, wtSoundBuffer* buffer )
-{
-	const int samples = ( apuCycle - pulse->lastCycle ).count();
-	float volume = 1.0f;
-
-	if ( pulse->regCtrl.sem.isConstant )
+	if ( constant )
 	{
-		volume = pulse->regCtrl.sem.volume;
+		envelope.output = volume;
 	}
 	else
 	{
-		volume = pulse->envelope.decayLevel;
+		envelope.output = envelope.decayLevel;
 	}
 	assert( volume >= 0 && volume <= 15 );
+}
 
-	if( pulse->regTune.sem0.timer < 8 )
+
+void APU::PulseSweep( PulseChannel* pulse )
+{
+	// TODO: Whenever the current period changes for any reason, whether by $400x writes or by sweep, the target period also changes.
+	// https://wiki.nesdev.com/w/index.php/APU_Sweep
+	if( system->config.apu.disableSweep )
+	{
+		pulse->period.count = pulse->regTune.sem0.timer;
+		return;
+	}
+
+	if ( !halfClk )
+		return;
+
+	const bool		enabled	= pulse->regRamp.sem.enabled;
+	const bool		negate	= pulse->regRamp.sem.negate;
+	const uint8_t	period	= pulse->regRamp.sem.period;
+	const uint8_t	shift	= pulse->regRamp.sem.shift;
+	const bool		mute	= false; // TODO: implement
+	const bool		isZero	= ( pulse->sweep.divider.count == 0 );
+
+	bool& reload = pulse->sweep.reloadFlag;
+	Sweep& sweep = pulse->sweep;
+
+	if( isZero && enabled && !mute )
+	{
+		uint16_t change = pulse->regTune.sem0.timer >> shift;
+		change *= negate ? -1 : 1;
+		change -= ( pulse->channelNum == PULSE_1 ) ? 1 : 0;
+
+		pulse->period.count = pulse->regTune.sem0.timer + change;
+	}
+	else
+	{
+		pulse->period.count = pulse->regTune.sem0.timer;
+	}
+
+	if ( isZero || reload )
+	{
+		sweep.divider.count = period;
+		reload = false;
+	}
+	else
+	{
+		sweep.divider.count--;
+	}
+}
+
+
+bool APU::IsPulseDutyHigh( PulseChannel* pulse )
+{
+	return PulseLUT[pulse->regCtrl.sem.duty][( pulse->sequenceStep + system->config.apu.waveShift ) % 8];
+}
+
+
+void APU::PulseSequencer( PulseChannel* pulse )
+{
+	const int samples = ( apuCycle - pulse->lastCycle ).count();
+	float volume = pulse->envelope.output;
+
+	if( pulse->period.count < 8 )
 	{
 		volume = 0;
 	}
@@ -126,14 +186,14 @@ void APU::PulseSequencer( PulseChannel* pulse, wtSoundBuffer* buffer )
 
 	for ( int sample = 0; sample < samples; sample++ )
 	{
-		const float pulseSample = pulseWaves[pulse->regCtrl.sem.duty][pulse->sequenceStep] ? -amplitude : amplitude;
+		const float pulseSample = IsPulseDutyHigh( pulse ) ? amplitude : 0;
 		if ( pulse->timer.sem0.counter == 0 )
 		{
-			buffer->Write( 0.0f );
+			pulse->samples.Enque( 0 );
 		}
 		else
 		{
-			buffer->Write( pulseSample );
+			pulse->samples.Enque( pulseSample );
 		}
 	}
 
@@ -142,41 +202,32 @@ void APU::PulseSequencer( PulseChannel* pulse, wtSoundBuffer* buffer )
 }
 
 
-void APU::ExecPulseChannel( const pulseChannel_t channel )
+void APU::ExecPulseChannel( PulseChannel* pulse )
 {
-	PulseChannel* pulse;
-	wtSoundBuffer* buffer;
-	if( channel == PULSE_1 )
-	{
-		pulse = &pulse1;
-		buffer = &soundOutput->pulse1;
-	}
-	else
-	{
-		pulse = &pulse2;
-		buffer = &soundOutput->pulse2;
-	}
-
-	EnvelopeGenerater( pulse->envelope, pulse->regCtrl.sem.volume, pulse->regCtrl.sem.counterHalt );
+	PulseSweep( pulse );
+	EnvelopeGenerater( pulse->envelope, pulse->regCtrl.sem.volume, pulse->regCtrl.sem.counterHalt, pulse->regCtrl.sem.isConstant );
 
 	pulse->timer.sem0.timer--;
-	if ( !pulse->regCtrl.sem.counterHalt )
+	if ( halfClk && !pulse->regCtrl.sem.counterHalt )
 	{
 		pulse->timer.sem0.counter--;
 	}
 	
 	if ( pulse->timer.sem0.timer == 0 )
 	{
-		buffer->avgFrequency = GetPulseFrequency( pulse );
-		buffer->avgPeriod = pulse->regTune.sem0.timer;
-		pulse->timer.sem0.timer = pulse->regTune.sem0.timer;
-		PulseSequencer( pulse, buffer );
+		pulse->timer.sem0.timer = pulse->period.count;
+		PulseSequencer( pulse );
+
+		// pulse->volume = pulse->regCtrl.sem.volume;
 	}
 }
 
 void APU::ExecChannelTri()
 {
-
+	if( quarterClk )
+	{
+		
+	}
 }
 
 
@@ -235,8 +286,8 @@ bool APU::Step( const cpuCycle_t& nextCpuCycle )
 
 	while ( apuCycle < nextApuCycle )
 	{
-		ExecPulseChannel( PULSE_1 );
-		ExecPulseChannel( PULSE_2 );
+		ExecPulseChannel( &pulse1 );
+		ExecPulseChannel( &pulse2 );
 		ExecChannelNoise();
 		ExecChannelDMC();
 		++apuTicks;
@@ -247,76 +298,67 @@ bool APU::Step( const cpuCycle_t& nextCpuCycle )
 }
 
 
-float APU::PulseMixer( const float pulse1, const float pulse2 )
+void APU::InitMixerLUT()
 {
-	if( ( pulse1 + pulse2 ) == 0.0f )
-		return 0.0f;
-	// input [0-15]
-	return 95.88f / ( ( 8128.0f / ( pulse1 + pulse2 ) ) + 100.0f );
+	squareLUT[0] = 0.0f;
+	for( uint32_t i = 1; i < SquareLutEntries; ++i )
+	{
+		squareLUT[i] = 95.52f / ( 8128.0f / i + 100.0f );
+	}
 }
 
 
-wtApuDebug APU::GetDebugInfo()
+float APU::PulseMixer( const uint32_t pulse1, const uint32_t pulse2 )
 {
-	wtApuDebug apuDebug;
+	const uint32_t pulseSum = ( pulse1 + pulse2 );
+	assert( ( pulseSum <= 31 ) && ( pulseSum >= 0 ) );
+	return squareLUT[pulseSum];
+}
+
+
+void APU::GetDebugInfo( wtApuDebug& apuDebug )
+{
 	apuDebug.pulse1		= pulse1;
 	apuDebug.pulse2		= pulse2;
 	apuDebug.triangle	= triangle;
 	apuDebug.noise		= noise;
 	apuDebug.dmc		= dmc;
-	return apuDebug;
 }
 
 void APU::Begin()
 {
 	apuTicks = 0;
-	startSoundIndex = soundOutput->pulse1.currentIndex;
-
-	soundOutput->pulse1.Begin();
-	soundOutput->pulse2.Begin();
-	soundOutput->master.Begin();
 }
 
 
 void APU::End()
 {
-	// TODO: audio frame is not in sync with the frame sync
 	const uint8_t sampleStride = 20;
 	assert( sampleStride > 0 );
 	const float masterVolume = system->config.apu.volume;
-
-	soundOutput->pulse1.End();
-	soundOutput->pulse2.End();
-
-	const uint32_t sampleStart = min( soundOutput->pulse1.GetFrameBegin(), soundOutput->pulse2.GetFrameBegin() );
-	const uint32_t sampleCnt = min( soundOutput->pulse1.GetFrameEnd(), soundOutput->pulse2.GetFrameEnd() );
-	for( uint32_t i = sampleStart; i < sampleCnt; ++i )
+	
+	while( !pulse1.samples.IsEmpty() && !pulse2.samples.IsEmpty() )
 	{
-		const float pulse1Sample = soundOutput->pulse1.Read( i ); // TODO: use a 'ReadNext()' function
-		const float pulse2Sample = soundOutput->pulse2.Read( i );
-		const float mixedSample = PulseMixer( pulse1Sample, pulse2Sample );
-		assert( pulse1Sample <= 15);
-		assert( pulse2Sample <= 15 );
+		const float pulse1Sample = pulse1.samples.Deque();
+		const float pulse2Sample = pulse2.samples.Deque();
+
+		const float mixedSample = PulseMixer( static_cast<uint32_t>( pulse1Sample ), static_cast<uint32_t>( pulse2Sample ) );
 		assert( mixedSample < 0.3f );
 
-		soundOutput->master.Write( mixedSample * 3.868f * 4096 );
-		soundOutput->master.hz = 894886.0f;
+		soundOutput->dbgPulse1.Write( pulse1Sample );
+		soundOutput->dbgPulse2.Write( pulse2Sample );
+		soundOutput->master.Enque( floor( 65535.0f * mixedSample ) );
 	}
 
-	soundOutput->master.End();
+	soundOutput->master.SetHz( 894886.0f );
 
-	static int frameCnt = 0;
-	const int bufferedFrames = 4;
-	++frameCnt;
-	if ( frameCnt == bufferedFrames )
-	{
-		frameCnt = 0;
+	soundOutput->locked = true;
+	frameOutput = soundOutput;
 
-		finishedSoundOutput = &soundOutputBuffers[currentBuffer];
-		currentBuffer = ( currentBuffer + 1 ) % SoundBufferCnt;
-		soundOutput = &soundOutputBuffers[currentBuffer];
-		soundOutput->pulse1.Clear();
-		soundOutput->pulse2.Clear();
-		soundOutput->master.Clear();
-	}
+	currentBuffer = ( currentBuffer + 1 ) % SoundBufferCnt;
+	soundOutput = &soundOutputBuffers[currentBuffer];
+	assert( !soundOutput->locked );
+	soundOutput->master.Reset();
+	soundOutput->dbgPulse1.Clear();
+	soundOutput->dbgPulse2.Clear();
 }
