@@ -276,12 +276,12 @@ void wtSystem::GetFrameResult( wtFrameResult& outFrameResult )
 	outFrameResult.mirrorMode = static_cast<wtMirrorMode>( GetMirrorMode() );
 	outFrameResult.mapperId = GetMapperId();
 
-	outFrameResult.soundOutput.locked = false;
+	outFrameResult.soundOutput.dbgLocked = false;
 	if( apu.frameOutput != nullptr )
 	{
 		outFrameResult.soundOutput = *apu.frameOutput;
 		apu.GetDebugInfo( outFrameResult.apuDebug );
-		apu.frameOutput->locked = false;
+		apu.frameOutput->dbgLocked = false;
 		apu.frameOutput = nullptr;
 	}
 
@@ -334,32 +334,23 @@ void wtSystem::InitConfig()
 	config.apu.waveShift		= 0;
 	config.apu.disableSweep		= false;
 	config.apu.disableEnvelope	= false;
+	config.apu.mutePulse1		= false;
+	config.apu.mutePulse2		= false;
+	config.apu.muteTri			= false;
+	config.apu.muteNoise		= false;
+	config.apu.muteDMC			= false;
 }
 
 
 void wtSystem::GetConfig( wtConfig& systemConfig )
 {
-	// PPU
-	systemConfig.ppu.chrPalette		= config.ppu.chrPalette;
-	// APU
-	systemConfig.apu.frequencyScale	= config.apu.frequencyScale;
-	systemConfig.apu.volume			= config.apu.volume;
-	systemConfig.apu.waveShift		= config.apu.waveShift;
-	systemConfig.apu.disableSweep	= config.apu.disableSweep;
-	systemConfig.apu.disableEnvelope = config.apu.disableEnvelope;
+	systemConfig = config;
 }
 
 
 void wtSystem::SyncConfig( wtConfig& systemConfig )
 {
-	// PPU
-	config.ppu.chrPalette		= systemConfig.ppu.chrPalette;
-	// APU
-	config.apu.frequencyScale	= systemConfig.apu.frequencyScale;
-	config.apu.volume			= systemConfig.apu.volume;
-	config.apu.waveShift		= systemConfig.apu.waveShift;
-	config.apu.disableSweep		= systemConfig.apu.disableSweep;
-	config.apu.disableEnvelope	= systemConfig.apu.disableEnvelope;
+	config = systemConfig;
 }
 
 

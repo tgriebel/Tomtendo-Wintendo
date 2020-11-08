@@ -187,9 +187,14 @@ struct wtConfig
 	{
 		float		volume;
 		float		frequencyScale;
-		int32_t	waveShift;
+		int32_t		waveShift;
 		bool		disableSweep;
 		bool		disableEnvelope;
+		bool		mutePulse1;
+		bool		mutePulse2;
+		bool		muteTri;
+		bool		muteNoise;
+		bool		muteDMC;
 	} apu;
 
 	struct PPU

@@ -193,9 +193,9 @@ union TimerCtrl
 	uint16_t raw;
 };
 
-union TriangleCtrl
+union TriangleLinear
 {
-	struct TriangleCtrlSemantic
+	struct TriangleLinearSemantic
 	{
 		uint8_t counterLoad : 7;
 		uint8_t counterHalt : 1;
@@ -204,7 +204,6 @@ union TriangleCtrl
 	uint8_t raw;
 };
 
-
 union NoiseCtrl
 {
 	struct NoiseCtrlSemantic
@@ -212,7 +211,7 @@ union NoiseCtrl
 		uint8_t volume		: 4;
 		uint8_t isConstant	: 1;
 		uint8_t counterHalt	: 1;
-		uint8_t unused	: 2;
+		uint8_t unused		: 2;
 	} sem;
 
 	uint8_t raw;
@@ -354,16 +353,28 @@ struct PulseChannel
 
 struct TriangleChannel
 {
-	TriangleCtrl	regCtrl1;
-	TriangleCtrl	regCtrl2;
-	TimerCtrl		regFreq;
-	TimerCtrl		timer;
+	TriangleLinear	regLinear;
+	TimerCtrl		regTimer;
+	bool			reloadFlag;
+	Counter<7>		linearCounter;
+	Counter<7>		lengthCounter;
+	Counter<11>		timer;
+	uint8_t			sequenceStep;
+	cpuCycle_t		lastCycle;
+	wtSampleQueue	samples;
 
 	void Clear()
 	{
-		regCtrl1.raw	= 0;
-		regCtrl2.raw	= 0;
-		regFreq.raw		= 0;
+		regLinear.raw		= 0;
+		regTimer.raw		= 0;
+		reloadFlag			= false;
+		linearCounter.count	= 0;
+		lengthCounter.count = 0;
+		timer.count			= 0;
+		sequenceStep		= 0;
+		lastCycle			= cpuCycle_t( 0 );
+		
+		samples.Reset();
 	}
 };
 
@@ -453,12 +464,22 @@ static const uint8_t SawLUT[32] =
 };
 
 
+static const uint8_t LengthLUT[] =
+{
+	10, 254, 20, 2, 40, 4, 80, 6, 160, 8, 60, 10, 14, 12, 26, 14,
+	12, 16, 24, 18, 48, 20, 96, 22, 192, 24, 72, 26, 16, 28, 32, 30,
+};
+
+
 struct wtApuOutput
 {
 	wtSoundBuffer	dbgPulse1;
 	wtSoundBuffer	dbgPulse2;
+	wtSoundBuffer	dbgTri;
+	wtSoundBuffer	dbgNoise;
+	wtSoundBuffer	dbgDmc;
 	wtSampleQueue	master;
-	bool			locked;
+	bool			dbgLocked;
 };
 
 
@@ -551,6 +572,9 @@ public:
 			soundOutputBuffers[i].master.Reset();
 			soundOutputBuffers[i].dbgPulse1.Clear();
 			soundOutputBuffers[i].dbgPulse2.Clear();
+			soundOutputBuffers[i].dbgTri.Clear();
+			soundOutputBuffers[i].dbgNoise.Clear();
+			soundOutputBuffers[i].dbgDmc.Clear();
 		}
 
 		system = nullptr;
@@ -561,19 +585,22 @@ public:
 	bool	Step( const cpuCycle_t& nextCpuCycle );
 	void	WriteReg( const uint16_t addr, const uint8_t value );
 
-	float	GetPulseFrequency( PulseChannel* pulse );
-	float	GetPulsePeriod( PulseChannel* pulse );
+	float	GetPulseFrequency( PulseChannel& pulse );
+	float	GetPulsePeriod( PulseChannel& pulse );
 	void	GetDebugInfo( wtApuDebug& apuDebug );
+
 private:
-	void	ExecPulseChannel( PulseChannel* pulse );
+	void	ExecPulseChannel( PulseChannel& pulse );
 	void	ExecChannelTri();
 	void	ExecChannelNoise();
 	void	ExecChannelDMC();
 	void	ExecFrameCounter();
-	void	EnvelopeGenerater( Envelope& envelope, const uint8_t volume, const bool loop, const bool constant );
-	bool	IsPulseDutyHigh( PulseChannel* pulse );
-	void	PulseSweep( PulseChannel* pulse );
-	void	PulseSequencer( PulseChannel* pulse );
+	void	EnvelopeGenerater( PulseChannel& pulse );
+	bool	IsPulseDutyHigh( const PulseChannel& pulse );
+	void	PulseSweep( PulseChannel& pulse );
+	void	PulseSequencer( PulseChannel& pulse );
 	void	InitMixerLUT();
 	float	PulseMixer( const uint32_t pulse1, const uint32_t pulse2 );
+	float	TndMixer( const uint32_t triangle, const uint32_t noise, const uint32_t dmc );
+	void	TriSequencer();
 };
