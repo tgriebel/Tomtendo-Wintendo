@@ -269,6 +269,24 @@ union DmcLoad
 };
 
 
+union Status
+{
+	struct StatusSemantic
+	{
+		uint8_t p1		: 1;
+		uint8_t p2		: 1;
+		uint8_t t		: 1;
+		uint8_t n		: 1;
+		uint8_t d		: 1;
+		uint8_t unused	: 1;
+		uint8_t frInt	: 1;
+		uint8_t dmcInt	: 1;
+	} sem;
+
+	uint8_t raw;
+};
+
+
 template < uint16_t B >
 union Counter
 {
@@ -508,6 +526,8 @@ private:
 	DmcChannel		dmc;
 	FrameCounter	frameCounter;
 
+	Status			regStatus;
+
 	uint32_t		frameSeqTick;
 	uint8_t			frameSeqStep;
 
@@ -559,6 +579,8 @@ public:
 		frameCounter.raw = 0;
 		currentBuffer = 0;
 		soundOutput = &soundOutputBuffers[0];
+
+		regStatus.raw = 0x1F;
 
 		halfClk = false;
 		quarterClk = false;

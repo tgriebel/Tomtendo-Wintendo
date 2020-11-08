@@ -142,7 +142,7 @@ bool wtSystem::IsPpuRegister( const uint16_t address )
 
 bool wtSystem::IsApuRegister( const uint16_t address )
 {
-	return ( address >= ApuRegisterBase ) && ( address < ApuRegisterEnd );
+	return ( address >= ApuRegisterBase ) && ( address < ApuRegisterEnd ) && ( address != PpuOamDma );
 }
 
 

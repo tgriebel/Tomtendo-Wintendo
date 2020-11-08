@@ -21,20 +21,29 @@ void APU::WriteReg( const uint16_t addr, const uint8_t value )
 {
 	switch( addr )
 	{
-		case 0x4000:	pulse1.regCtrl.raw			= value;	break;
-		case 0x4001:	pulse1.regRamp.raw			= value;	break;
-		case 0x4002:	pulse1.regTune.sem1.lower	= value;	break;
+		case 0x4000:	pulse1.regCtrl.raw				= value;	break;
+		case 0x4001:	pulse1.regRamp.raw				= value;	break;
+		case 0x4002:	pulse1.regTune.sem1.lower		= value;	break;
+		case 0x4004:	pulse2.regCtrl.raw				= value;	break;
+		case 0x4005:	pulse2.regRamp.raw				= value;	break;
+		case 0x4006:	pulse2.regTune.sem1.lower		= value;	break;
+		case 0x4008:	triangle.regLinear.raw			= value;	break;
+		case 0x400A:	triangle.regTimer.sem1.lower	= value;	break;
+		case 0x400C:	noise.regCtrl.raw				= value;	break;
+		case 0x400E:	noise.regFreq1.raw				= value;	break;
+		case 0x400F:	noise.regFreq2.raw				= value;	break;
+		case 0x4010:	dmc.regCtrl.raw					= value;	break;
+		case 0x4011:	dmc.regLoad.raw					= value;	break;
+		case 0x4012:	dmc.regAddr						= value;	break;
+		case 0x4013:	dmc.regLength					= value;	break;
 
 		case 0x4003:
 		{
 			pulse1.regTune.sem1.upper = value;
 			pulse1.sequenceStep = 0;
 			pulse1.envelope.startFlag = true;
+			// TODO: Reload length counter?
 		} break;
-
-		case 0x4004:	pulse2.regCtrl.raw			= value;	break;
-		case 0x4005:	pulse2.regRamp.raw			= value;	break;
-		case 0x4006:	pulse2.regTune.sem1.lower	= value;	break;
 
 		case 0x4007:
 		{
@@ -43,21 +52,34 @@ void APU::WriteReg( const uint16_t addr, const uint8_t value )
 			pulse2.envelope.startFlag = true;
 		} break;
 
-		case 0x4008:	triangle.regLinear.raw			= value;	break;
-		case 0x400A:	triangle.regTimer.sem1.lower	= value;	break;
 		case 0x400B:
 		{
-			triangle.regTimer.sem1.upper = LengthLUT[ value ];
+			triangle.regTimer.sem1.upper = value;
+			triangle.lengthCounter.count = LengthLUT[value];
 			triangle.reloadFlag = true;
 		} break;
-		case 0x400C:	noise.regCtrl.raw			= value;	break;
-		case 0x400E:	noise.regFreq1.raw			= value;	break;
-		case 0x400F:	noise.regFreq2.raw			= value;	break;
-		case 0x4010:	dmc.regCtrl.raw				= value;	break;
-		case 0x4011:	dmc.regLoad.raw				= value;	break;
-		case 0x4012:	dmc.regAddr					= value;	break;
-		case 0x4013:	dmc.regLength				= value;	break;
-		// TODO: 0x4015
+
+		case 0x4015:
+		{
+			regStatus.raw = value;
+
+			if ( !regStatus.sem.p1 )
+			{
+				pulse1.timer.sem0.counter = 0;
+			}
+
+			if ( !regStatus.sem.p2 )
+			{
+				pulse2.timer.sem0.counter = 0;
+			}
+
+			if( !regStatus.sem.t )
+			{
+				triangle.lengthCounter.count = 0;
+			}
+
+		} break;
+
 		case 0x4017:
 		{
 			// TODO: Takes effect after 3/4 cycles
@@ -235,18 +257,25 @@ void APU::TriSequencer()
 {
 	const int samples = ( cpuCycle - triangle.lastCycle ).count();
 
+	bool isSeqHalted = false;
+	isSeqHalted |= triangle.lengthCounter.count == 0;
+	isSeqHalted |= triangle.linearCounter.count == 0;
+
 	for ( int sample = 0; sample < samples; sample++ )
 	{
-		triangle.samples.Enque( SawLUT[ triangle.sequenceStep ] );
+		if( !regStatus.sem.t )
+		{
+			triangle.samples.Enque( 0.0f );
+		}
+		else
+		{
+			triangle.samples.Enque( SawLUT[ triangle.sequenceStep ] );
+		}
 	}
 
 	triangle.lastCycle = cpuCycle;
 
-	bool muted	= false;
-	muted		|= triangle.lengthCounter.count == 0;
-	muted		|= triangle.linearCounter.count == 0;
-
-//	if( !muted )
+	if( !isSeqHalted )
 	{
 		triangle.sequenceStep = ( triangle.sequenceStep + 1 ) % 32;
 	}
@@ -275,6 +304,11 @@ void APU::ExecChannelTri()
 		{
 			triangle.reloadFlag = false;
 		}
+	}
+
+	if( triangle.regLinear.sem.counterHalt )
+	{
+		triangle.lengthCounter.count = 0;
 	}
 
 	triangle.timer.count--;
@@ -408,12 +442,12 @@ void APU::End()
 		float noiseSample			= 0;
 		float dmcSample				= 0;
 
-		pulse1Sample				= system->config.apu.mutePulse1	? 0.0f : pulse1Sample;
-		pulse2Sample				= system->config.apu.mutePulse2	? 0.0f : pulse2Sample;
-		triSample1					= system->config.apu.muteTri	? 0.0f : triSample1;
-		triSample2					= system->config.apu.muteTri	? 0.0f : triSample2;
-		noiseSample					= system->config.apu.muteNoise	? 0.0f : noiseSample;
-		dmcSample					= system->config.apu.muteDMC	? 0.0f : dmcSample;
+		pulse1Sample				= ( system->config.apu.mutePulse1	)	? 0.0f : pulse1Sample;
+		pulse2Sample				= ( system->config.apu.mutePulse2	)	? 0.0f : pulse2Sample;
+		triSample1					= ( system->config.apu.muteTri		)	? 0.0f : triSample1;
+		triSample2					= ( system->config.apu.muteTri		)	? 0.0f : triSample2;
+		noiseSample					= ( system->config.apu.muteNoise	)	? 0.0f : noiseSample;
+		dmcSample					= ( system->config.apu.muteDMC		)	? 0.0f : dmcSample;
 
 		const float pulseMixed		= PulseMixer( (uint32_t)pulse1Sample, (uint32_t)pulse2Sample );
 		const float tndMixed1		= TndMixer( (uint32_t)triSample1, (uint32_t)noiseSample, (uint32_t)dmcSample );
