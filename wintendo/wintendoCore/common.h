@@ -86,12 +86,20 @@ const uint16_t BIT_MASK_13	= ( 1 << 13 );
 const uint16_t BIT_MASK_14	= ( 1 << 14 );
 const uint16_t BIT_MASK_15	= ( 1 << 15 );
 
-#define SELECT_BIT( x, y ) ( (x) & (BIT_MASK_##y) ) >> (BIT_##y)
+#define SELECT_BIT( word, bit ) ( (word) & (BIT_MASK_##bit) ) >> (BIT_##bit)
 
 class wtSystem;
 
 struct Controller
 {
+};
+
+
+enum analogMode_t
+{
+	NTSC,
+	PAL,
+	ANALOG_MODE_COUNT,
 };
 
 
@@ -358,7 +366,7 @@ enum class wtImageTag
 };
 
 
-template< uint8_t B >
+template< uint16_t B >
 class wtShiftReg
 {
 public:
@@ -387,7 +395,7 @@ public:
 		return ( shifts >= Bits );
 	}
 
-	bool GetBitValue( const uint8_t bit ) const
+	bool GetBitValue( const uint16_t bit ) const
 	{
 		return ( ( reg >> bit ) & 0x01 );
 	}
@@ -412,7 +420,7 @@ public:
 private:
 	uint32_t reg;
 	uint32_t shifts;
-	static const uint8_t Bits = B;
+	static const uint16_t Bits = B;
 
 	static constexpr uint32_t CalcMask()
 	{
@@ -427,6 +435,51 @@ private:
 	static const uint32_t Mask = CalcMask();
 	static const uint32_t LMask = ( Mask >> 1 );
 	static const uint32_t RMask = ~0x01ul;
+};
+
+
+template < uint16_t B >
+class BitCounter
+{
+public:
+	BitCounter()
+	{
+		Reload();
+	}
+
+	void Inc()
+	{
+		count.bits++;
+	}
+
+	void Dec()
+	{
+		count.bits--;
+	}
+
+	void Reload( uint16_t value = 0 )
+	{
+		count.bits = value;
+		count.unused = 0;
+	}
+
+	uint16_t Value()
+	{
+		return count.bits;
+	}
+
+	bool IsZero()
+	{
+		return ( Value() == 0 );
+	}
+private:
+	struct counter_t
+	{
+		uint16_t bits	: B;
+		uint16_t unused	: ( 16 - B );
+	};
+
+	counter_t count;
 };
 
 

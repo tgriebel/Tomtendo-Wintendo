@@ -10,6 +10,11 @@ static const uint32_t ApuBufferSize		= ApuSamplesPerSec * ( ApuBufferMs / 1000.0
 class wtSampleQueue
 {
 public:
+	wtSampleQueue()
+	{
+		Reset();
+	}
+
 	void Enque( const float sample )
 	{
 		if ( IsFull() )
@@ -109,6 +114,7 @@ public:
 	void Reset()
 	{
 		currentIndex = 0;
+		memset( samples, 0xFF, sizeof( samples[0] ) * ApuBufferSize );
 	}
 
 	void Write( const float sample )
@@ -144,15 +150,20 @@ public:
 		return currentIndex;
 	}
 
+	bool IsFull() const
+	{
+		return ( currentIndex == ApuBufferSize );
+	}
+
 private:
 	float		samples[ApuBufferSize];
 	float		hz;
 	uint32_t	currentIndex;
 };
 
-union PulseCtrl
+union pulseCtrl_t
 {
-	struct PulseCtrlSemantic
+	struct semantic_t
 	{
 		uint8_t volume		: 4;
 		uint8_t isConstant	: 1;
@@ -163,9 +174,9 @@ union PulseCtrl
 	uint8_t raw;
 };
 
-union PulseRamp
+union pulseRamp_t
 {
-	struct PulseRampSemantic
+	struct semantic_t
 	{
 		uint8_t shift	: 3;
 		uint8_t negate	: 1;
@@ -176,15 +187,15 @@ union PulseRamp
 	uint8_t raw;
 };
 
-union TimerCtrl
+union timerCtrl_t
 {
-	struct TimerCtrlSemantic0
+	struct semantic0_t
 	{
 		uint16_t timer		: 11;
 		uint16_t counter	: 5;
 	} sem0;
 
-	struct TimerCtrlSemantic1
+	struct semantic1_t
 	{
 		uint16_t lower : 8;
 		uint16_t upper : 8;
@@ -193,9 +204,9 @@ union TimerCtrl
 	uint16_t raw;
 };
 
-union TriangleLinear
+union triangleLinear_t
 {
-	struct TriangleLinearSemantic
+	struct semantic_t
 	{
 		uint8_t counterLoad : 7;
 		uint8_t counterHalt : 1;
@@ -204,9 +215,9 @@ union TriangleLinear
 	uint8_t raw;
 };
 
-union NoiseCtrl
+union noiseCtrl_t
 {
-	struct NoiseCtrlSemantic
+	struct semantic_t
 	{
 		uint8_t volume		: 4;
 		uint8_t isConstant	: 1;
@@ -218,22 +229,22 @@ union NoiseCtrl
 };
 
 
-union NoiseFreq1
+union noiseFreq_t
 {
-	struct NoiseFreq1Semantic
+	struct semantic_t
 	{
 		uint8_t period	: 4;
 		uint8_t unused	: 3;
-		uint8_t loop	: 1;
+		uint8_t mode	: 1;
 	} sem;
 
 	uint8_t raw;
 };
 
 
-union NoiseFreq2
+union noiseLength_t
 {
-	struct NoiseFreq2Semantic
+	struct semantic_t
 	{
 		uint8_t unused : 3;
 		uint8_t length : 5;
@@ -243,9 +254,9 @@ union NoiseFreq2
 };
 
 
-union DmcCtrl
+union dmcCtrl_t
 {
-	struct DmcCtrlSemantic
+	struct semantic_t
 	{
 		uint8_t freq		: 4;
 		uint8_t unused		: 2;
@@ -257,9 +268,9 @@ union DmcCtrl
 };
 
 
-union DmcLoad
+union dmcLoad_t
 {
-	struct DmcLoadSemantic
+	struct semantic_t
 	{
 		uint8_t counter	: 7;
 		uint8_t unused	: 1;
@@ -269,9 +280,9 @@ union DmcLoad
 };
 
 
-union Status
+union status_t
 {
-	struct StatusSemantic
+	struct semantic_t
 	{
 		uint8_t p1		: 1;
 		uint8_t p2		: 1;
@@ -287,17 +298,9 @@ union Status
 };
 
 
-template < uint16_t B >
-union Counter
+union frameCounter_t
 {
-	uint16_t count	: B;
-	uint16_t unused	: ( 16 - B );
-};
-
-
-struct FrameCounter
-{
-	struct FrameCounterSemantic
+	struct semantic_t
 	{
 		uint8_t unused		: 6;
 		uint8_t interrupt	: 1;
@@ -308,7 +311,7 @@ struct FrameCounter
 };
 
 
-struct Envelope
+struct envelope_t
 {
 	bool	startFlag;
 	uint8_t	divider;
@@ -319,10 +322,10 @@ struct Envelope
 };
 
 
-struct Sweep
+struct sweep_t
 {
-	bool		reloadFlag;
-	Counter<11>	divider;
+	bool			reloadFlag;
+	BitCounter<11>	divider;
 };
 
 
@@ -333,20 +336,21 @@ enum pulseChannel_t : uint8_t
 };
 
 class wtSampleQueue;
-struct PulseChannel
+class PulseChannel
 {
+public:
 	// TODO: record timing signals as graphs
 	pulseChannel_t	channelNum;
 
-	PulseCtrl		regCtrl;
-	PulseRamp		regRamp;
-	TimerCtrl		regTune;
-	TimerCtrl		timer;
-	Counter<11>		period;
+	pulseCtrl_t		regCtrl;
+	pulseRamp_t		regRamp;
+	timerCtrl_t		regTune;
+	timerCtrl_t		timer;
+	BitCounter<11>	period;
 	apuCycle_t		lastCycle;
 	uint8_t			sequenceStep;
-	Envelope		envelope;
-	Sweep			sweep;
+	envelope_t		envelope;
+	sweep_t			sweep;
 	uint32_t		volume;
 	wtSampleQueue	samples;
 
@@ -357,26 +361,23 @@ struct PulseChannel
 		regRamp.raw			= 0;
 		regTune.raw			= 0;
 		timer.raw			= 0;
-		envelope.decayLevel	= 0;
-		envelope.divCounter = 0;
-		envelope.divider	= 0;
-		envelope.divPeriod	= 0;
-		envelope.startFlag	= false;
-		sweep.divider.count	= 0;
+		memset( &envelope, 0, sizeof( envelope ) );
+		sweep.divider.Reload();
 		sweep.reloadFlag	= false;
 		samples.Reset();
 	}
 };
 
 
-struct TriangleChannel
+class TriangleChannel
 {
-	TriangleLinear	regLinear;
-	TimerCtrl		regTimer;
+public:
+	triangleLinear_t	regLinear;
+	timerCtrl_t		regTimer;
 	bool			reloadFlag;
-	Counter<7>		linearCounter;
-	Counter<7>		lengthCounter;
-	Counter<11>		timer;
+	BitCounter<7>	linearCounter;
+	BitCounter<7>	lengthCounter;
+	BitCounter<11>	timer;
 	uint8_t			sequenceStep;
 	cpuCycle_t		lastCycle;
 	wtSampleQueue	samples;
@@ -386,38 +387,56 @@ struct TriangleChannel
 		regLinear.raw		= 0;
 		regTimer.raw		= 0;
 		reloadFlag			= false;
-		linearCounter.count	= 0;
-		lengthCounter.count = 0;
-		timer.count			= 0;
 		sequenceStep		= 0;
 		lastCycle			= cpuCycle_t( 0 );
-		
+
+		linearCounter.Reload();
+		lengthCounter.Reload();
+		timer.Reload();
 		samples.Reset();
 	}
 };
 
 
-struct NoiseChannel
+class NoiseChannel
 {
-	NoiseCtrl	regCtrl;
-	NoiseFreq1	regFreq1;
-	NoiseFreq2	regFreq2;
+public:
+	noiseCtrl_t		regCtrl;
+	noiseFreq_t		regFreq1;
+	noiseLength_t		regFreq2;
+	BitCounter<15>	shift;
+	envelope_t		envelope;
+	BitCounter<12>	timer; // TODO: how many bits?
+	BitCounter<7>	lengthCounter; // TODO: how many bits?
+	wtSampleQueue	samples;
+	apuCycle_t		lastCycle;
 
 	void Clear()
 	{
 		regCtrl.raw		= 0;
 		regFreq1.raw	= 0;
 		regFreq2.raw	= 0;
+
+		shift.Reload( 1 );
+		memset( &envelope, 0, sizeof( envelope ) );
+		timer.Reload();
+		lengthCounter.Reload();
+		samples.Reset();
+		lastCycle = apuCycle_t( 0 );
 	}
 };
 
 
-struct DmcChannel
+class DmcChannel
 {
-	DmcCtrl	regCtrl;
-	DmcLoad	regLoad;
-	uint8_t	regAddr;
-	uint8_t	regLength;
+public:
+	dmcCtrl_t			regCtrl;
+	dmcLoad_t			regLoad;
+	uint8_t			regAddr;
+	uint8_t			regLength;
+
+	wtSampleQueue	samples;
+	apuCycle_t		lastCycle;
 
 	void Clear()
 	{
@@ -425,11 +444,14 @@ struct DmcChannel
 		regLoad.raw	= 0;
 		regAddr		= 0;
 		regLength	= 0;
+
+		samples.Reset();
+		lastCycle = apuCycle_t( 0 );
 	}
 };
 
 
-struct FrameSeqEvent
+struct frameSeqEvent_t
 {
 	uint32_t	cycle;
 	bool		clkQuarter;
@@ -440,14 +462,14 @@ struct FrameSeqEvent
 static const uint32_t FrameSeqEventCnt	= 6;
 static const uint32_t FrameSeqModeCnt	= 2;
 
-static FrameSeqEvent FrameSeqEvents[FrameSeqEventCnt][FrameSeqModeCnt] =
+static frameSeqEvent_t FrameSeqEvents[FrameSeqEventCnt][FrameSeqModeCnt] =
 {
-	FrameSeqEvent{ 7457,	true,	false,	false },	FrameSeqEvent{ 7457,	true,	false,	false },
-	FrameSeqEvent{ 14913,	true,	true,	false },	FrameSeqEvent{ 14913,	true,	true,	false },
-	FrameSeqEvent{ 22371,	true,	false,	false },	FrameSeqEvent{ 22371,	true,	false,	false },
-	FrameSeqEvent{ 29828,	false,	false,	true },		FrameSeqEvent{ 29829,	false,	false,	false },
-	FrameSeqEvent{ 29829,	true,	true,	true },		FrameSeqEvent{ 37281,	true,	true,	false },
-	FrameSeqEvent{ 29830,	false,	false,	true },		FrameSeqEvent{ 37282,	false,	false,	false },
+	frameSeqEvent_t{ 7457,	true,	false,	false },	frameSeqEvent_t{ 7457,	true,	false,	false },
+	frameSeqEvent_t{ 14913,	true,	true,	false },	frameSeqEvent_t{ 14913,	true,	true,	false },
+	frameSeqEvent_t{ 22371,	true,	false,	false },	frameSeqEvent_t{ 22371,	true,	false,	false },
+	frameSeqEvent_t{ 29828,	false,	false,	true },		frameSeqEvent_t{ 29829,	false,	false,	false },
+	frameSeqEvent_t{ 29829,	true,	true,	true },		frameSeqEvent_t{ 37281,	true,	true,	false },
+	frameSeqEvent_t{ 29830,	false,	false,	true },		frameSeqEvent_t{ 37282,	false,	false,	false },
 };
 
 
@@ -489,6 +511,13 @@ static const uint8_t LengthLUT[] =
 };
 
 
+static const uint8_t NoiseLUT[ ANALOG_MODE_COUNT ][16] =
+{
+	{ 4, 8, 16, 32, 64, 96, 128, 160, 202, 254, 380, 508, 762, 1016, 2034, 4068, }, // NTSC LUT
+	{ 4, 8, 14, 30, 60, 88, 118, 148, 188, 236, 354, 472, 708,  944, 1890, 3778, }, // PAL LUT
+};
+
+
 struct wtApuOutput
 {
 	wtSoundBuffer	dbgPulse1;
@@ -524,9 +553,9 @@ private:
 	TriangleChannel	triangle;
 	NoiseChannel	noise;
 	DmcChannel		dmc;
-	FrameCounter	frameCounter;
+	frameCounter_t	frameCounter;
 
-	Status			regStatus;
+	status_t		regStatus;
 
 	uint32_t		frameSeqTick;
 	uint8_t			frameSeqStep;
@@ -617,7 +646,7 @@ private:
 	void	ExecChannelNoise();
 	void	ExecChannelDMC();
 	void	ExecFrameCounter();
-	void	EnvelopeGenerater( PulseChannel& pulse );
+	void	EnvelopeGenerater( envelope_t& envelope, const uint8_t volume, const bool loop, const bool constant );
 	bool	IsPulseDutyHigh( const PulseChannel& pulse );
 	void	PulseSweep( PulseChannel& pulse );
 	void	PulseSequencer( PulseChannel& pulse );
@@ -625,4 +654,6 @@ private:
 	float	PulseMixer( const uint32_t pulse1, const uint32_t pulse2 );
 	float	TndMixer( const uint32_t triangle, const uint32_t noise, const uint32_t dmc );
 	void	TriSequencer();
+	void	NoiseGenerator();
+	bool	HasAllChannelSamples();
 };

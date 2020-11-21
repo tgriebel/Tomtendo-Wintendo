@@ -5,7 +5,7 @@
 
 float APU::GetPulseFrequency( PulseChannel& pulse )
 {
-	float freq = CPU_HZ / ( 16.0f * pulse.period.count + 1 );
+	float freq = CPU_HZ / ( 16.0f * pulse.period.Value() + 1 );
 	freq *= system->config.apu.frequencyScale;
 	return freq;
 }
@@ -13,7 +13,7 @@ float APU::GetPulseFrequency( PulseChannel& pulse )
 
 float APU::GetPulsePeriod( PulseChannel& pulse )
 {
-	return ( 1.0f / system->config.apu.frequencyScale ) * ( pulse.period.count );
+	return ( 1.0f / system->config.apu.frequencyScale ) * ( pulse.period.Value() );
 }
 
 
@@ -30,8 +30,6 @@ void APU::WriteReg( const uint16_t addr, const uint8_t value )
 		case 0x4008:	triangle.regLinear.raw			= value;	break;
 		case 0x400A:	triangle.regTimer.sem1.lower	= value;	break;
 		case 0x400C:	noise.regCtrl.raw				= value;	break;
-		case 0x400E:	noise.regFreq1.raw				= value;	break;
-		case 0x400F:	noise.regFreq2.raw				= value;	break;
 		case 0x4010:	dmc.regCtrl.raw					= value;	break;
 		case 0x4011:	dmc.regLoad.raw					= value;	break;
 		case 0x4012:	dmc.regAddr						= value;	break;
@@ -55,8 +53,20 @@ void APU::WriteReg( const uint16_t addr, const uint8_t value )
 		case 0x400B:
 		{
 			triangle.regTimer.sem1.upper = value;
-			triangle.lengthCounter.count = LengthLUT[value];
+			triangle.lengthCounter.Reload( LengthLUT[ triangle.regTimer.sem0.counter ] );
 			triangle.reloadFlag = true;
+		} break;
+
+		case 0x400E:
+		{
+			noise.regFreq1.raw = value;
+			noise.timer.Reload( NoiseLUT[ NTSC ][ noise.regFreq1.sem.period ] );
+		} break;
+
+		case 0x400F:
+		{
+			noise.regFreq2.raw = value;
+			noise.lengthCounter.Reload( LengthLUT[ noise.regFreq2.sem.length ] );
 		} break;
 
 		case 0x4015:
@@ -75,7 +85,7 @@ void APU::WriteReg( const uint16_t addr, const uint8_t value )
 
 			if( !regStatus.sem.t )
 			{
-				triangle.lengthCounter.count = 0;
+				triangle.lengthCounter.Reload();
 			}
 
 		} break;
@@ -97,13 +107,8 @@ void APU::WriteReg( const uint16_t addr, const uint8_t value )
 }
 
 
-void APU::EnvelopeGenerater( PulseChannel& pulse )
+void APU::EnvelopeGenerater( envelope_t& envelope, const uint8_t volume, const bool loop, const bool constant )
 {
-	Envelope& envelope		= pulse.envelope;
-	const uint8_t volume	= pulse.regCtrl.sem.volume;
-	const bool loop			= pulse.regCtrl.sem.counterHalt;
-	const bool constant		= pulse.regCtrl.sem.isConstant;
-
 	if ( system->config.apu.disableEnvelope )
 	{
 		envelope.output = volume;
@@ -154,7 +159,7 @@ void APU::PulseSweep( PulseChannel& pulse )
 	// https://wiki.nesdev.com/w/index.php/APU_Sweep
 	if( system->config.apu.disableSweep )
 	{
-		pulse.period.count = pulse.regTune.sem0.timer;
+		pulse.period.Reload( pulse.regTune.sem0.timer );
 		return;
 	}
 
@@ -166,10 +171,10 @@ void APU::PulseSweep( PulseChannel& pulse )
 	const uint8_t	period	= pulse.regRamp.sem.period;
 	const uint8_t	shift	= pulse.regRamp.sem.shift;
 	const bool		mute	= false; // TODO: implement
-	const bool		isZero	= ( pulse.sweep.divider.count == 0 );
+	const bool		isZero	= pulse.sweep.divider.IsZero();
 
 	bool& reload = pulse.sweep.reloadFlag;
-	Sweep& sweep = pulse.sweep;
+	sweep_t& sweep = pulse.sweep;
 
 	if( isZero && enabled && !mute )
 	{
@@ -177,21 +182,21 @@ void APU::PulseSweep( PulseChannel& pulse )
 		change *= negate ? -1 : 1;
 		change -= ( pulse.channelNum == PULSE_1 ) ? 1 : 0;
 
-		pulse.period.count = pulse.regTune.sem0.timer + change;
+		pulse.period.Reload( pulse.regTune.sem0.timer + change );
 	}
 	else
 	{
-		pulse.period.count = pulse.regTune.sem0.timer;
+		pulse.period.Reload( pulse.regTune.sem0.timer );
 	}
 
 	if ( isZero || reload )
 	{
-		sweep.divider.count = period;
+		sweep.divider.Reload( period );
 		reload = false;
 	}
 	else
 	{
-		sweep.divider.count--;
+		sweep.divider.Dec();
 	}
 }
 
@@ -204,17 +209,17 @@ bool APU::IsPulseDutyHigh( const PulseChannel& pulse )
 
 void APU::PulseSequencer( PulseChannel& pulse )
 {
-	const int samples = ( apuCycle - pulse.lastCycle ).count();
+	const int sampleCnt = ( apuCycle - pulse.lastCycle ).count();
 	float volume = pulse.envelope.output;
 
-	if( pulse.period.count < 8 )
+	if( pulse.period.Value() < 8 )
 	{
 		volume = 0;
 	}
 
 	const float amplitude = volume;
 
-	for ( int sample = 0; sample < samples; sample++ )
+	for ( int sample = 0; sample < sampleCnt; sample++ )
 	{
 		const float pulseSample = IsPulseDutyHigh( pulse ) ? amplitude : 0;
 		if ( pulse.timer.sem0.counter == 0 )
@@ -235,7 +240,7 @@ void APU::PulseSequencer( PulseChannel& pulse )
 void APU::ExecPulseChannel( PulseChannel& pulse )
 {
 	PulseSweep( pulse );
-	EnvelopeGenerater( pulse );
+	EnvelopeGenerater( pulse.envelope, pulse.regCtrl.sem.volume, pulse.regCtrl.sem.counterHalt, pulse.regCtrl.sem.isConstant );
 
 	pulse.timer.sem0.timer--;
 	if ( halfClk && !pulse.regCtrl.sem.counterHalt )
@@ -245,7 +250,7 @@ void APU::ExecPulseChannel( PulseChannel& pulse )
 	
 	if ( pulse.timer.sem0.timer == 0 )
 	{
-		pulse.timer.sem0.timer = pulse.period.count;
+		pulse.timer.sem0.timer = pulse.period.Value();
 		PulseSequencer( pulse );
 
 		// pulse->volume = pulse->regCtrl.sem.volume;
@@ -255,13 +260,13 @@ void APU::ExecPulseChannel( PulseChannel& pulse )
 
 void APU::TriSequencer()
 {
-	const int samples = ( cpuCycle - triangle.lastCycle ).count();
+	const int sampleCnt = ( cpuCycle - triangle.lastCycle ).count();
 
 	bool isSeqHalted = false;
-	isSeqHalted |= triangle.lengthCounter.count == 0;
-	isSeqHalted |= triangle.linearCounter.count == 0;
+	isSeqHalted |= triangle.lengthCounter.IsZero();
+	isSeqHalted |= triangle.linearCounter.IsZero();
 
-	for ( int sample = 0; sample < samples; sample++ )
+	for ( int sample = 0; sample < sampleCnt; sample++ )
 	{
 		if( !regStatus.sem.t )
 		{
@@ -288,16 +293,16 @@ void APU::ExecChannelTri()
 	{
 		if( triangle.reloadFlag )
 		{
-			triangle.linearCounter.count = triangle.regLinear.sem.counterLoad;
+			triangle.linearCounter.Reload( triangle.regLinear.sem.counterLoad );
 		}
-		else if ( triangle.linearCounter.count > 0 )
+		else if ( !triangle.linearCounter.IsZero() )
 		{
-			triangle.linearCounter.count--;
+			triangle.linearCounter.Dec();
 		}
 
-		if ( triangle.lengthCounter.count > 0 && !triangle.regLinear.sem.counterHalt )
+		if ( !triangle.lengthCounter.IsZero() && !triangle.regLinear.sem.counterHalt )
 		{
-			triangle.lengthCounter.count--;
+			triangle.lengthCounter.Dec();
 		}
 
 		if( !triangle.regLinear.sem.counterHalt )
@@ -308,21 +313,65 @@ void APU::ExecChannelTri()
 
 	if( triangle.regLinear.sem.counterHalt )
 	{
-		triangle.lengthCounter.count = 0;
+		triangle.lengthCounter.Reload();
 	}
 
-	triangle.timer.count--;
-	if ( triangle.timer.count == 0 )
+	triangle.timer.Dec();
+	if ( triangle.timer.IsZero() )
 	{
 		TriSequencer();
-		triangle.timer.count = triangle.regTimer.sem0.timer;
+		triangle.timer.Reload( 1 + triangle.regTimer.sem0.timer );
 	}
+}
+
+
+void APU::NoiseGenerator()
+{
+	const uint16_t shiftValue = noise.shift.Value();
+	const uint16_t bitMask = noise.regFreq1.sem.mode ? BIT_MASK_6 : BIT_MASK_1;
+	const uint16_t bitShift = noise.regFreq1.sem.mode ? BIT_6 : BIT_1;
+	const uint16_t feedback = ( shiftValue & 0x01 ) ^ ( ( shiftValue & bitMask ) >> bitShift );
+	const uint16_t newShift = ( shiftValue >> 1 ) | ( feedback << BIT_14 );
+
+	noise.shift.Reload( newShift );
+
+	const uint8_t volume = noise.envelope.output;
+
+	const int sampleCnt = ( apuCycle - noise.lastCycle ).count();
+	for ( int sample = 0; sample < sampleCnt; sample++ )
+	{
+		if ( noise.lengthCounter.IsZero() || ( noise.shift.Value() & 0x01 ) )
+		{
+			noise.samples.Enque( 0.0f );
+		}
+		else
+		{
+			noise.samples.Enque( volume );
+		}
+	}
+
+	noise.lastCycle = apuCycle;
 }
 
 
 void APU::ExecChannelNoise()
 {
+	EnvelopeGenerater( noise.envelope, noise.regCtrl.sem.volume, noise.regCtrl.sem.counterHalt, noise.regCtrl.sem.isConstant );
 
+	if ( quarterClk )
+	{
+		if ( !noise.lengthCounter.IsZero() && !noise.regCtrl.sem.counterHalt )
+		{
+			noise.lengthCounter.Dec();
+		}
+	}
+
+	noise.timer.Dec();
+	if ( noise.timer.IsZero() )
+	{
+		NoiseGenerator();
+		noise.timer.Reload( NoiseLUT[NTSC][ noise.regFreq1.sem.period ] );
+	}
 }
 
 
@@ -339,7 +388,7 @@ void APU::ExecFrameCounter()
 	irqClk		= false;
 
 	const uint32_t mode = frameCounter.sem.mode;
-	FrameSeqEvent& event = FrameSeqEvents[frameSeqStep][mode];
+	frameSeqEvent_t& event = FrameSeqEvents[frameSeqStep][mode];
 	if( frameSeqTick == event.cycle )
 	{
 		halfClk		= event.clkHalf;
@@ -430,16 +479,29 @@ void APU::Begin()
 }
 
 
+bool APU::HasAllChannelSamples()
+{
+	bool hasSamples = true;
+	hasSamples = hasSamples && !pulse1.samples.IsEmpty();
+	hasSamples = hasSamples && !pulse2.samples.IsEmpty();
+	hasSamples = hasSamples && ( triangle.samples.GetSampleCnt() > 1 );
+	hasSamples = hasSamples && !noise.samples.IsEmpty();
+	// hasSamples = hasSamples && !dmc.samples.IsEmpty();
+
+	return hasSamples;
+}
+
+
 void APU::End()
 {
-	while( !pulse1.samples.IsEmpty() && !pulse2.samples.IsEmpty() && ( triangle.samples.GetSampleCnt() > 1 ) )
+	while( HasAllChannelSamples() )
 	{
 		// This doubles up samples from channels other than the triangle channel (which runs at 2x frequency)
 		float pulse1Sample			= pulse1.samples.Deque();
 		float pulse2Sample			= pulse2.samples.Deque();
 		float triSample1			= triangle.samples.Deque();
 		float triSample2			= triangle.samples.Deque();
-		float noiseSample			= 0;
+		float noiseSample			= noise.samples.Deque();
 		float dmcSample				= 0;
 
 		pulse1Sample				= ( system->config.apu.mutePulse1	)	? 0.0f : pulse1Sample;
