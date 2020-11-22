@@ -198,7 +198,7 @@ bool wtSystem::MouseInRegion( const wtRect& region ) // TODO: draft code, kill l
 }
 
 
-uint8_t wtSystem::GetMemory( const uint16_t address )
+uint8_t wtSystem::ReadMemory( const uint16_t address )
 {
 	if ( IsPpuRegister( address ) )
 	{
@@ -210,7 +210,7 @@ uint8_t wtSystem::GetMemory( const uint16_t address )
 		const uint32_t controllerIndex = ( address - InputRegister0 );
 		const ControllerId controllerId = static_cast<ControllerId>( controllerIndex );
 
-		controllerBuffer[controllerIndex] = 0; // FIXME: this register is a hack to get around bad GetMemory func design
+		controllerBuffer[controllerIndex] = 0; // FIXME: this register is no longer needed since func returns value now
 
 		if ( strobeOn )
 		{
@@ -233,6 +233,43 @@ uint8_t wtSystem::GetMemory( const uint16_t address )
 	else
 	{
 		return memory[MirrorAddress( address )];
+	}
+}
+
+
+void wtSystem::WriteMemory( const uint16_t address, const uint16_t offset, const uint8_t value )
+{
+	if ( IsPpuRegister( address ) )
+	{
+		ppu.WriteReg( address, value );
+	}
+	else if ( wtSystem::IsApuRegister( address ) )
+	{
+		apu.WriteReg( address, value );
+	}
+	else if ( wtSystem::IsDMA( address ) )
+	{
+		ppu.OAMDMA( value );
+	}
+	else if ( address == wtSystem::InputRegister0 )
+	{
+		const bool prevStrobeOn = strobeOn;
+		strobeOn = ( value & 0x01 );
+
+		if ( prevStrobeOn && !strobeOn )
+		{
+			btnShift[0] = 0;
+			btnShift[1] = 0;
+		}
+	}
+	else if ( cart.mapper->InWriteWindow( address, offset ) )
+	{
+		cart.mapper->Write( address, offset, value );
+	}
+	else
+	{
+		const uint32_t fullAddr = address + offset;
+		WritePhysicalMemory( fullAddr, value );
 	}
 }
 

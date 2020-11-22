@@ -426,11 +426,11 @@ OP_DEF( JMPI )
 	{
 		const uint16_t addr1 = Combine( 0x00, ReadOperand( 1 ) );
 
-		PC = ( Combine( system->GetMemory( addr0 ), system->GetMemory( addr1 ) ) );
+		PC = ( Combine( system->ReadMemory( addr0 ), system->ReadMemory( addr1 ) ) );
 	}
 	else
 	{
-		PC = ( Combine( system->GetMemory( addr0 ), system->GetMemory( addr0 + 1 ) ) );
+		PC = ( Combine( system->ReadMemory( addr0 ), system->ReadMemory( addr0 + 1 ) ) );
 	}
 
 	DEBUG_ADDR_JMPI

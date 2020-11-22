@@ -7,7 +7,7 @@
 		dbgInfo.addrMode = ( &reg == &X ) ? AddrMode::IndexedAbsoluteX : AddrMode::IndexedAbsoluteY; \
 		dbgInfo.address = address; \
 		dbgInfo.targetAddress = targetAddress; \
-		dbgInfo.memValue = system->GetMemory( address ); \
+		dbgInfo.memValue = system->ReadMemory( address ); \
 		dbgInfo.isXReg = ( &reg == &X ); \
 	}
 
@@ -17,7 +17,7 @@
 		dbgInfo.addrMode = ( &reg == &X ) ? AddrMode::IndexedAbsoluteX : AddrMode::IndexedAbsoluteY; \
 		dbgInfo.address = address; \
 		dbgInfo.targetAddress = targetAddress; \
-		dbgInfo.memValue = system->GetMemory( address ); \
+		dbgInfo.memValue = system->ReadMemory( address ); \
 		dbgInfo.isXReg = ( &reg == &X ); \
 	}
 
@@ -26,7 +26,7 @@
 		InstrDebugInfo& dbgInfo = cpu.dbgMetrics.back(); \
 		dbgInfo.addrMode = AddrMode::Zero; \
 		dbgInfo.address = address; \
-		dbgInfo.memValue = cpu.system->GetMemory( address ); \
+		dbgInfo.memValue = cpu.system->ReadMemory( address ); \
 	}
 
 #define DEBUG_ADDR_ABS if( cpu.logFrameCount > 0 ) \
@@ -34,7 +34,7 @@
 		InstrDebugInfo& dbgInfo = cpu.dbgMetrics.back(); \
 		dbgInfo.addrMode = AddrMode::Absolute; \
 		dbgInfo.address = address; \
-		dbgInfo.memValue = cpu.system->GetMemory( address ); \
+		dbgInfo.memValue = cpu.system->ReadMemory( address ); \
 	}
 
 #define DEBUG_ADDR_IMMEDIATE if( cpu.logFrameCount > 0 ) \
@@ -50,7 +50,7 @@
 		InstrDebugInfo& dbgInfo = cpu.dbgMetrics.back(); \
 		dbgInfo.addrMode = AddrMode::IndirectIndexed; \
 		dbgInfo.address = address; \
-		dbgInfo.memValue = cpu.system->GetMemory( offset ); \
+		dbgInfo.memValue = cpu.system->ReadMemory( offset ); \
 		dbgInfo.operand = cpu.ReadOperand( 0 ); \
 		dbgInfo.offset = offset; \
 	}
@@ -60,7 +60,7 @@
 		InstrDebugInfo& dbgInfo = cpu.dbgMetrics.back(); \
 		dbgInfo.addrMode = AddrMode::IndexedIndirect; \
 		dbgInfo.address = address; \
-		dbgInfo.memValue = cpu.system->GetMemory( address ); \
+		dbgInfo.memValue = cpu.system->ReadMemory( address ); \
 		dbgInfo.operand = cpu.ReadOperand( 0 ); \
 		dbgInfo.targetAddress = targetAddress; \
 	}

@@ -139,7 +139,8 @@ public:
 	}
 
 	uint8_t&	GetStack();
-	uint8_t		GetMemory( const uint16_t address );
+	uint8_t		ReadMemory( const uint16_t address );
+	void		WriteMemory( const uint16_t address, const uint16_t offset, const uint8_t value );
 	void		WritePhysicalMemory( const uint16_t address, const uint8_t value );
 	uint16_t	MirrorAddress( const uint16_t address );
 	uint8_t		GetMapperId();

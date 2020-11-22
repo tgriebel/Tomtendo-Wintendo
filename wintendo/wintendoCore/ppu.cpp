@@ -68,7 +68,7 @@ void PPU::DMA( const uint16_t address )
 {
 	for( uint32_t i = 0; i < wtSystem::PageSize; ++i )
 	{
-		primaryOAM[i] = system->GetMemory( i + wtSystem::PageSize * static_cast<uint8_t>( address ) );
+		primaryOAM[i] = system->ReadMemory( i + wtSystem::PageSize * static_cast<uint8_t>( address ) );
 	}
 }
 
