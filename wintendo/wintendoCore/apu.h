@@ -197,8 +197,8 @@ union timerCtrl_t
 
 	struct semantic1_t
 	{
-		uint16_t lower : 8;
-		uint16_t upper : 8;
+		uint16_t lower		: 8;
+		uint16_t upper		: 8;
 	} sem1;
 
 	uint16_t raw;
@@ -335,24 +335,25 @@ enum pulseChannel_t : uint8_t
 	PULSE_2 = 2,
 };
 
-class wtSampleQueue;
+
 class PulseChannel
 {
 public:
 	// TODO: record timing signals as graphs
-	pulseChannel_t	channelNum;
+	pulseChannel_t		channelNum;
 
-	pulseCtrl_t		regCtrl;
-	pulseRamp_t		regRamp;
-	timerCtrl_t		regTune;
-	timerCtrl_t		timer;
-	BitCounter<11>	period;
-	apuCycle_t		lastCycle;
-	uint8_t			sequenceStep;
-	envelope_t		envelope;
-	sweep_t			sweep;
-	uint32_t		volume;
-	wtSampleQueue	samples;
+	pulseCtrl_t			regCtrl;
+	pulseRamp_t			regRamp;
+	timerCtrl_t			regTune;
+	timerCtrl_t			timer;
+	BitCounter<11>		period;
+	apuCycle_t			lastCycle;
+	uint8_t				sequenceStep;
+	envelope_t			envelope;
+	sweep_t				sweep;
+	uint32_t			volume;
+	wtSampleQueue		samples;
+	bool				mute;
 
 	void Clear()
 	{
@@ -365,6 +366,8 @@ public:
 		sweep.divider.Reload();
 		sweep.reloadFlag	= false;
 		samples.Reset();
+
+		mute = true;
 	}
 };
 
@@ -373,27 +376,30 @@ class TriangleChannel
 {
 public:
 	triangleLinear_t	regLinear;
-	timerCtrl_t		regTimer;
-	bool			reloadFlag;
-	BitCounter<7>	linearCounter;
-	BitCounter<7>	lengthCounter;
-	BitCounter<11>	timer;
-	uint8_t			sequenceStep;
-	cpuCycle_t		lastCycle;
-	wtSampleQueue	samples;
+	timerCtrl_t			regTimer;
+	bool				reloadFlag;
+	BitCounter<7>		linearCounter;
+	BitCounter<7>		lengthCounter;
+	BitCounter<11>		timer;
+	uint8_t				sequenceStep;
+	cpuCycle_t			lastCycle;
+	wtSampleQueue		samples;
+	bool				mute;
 
 	void Clear()
 	{
-		regLinear.raw		= 0;
-		regTimer.raw		= 0;
-		reloadFlag			= false;
-		sequenceStep		= 0;
-		lastCycle			= cpuCycle_t( 0 );
+		regLinear.raw	= 0;
+		regTimer.raw	= 0;
+		reloadFlag		= false;
+		sequenceStep	= 0;
+		lastCycle		= cpuCycle_t( 0 );
 
 		linearCounter.Reload();
 		lengthCounter.Reload();
 		timer.Reload();
 		samples.Reset();
+
+		mute = true;
 	}
 };
 
@@ -401,15 +407,16 @@ public:
 class NoiseChannel
 {
 public:
-	noiseCtrl_t		regCtrl;
-	noiseFreq_t		regFreq1;
+	noiseCtrl_t			regCtrl;
+	noiseFreq_t			regFreq1;
 	noiseLength_t		regFreq2;
-	BitCounter<15>	shift;
-	envelope_t		envelope;
-	BitCounter<12>	timer; // TODO: how many bits?
-	BitCounter<7>	lengthCounter; // TODO: how many bits?
-	wtSampleQueue	samples;
-	apuCycle_t		lastCycle;
+	BitCounter<15>		shift;
+	envelope_t			envelope;
+	BitCounter<12>		timer; // TODO: how many bits?
+	BitCounter<7>		lengthCounter; // TODO: how many bits?
+	wtSampleQueue		samples;
+	apuCycle_t			lastCycle;
+	bool				mute;
 
 	void Clear()
 	{
@@ -423,6 +430,8 @@ public:
 		lengthCounter.Reload();
 		samples.Reset();
 		lastCycle = apuCycle_t( 0 );
+
+		mute = true;
 	}
 };
 
@@ -432,11 +441,13 @@ class DmcChannel
 public:
 	dmcCtrl_t			regCtrl;
 	dmcLoad_t			regLoad;
-	uint8_t			regAddr;
-	uint8_t			regLength;
+	uint8_t				regAddr;
+	uint8_t				regLength;
 
-	wtSampleQueue	samples;
-	apuCycle_t		lastCycle;
+	wtSampleQueue		samples;
+	apuCycle_t			lastCycle;
+	bool				irq;
+	bool				mute;
 
 	void Clear()
 	{
@@ -447,6 +458,9 @@ public:
 
 		samples.Reset();
 		lastCycle = apuCycle_t( 0 );
+
+		irq = false;
+		mute = true;
 	}
 };
 
@@ -495,7 +509,7 @@ static const uint8_t PulseLUT[4][8] =
 };
 
 
-static const uint8_t SawLUT[32] =
+static const uint8_t TriLUT[32] =
 {
 	0x0F, 0x0E, 0x0D, 0x0C, 0x0B, 0x0A,	0x09, 0x08,
 	0x07, 0x06, 0x05, 0x04,	0x03, 0x02, 0x01, 0x00,
@@ -515,6 +529,13 @@ static const uint8_t NoiseLUT[ ANALOG_MODE_COUNT ][16] =
 {
 	{ 4, 8, 16, 32, 64, 96, 128, 160, 202, 254, 380, 508, 762, 1016, 2034, 4068, }, // NTSC LUT
 	{ 4, 8, 14, 30, 60, 88, 118, 148, 188, 236, 354, 472, 708,  944, 1890, 3778, }, // PAL LUT
+};
+
+
+static const uint8_t DmcLUT[ANALOG_MODE_COUNT][16] =
+{
+	{ 428, 380, 340, 320, 286, 254, 226, 214, 190, 160, 142, 128, 106,  84,  72,  54 }, // NTSC LUT
+	{ 398, 354, 316, 298, 276, 236, 210, 198, 176, 148, 132, 118,  98,  78,  66,  50 }, // PAL LUT
 };
 
 
@@ -635,6 +656,7 @@ public:
 	void	End();
 	bool	Step( const cpuCycle_t& nextCpuCycle );
 	void	WriteReg( const uint16_t addr, const uint8_t value );
+	uint8_t	ReadReg( const uint16_t addr );
 
 	float	GetPulseFrequency( PulseChannel& pulse );
 	float	GetPulsePeriod( PulseChannel& pulse );
@@ -655,5 +677,6 @@ private:
 	float	TndMixer( const uint32_t triangle, const uint32_t noise, const uint32_t dmc );
 	void	TriSequencer();
 	void	NoiseGenerator();
+	void	DmcGenerator();
 	bool	HasAllChannelSamples();
 };

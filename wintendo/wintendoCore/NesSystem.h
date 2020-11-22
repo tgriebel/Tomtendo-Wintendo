@@ -44,9 +44,10 @@ public:
 
 	// Register locations
 	static const uint16_t PpuRegisterBase		= 0x2000;
-	static const uint16_t PpuRegisterEnd		= 0x4000;
+	static const uint16_t PpuRegisterEnd		= 0x3FFF;
 	static const uint16_t ApuRegisterBase		= 0x4000;
 	static const uint16_t ApuRegisterEnd		= 0x4015;
+	static const uint16_t ApuRegisterStatus		= 0x4015;
 	static const uint16_t ApuRegisterCounter	= 0x4017;
 	static const uint16_t PpuOamDma				= 0x4014;
 	static const uint16_t InputRegister0		= 0x4016;

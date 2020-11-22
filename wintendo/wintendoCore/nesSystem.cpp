@@ -136,13 +136,13 @@ bool wtSystem::IsInputRegister( const uint16_t address )
 
 bool wtSystem::IsPpuRegister( const uint16_t address )
 {
-	return ( address >= PpuRegisterBase ) && ( address < PpuRegisterEnd );
+	return ( ( address >= PpuRegisterBase ) && ( address <= PpuRegisterEnd ) );
 }
 
 
 bool wtSystem::IsApuRegister( const uint16_t address )
 {
-	return ( address >= ApuRegisterBase ) && ( address < ApuRegisterEnd ) && ( address != PpuOamDma );
+	return ( ( address >= ApuRegisterBase ) && ( address <= ApuRegisterEnd ) && ( address != PpuOamDma ) );
 }
 
 
@@ -228,7 +228,7 @@ uint8_t wtSystem::GetMemory( const uint16_t address )
 	}
 	else if ( IsApuRegister( address ) )
 	{
-		return apuDummyRegister;
+		return apu.ReadReg( address );
 	}
 	else
 	{

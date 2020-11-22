@@ -73,20 +73,37 @@ void APU::WriteReg( const uint16_t addr, const uint8_t value )
 		{
 			regStatus.raw = value;
 
-			if ( !regStatus.sem.p1 )
+			pulse1.mute		= !regStatus.sem.p1;
+			pulse2.mute		= !regStatus.sem.p2;
+			triangle.mute	= !regStatus.sem.t;
+			noise.mute		= !regStatus.sem.n;
+			dmc.mute		= !regStatus.sem.d;
+
+			if ( pulse1.mute )
 			{
 				pulse1.timer.sem0.counter = 0;
 			}
 
-			if ( !regStatus.sem.p2 )
+			if ( pulse2.mute )
 			{
 				pulse2.timer.sem0.counter = 0;
 			}
 
-			if( !regStatus.sem.t )
+			if( triangle.mute )
 			{
 				triangle.lengthCounter.Reload();
 			}
+
+			if ( noise.mute )
+			{
+				noise.lengthCounter.Reload();
+			}
+
+			if ( dmc.mute )
+			{
+			}
+
+			dmc.irq = false;
 
 		} break;
 
@@ -104,6 +121,28 @@ void APU::WriteReg( const uint16_t addr, const uint8_t value )
 		} break;
 		default: break;
 	}
+}
+
+
+uint8_t APU::ReadReg( const uint16_t addr )
+{
+	if( addr != wtSystem::ApuRegisterStatus ) {
+		return 0;
+	}
+
+	// TODO:
+	// Status ($4015) -- https://wiki.nesdev.com/w/index.php/APU
+	//	N / T / 2 / 1 will read as 1 if the corresponding length counter is greater than 0. For the triangle channel, the status of the linear counter is irrelevant.
+	//	D will read as 1 if the DMC bytes remaining is more than 0.
+	//	Reading this register clears the frame interrupt flag( but not the DMC interrupt flag ).
+	//	If an interrupt flag was set at the same moment of the read, it will read back as 1 but it will not be cleared.
+
+	status_t result;
+	result.sem.p1 = ( pulse1.timer.sem0.counter > 0 );
+	result.sem.p2 = ( pulse2.timer.sem0.counter > 0 );
+	result.sem.n = !noise.lengthCounter.IsZero();
+
+	return result.raw;
 }
 
 
@@ -222,7 +261,7 @@ void APU::PulseSequencer( PulseChannel& pulse )
 	for ( int sample = 0; sample < sampleCnt; sample++ )
 	{
 		const float pulseSample = IsPulseDutyHigh( pulse ) ? amplitude : 0;
-		if ( pulse.timer.sem0.counter == 0 )
+		if ( ( pulse.timer.sem0.counter == 0 ) || pulse.mute )
 		{
 			pulse.samples.Enque( 0 );
 		}
@@ -268,13 +307,13 @@ void APU::TriSequencer()
 
 	for ( int sample = 0; sample < sampleCnt; sample++ )
 	{
-		if( !regStatus.sem.t )
+		if( triangle.mute )
 		{
 			triangle.samples.Enque( 0.0f );
 		}
 		else
 		{
-			triangle.samples.Enque( SawLUT[ triangle.sequenceStep ] );
+			triangle.samples.Enque( TriLUT[ triangle.sequenceStep ] );
 		}
 	}
 
@@ -340,7 +379,7 @@ void APU::NoiseGenerator()
 	const int sampleCnt = ( apuCycle - noise.lastCycle ).count();
 	for ( int sample = 0; sample < sampleCnt; sample++ )
 	{
-		if ( noise.lengthCounter.IsZero() || ( noise.shift.Value() & 0x01 ) )
+		if ( noise.lengthCounter.IsZero() || ( noise.shift.Value() & 0x01 ) || noise.mute )
 		{
 			noise.samples.Enque( 0.0f );
 		}
@@ -375,9 +414,26 @@ void APU::ExecChannelNoise()
 }
 
 
+void APU::DmcGenerator()
+{
+	const int sampleCnt = ( apuCycle - dmc.lastCycle ).count();
+	for ( int sample = 0; sample < sampleCnt; sample++ )
+	{
+		dmc.samples.Enque( 0.0f );
+	}
+
+	dmc.lastCycle = apuCycle;
+}
+
+
 void APU::ExecChannelDMC()
 {
-
+	// if cpuCycle % dmc_table[r]
+	// then generate
+	// Sample address = % 11AAAAAA.AA000000 = $C000 + ( A * 64 )
+	// ( 0xC000 | ( address << 6 ) ) & 0xFFC0
+	// Sample length = %LLLL.LLLL0001 = (L * 16) + 1 bytes
+	// ( 0x01 | ( address << 4 ) )
 }
 
 
