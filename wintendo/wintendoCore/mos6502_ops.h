@@ -1,9 +1,8 @@
-#include "stdafx.h"
-#include <assert.h>
-#include "common.h"
-#include "debug.h"
-#include "mos6502.h"
-#include "NesSystem.h"
+//////////////////////////////////////////////////////////////////////////////////
+//																				//
+// WARNING: THIS FILE IS MEANT TO BE USED AS A PLAIN-TEXT PREPROCESSOR INCLUDE	//
+//																				//
+//////////////////////////////////////////////////////////////////////////////////
 
 OP_DEF( SEC )
 {
@@ -336,19 +335,8 @@ OP_DEF( JMP )
 
 OP_DEF( JMPI )
 {
-	const uint16_t addr0 = ReadAddressOperand();
-
-	// Hardware bug - http://wiki.nesdev.com/w/index.php/Errata
-	if ( ( addr0 & 0xff ) == 0xff )
-	{
-		const uint16_t addr1 = Combine( 0x00, ReadOperand( 1 ) );
-
-		PC = ( Combine( system->ReadMemory( addr0 ), system->ReadMemory( addr1 ) ) );
-	}
-	else
-	{
-		PC = ( Combine( system->ReadMemory( addr0 ), system->ReadMemory( addr0 + 1 ) ) );
-	}
+	const uint16_t addr = ReadAddressOperand();
+	PC = JumpImmediateAddr( addr );
 
 	DEBUG_ADDR_JMPI
 }
@@ -490,7 +478,7 @@ OP_DEF( SKW )
 }
 
 
-inline void Cpu6502::BuildOpLUT()
+void BuildOpLUT()
 {
 	OP( 0x00, BRK, 0, 7 )
 	OP_ADDR( 0x01, ORA, IndexedIndirect, 1, 6 )

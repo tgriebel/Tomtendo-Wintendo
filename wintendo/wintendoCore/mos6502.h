@@ -4,7 +4,9 @@
 #include <string>
 #include <sstream>
 #include <vector>
+#include <assert.h>
 #include "common.h"
+#include "debug.h"
 
 typedef uint8_t StatusBit;
 
@@ -46,9 +48,9 @@ struct IntrInfo
 };
 
 #define OP_DECL(name)	template <class AddrModeT> \
-						void name##();
+						void name();
 #define OP_DEF(name)	template <class AddrModeT> \
-						void Cpu6502::##name()
+						void name()
 
 #define ADDR_MODE_DECL(name)	struct AddrMode##name \
 								{ \
@@ -362,73 +364,9 @@ public:
 	bool Step( const cpuCycle_t& nextCycle );
 
 private:
+	#include "mos6502_ops.h"
 
-	OP_DECL( Illegal )
-	OP_DECL( STA )
-	OP_DECL( STX )
-	OP_DECL( STY )
-	OP_DECL( LDA )
-	OP_DECL( LDX )
-	OP_DECL( LDY )
-	OP_DECL( TXS )
-	OP_DECL( TAX )
-	OP_DECL( TAY )
-	OP_DECL( TSX )
-	OP_DECL( TYA )
-	OP_DECL( TXA )
-	OP_DECL( INX )
-	OP_DECL( INY )
-	OP_DECL( DEX )
-	OP_DECL( DEY )
-	OP_DECL( INC )
-	OP_DECL( DEC )
-	OP_DECL( ADC )
-	OP_DECL( SBC )
-	OP_DECL( CMP )
-	OP_DECL( CPX )
-	OP_DECL( CPY )
-	OP_DECL( PHP )
-	OP_DECL( PHA )
-	OP_DECL( PLA )
-	OP_DECL( PLP )
-	OP_DECL( SEC )
-	OP_DECL( SEI )
-	OP_DECL( SED )
-	OP_DECL( CLI )
-	OP_DECL( CLC )
-	OP_DECL( CLV )
-	OP_DECL( CLD )
-
-	OP_DECL( ASL )
-	OP_DECL( AND )
-	OP_DECL( BIT )
-	OP_DECL( EOR )
-	OP_DECL( LSR )
-	OP_DECL( ORA )
-	OP_DECL( ROL )
-	OP_DECL( ROR )
-
-	OP_DECL( BRK )
-	OP_DECL( JMP )
-	OP_DECL( JMPI )
-	OP_DECL( JSR )
-	OP_DECL( RTS )
-	OP_DECL( RTI )
-
-	OP_DECL( BMI )
-	OP_DECL( BVS )
-	OP_DECL( BCS )
-	OP_DECL( BEQ )
-	OP_DECL( BPL )
-	OP_DECL( BVC )
-	OP_DECL( BCC )
-	OP_DECL( BNE )
-
-	OP_DECL( NOP )
-
-	OP_DECL( SKB )
-	OP_DECL( SKW )
-
+	// Special due to system memory access. Causes linker issues.
 	ADDR_MODE_DECL( None )
 	ADDR_MODE_DECL( Absolute )
 	ADDR_MODE_DECL( Zero )
@@ -440,6 +378,7 @@ private:
 	ADDR_MODE_DECL( IndexedAbsoluteY )
 	ADDR_MODE_DECL( IndexedZeroX )
 	ADDR_MODE_DECL( IndexedZeroY )
+	uint16_t JumpImmediateAddr( const uint16_t addr );
 
 	cpuCycle_t	Exec();
 
@@ -477,5 +416,4 @@ private:
 	void		Write( const uint8_t value );
 
 	cpuCycle_t	OpLookup( const uint16_t instrBegin, const uint8_t opCode );
-	void		BuildOpLUT();
 };
