@@ -210,15 +210,15 @@ public:
 	const RGBA*		palette;
 	uint8_t			vram[VirtualMemorySize];
 
+	ppuCycle_t		scanelineCycle;
+	int				currentScanline = 0;
+
 private:
 	PpuCtrl			regCtrl;
 	PpuMask			regMask;
 	PpuStatus		regStatus;
 
 	wtPoint			beamPosition;
-
-	ppuCycle_t		scanelineCycle;
-	int				currentScanline = 0;
 
 	bool			debugPrefetchTiles = false;
 

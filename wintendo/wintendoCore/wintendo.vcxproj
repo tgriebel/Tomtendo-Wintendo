@@ -183,6 +183,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="apu.cpp" />
+    <ClCompile Include="debug.cpp" />
     <ClCompile Include="mos6502.cpp" />
     <ClCompile Include="bitmap.cpp" />
     <ClCompile Include="nesSystem.cpp" />

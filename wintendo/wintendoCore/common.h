@@ -15,10 +15,10 @@
 #include <thread> // TODO: remove for testing
 #include <chrono>
 
-#define NES_MODE (1)
-#define DEBUG_MODE (1)
-#define DEBUG_ADDR (0)
-#define MIRROR_OPTIMIZATION (1)
+#define NES_MODE			(1)
+#define DEBUG_MODE			(1)
+#define DEBUG_ADDR			(1)
+#define MIRROR_OPTIMIZATION	(1)
 
 inline constexpr uint8_t operator "" _b( uint64_t arg ) noexcept
 {

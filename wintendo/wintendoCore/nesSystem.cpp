@@ -52,7 +52,7 @@ void wtSystem::DebugPrintFlushLog()
 #if DEBUG_ADDR == 1
 	if ( cpu.logFrameCount == 0 )
 	{
-		for( InstrDebugInfo& dbgInfo : cpu.dbgMetrics )
+		for( OpDebugInfo& dbgInfo : cpu.dbgMetrics )
 		{
 			string dbgString;
 			dbgInfo.ToString( dbgString );

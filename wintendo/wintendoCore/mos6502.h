@@ -16,7 +16,7 @@ struct DisassemblerMapTuple;
 class wtSystem;
 struct cpuAddrInfo_t;
 
-enum struct AddrMode : uint8_t
+enum struct addrMode_t : uint8_t
 {
 	None,
 	Absolute,
@@ -50,22 +50,22 @@ struct opInfo_t
 #define OP_DEF(name)	template <class AddrModeT> \
 						void name()
 
-#define ADDR_MODE_DECL(name)	struct AddrMode##name \
+#define ADDR_MODE_DECL(name)	struct addrMode_t##name \
 								{ \
-									static const AddrMode addrMode = AddrMode::##name; \
+									static const addrMode_t addrMode = addrMode_t::##name; \
 									Cpu6502& cpu; \
-									AddrMode##name( Cpu6502& cpui ) : cpu( cpui ) {}; \
+									addrMode_t##name( Cpu6502& cpui ) : cpu( cpui ) {}; \
 									inline void operator()( cpuAddrInfo_t& addrInfo ); \
 								};
 
-#define ADDR_MODE_DEF(name)	void Cpu6502::AddrMode##name::operator()( cpuAddrInfo_t& addrInfo )
+#define ADDR_MODE_DEF(name)	void Cpu6502::addrMode_t##name::operator()( cpuAddrInfo_t& addrInfo )
 
 #define _OP_ADDR(num,name,address,ops,advance,cycles) { \
 													opLUT[num].mnemonic = #name; \
 													opLUT[num].operands = ops; \
 													opLUT[num].baseCycles = cycles; \
 													opLUT[num].pcInc = advance; \
-													opLUT[num].func = &Cpu6502::##name<AddrMode##address>; \
+													opLUT[num].func = &Cpu6502::##name<addrMode_t##address>; \
 												}
 #define OP_ADDR(num,name,address,ops,cycles) _OP_ADDR(num,name,address,ops,ops,cycles)
 #define OP(num,name,ops,cycles) _OP_ADDR(num,name,None,ops,ops,cycles)
@@ -115,179 +115,7 @@ struct cpuAddrInfo_t
 	bool		isImmediate;
 };
 
-
-struct RegDebugInfo
-{
-	uint8_t			X;
-	uint8_t			Y;
-	uint8_t			A;
-	uint8_t			SP;
-	statusReg_t		P;
-	uint16_t		PC;
-};
-
-
-struct InstrDebugInfo
-{
-	uint32_t loadCnt;
-	uint32_t storeCnt;
-
-	AddrMode addrMode;
-	bool isXReg;
-	uint8_t memValue;
-	uint8_t operand;
-	uint16_t address;
-	uint16_t offset;
-	uint16_t targetAddress;
-	uint8_t byteCode;
-	uint16_t instrBegin;
-
-	uint8_t operands;
-	uint8_t op0;
-	uint8_t op1;
-
-	const char* mnemonic;
-
-	RegDebugInfo regInfo;
-
-	int32_t curScanline;
-	cpuCycle_t cpuCycles;
-	ppuCycle_t ppuCycles;
-	cpuCycle_t instrCycles;
-
-	InstrDebugInfo()
-	{
-		loadCnt = 0;
-		storeCnt = 0;
-
-		addrMode = AddrMode::None;
-		isXReg = false;
-		memValue = 0;
-		operand = 0;
-		address = 0;
-		offset = 0;
-		targetAddress = 0;
-		instrBegin = 0;
-		curScanline = 0;
-		cpuCycles = cpuCycle_t(0);
-		ppuCycles = ppuCycle_t(0);
-		instrCycles = cpuCycle_t(0);
-
-		op0 = 0;
-		op1 = 0;
-
-		mnemonic = "";
-		operands = 0;
-		byteCode = 0;
-
-		regInfo = { 0, 0, 0, 0, 0, 0 };
-	}
-
-	void ToString( string& buffer, bool registerDebug = true )
-	{
-		std::stringstream debugStream;
-
-		int disassemblyBytes[6] = { byteCode, op0, op1,'\0' };
-		stringstream hexString;
-
-		if ( operands == 1 )
-		{
-			hexString << uppercase << setfill( '0' ) << setw( 2 ) << hex << disassemblyBytes[0] << " " << setw( 2 ) << disassemblyBytes[1];
-		}
-		else if ( operands == 2 )
-		{
-			hexString << uppercase << setfill( '0' ) << setw( 2 ) << hex << disassemblyBytes[0] << " " << setw( 2 ) << disassemblyBytes[1] << " " << setw( 2 ) << disassemblyBytes[2];
-		}
-		else
-		{
-			hexString << uppercase << setfill( '0' ) << setw( 2 ) << hex << disassemblyBytes[0];
-		}
-
-		debugStream << uppercase << setfill( '0' ) << setw( 4 ) << hex << instrBegin << setfill( ' ' ) << "  " << setw( 10 ) << left << hexString.str() << mnemonic << " ";
-
-		switch ( addrMode )
-		{
-			default:
-			case AddrMode::Absolute:
-				debugStream << uppercase << "$" << setfill( '0' ) << setw( 4 ) << address;
-				debugStream << " = " << setfill( '0' ) << setw( 2 ) << hex << static_cast<uint32_t>( memValue );
-			break;
-
-			case AddrMode::Zero:
-				debugStream << uppercase << "$" << setfill( '0' ) << setw( 2 ) << address;
-				debugStream << " = " << setfill( '0' ) << setw( 2 ) << hex << static_cast<uint32_t>( memValue );
-			break;
-
-			case AddrMode::IndexedAbsoluteX:
-			case AddrMode::IndexedAbsoluteY:
-				debugStream << uppercase << "$" << setw( 4 ) << hex << targetAddress << ",";
-				debugStream << isXReg ? "X" : "Y";
-				debugStream << setfill( '0' ) << " @ " << setw( 4 ) << hex << address;
-				debugStream << " = " << setw( 2 ) << hex << static_cast<uint32_t>( memValue );
-			break;
-
-			case AddrMode::IndexedZeroX:
-			case AddrMode::IndexedZeroY:
-				debugStream << uppercase << "$" << setw( 2 ) << hex << targetAddress << ",";
-				debugStream << isXReg ? "X" : "Y";
-				debugStream << setfill( '0' ) << " @ " << setw( 2 ) << hex << address;
-				debugStream << " = " << setw( 2 ) << hex << static_cast<uint32_t>( memValue );
-			break;
-
-			case AddrMode::Immediate:			
-				debugStream << uppercase << "#$" << setfill( '0' ) << setw( 2 ) << hex << static_cast<uint32_t>( memValue );
-			break;
-
-			case AddrMode::IndirectIndexed:
-				debugStream << uppercase << "($" << setfill( '0' ) << setw( 2 ) << static_cast<uint32_t>( operand ) << "),Y = ";
-				debugStream << setw( 4 ) << hex << address;
-				debugStream << " @ " << setw( 4 ) << hex << offset << " = " << setw( 2 ) << hex << static_cast<uint32_t>( memValue );
-			break;
-
-			case AddrMode::IndexedIndirect:
-				debugStream << uppercase << "($" << setfill( '0' ) << setw( 2 ) << static_cast<uint32_t>( operand ) << ",X) @ ";
-				debugStream << setw( 2 ) << static_cast<uint32_t>( targetAddress );
-				debugStream << " = " << setw( 4 ) << address << " = " << setw( 2 ) << static_cast<uint32_t>( memValue );
-			break;
-
-			case AddrMode::Accumulator:
-				debugStream << "A";
-			break;
-
-			case AddrMode::Jmp:
-				debugStream << uppercase << setfill( '0' ) << "$" << setw( 2 ) << hex << address;
-			break;
-
-			case AddrMode::JmpIndirect:
-				debugStream << uppercase << setfill( '0' ) << "($" << setw( 4 ) << hex << offset;
-				debugStream << ") = " << setw( 4 ) << hex << address;
-			break;
-
-			case AddrMode::Jsr:
-				debugStream << uppercase << "$" << setfill( '0' ) << setw( 2 ) << hex << address;
-			break;
-
-			case AddrMode::Branch:
-				debugStream << uppercase << "$" << setfill( '0' ) << setw( 2 ) << hex << address;
-			break;
-		}
-
-		if( registerDebug )
-		{
-			debugStream << setfill( ' ' ) << setw( 28 ) << right;
-			debugStream << uppercase << "A:" << setfill( '0' ) << setw( 2 ) << hex << static_cast<int>( regInfo.A ) << setw( 1 ) << " ";
-			debugStream << uppercase << "X:" << setfill( '0' ) << setw( 2 ) << hex << static_cast<int>( regInfo.X ) << setw( 1 ) << " ";
-			debugStream << uppercase << "Y:" << setfill( '0' ) << setw( 2 ) << hex << static_cast<int>( regInfo.Y ) << setw( 1 ) << " ";
-			debugStream << uppercase << "P:" << setfill( '0' ) << setw( 2 ) << hex << static_cast<int>( regInfo.P.byte ) << setw( 1 ) << " ";
-			debugStream << uppercase << "SP:" << setfill( '0' ) << setw( 2 ) << hex << static_cast<int>( regInfo.SP ) << setw( 1 ) << " ";
-			debugStream << uppercase << "PPU:" << setfill( ' ' ) << setw( 3 ) << dec << ppuCycles.count() << "," << setw( 3 ) << ( curScanline + 1 ) << " ";
-			debugStream << uppercase << "CYC:" << dec << ( 7 + cpuCycles.count() ) << "\0"; // 7 is to match the init value from the nintendolator log
-		}
-
-		buffer = debugStream.str();
-	}
-};
-
+class OpDebugInfo;
 
 class Cpu6502
 {
@@ -308,7 +136,7 @@ public:
 	bool printToOutput = false;
 	int logFrameCount = 2;
 #endif
-	vector<InstrDebugInfo> dbgMetrics;
+	vector<OpDebugInfo> dbgMetrics;
 
 	bool			interruptRequestNMI;
 	bool			interruptRequest;
