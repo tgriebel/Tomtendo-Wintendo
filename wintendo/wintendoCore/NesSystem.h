@@ -175,7 +175,7 @@ struct wtState
 	uint8_t				Y;
 	uint8_t				A;
 	uint8_t				SP;
-	ProcessorStatus		P;
+	statusReg_t		P;
 	uint16_t			PC;
 	uint8_t				cpuMemory[CpuMemorySize];
 	uint8_t				ppuMemory[PpuMemorySize];

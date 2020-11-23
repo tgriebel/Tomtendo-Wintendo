@@ -470,7 +470,7 @@ string wtSystem::GetPrgBankDissambly( const uint8_t bankNum )
 		const uint32_t instrAddr = curByte;
 		const uint32_t opCode = bankMem[curByte];
 
-		IntrInfo instrInfo = cpu.opLUT[opCode];
+		opInfo_t instrInfo = cpu.opLUT[opCode];
 		const uint32_t operandCnt = instrInfo.operands;
 		const char* mnemonic = instrInfo.mnemonic;
 

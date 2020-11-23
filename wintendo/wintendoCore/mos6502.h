@@ -8,15 +8,13 @@
 #include "common.h"
 #include "debug.h"
 
-typedef uint8_t StatusBit;
-
 struct Cpu6502;
 struct OpCodeMap;
 struct AddrMapTuple;
 struct InstructionMapTuple;
 struct DisassemblerMapTuple;
 class wtSystem;
-struct CpuAddrInfo;
+struct cpuAddrInfo_t;
 
 enum struct AddrMode : uint8_t
 {
@@ -38,7 +36,7 @@ enum struct AddrMode : uint8_t
 };
 
 typedef void( Cpu6502::* OpCodeFn )();
-struct IntrInfo
+struct opInfo_t
 {
 	const char*	mnemonic;
 	uint8_t		operands;
@@ -57,10 +55,10 @@ struct IntrInfo
 									static const AddrMode addrMode = AddrMode::##name; \
 									Cpu6502& cpu; \
 									AddrMode##name( Cpu6502& cpui ) : cpu( cpui ) {}; \
-									inline void operator()( CpuAddrInfo& addrInfo ); \
+									inline void operator()( cpuAddrInfo_t& addrInfo ); \
 								};
 
-#define ADDR_MODE_DEF(name)	void Cpu6502::AddrMode##name::operator()( CpuAddrInfo& addrInfo )
+#define ADDR_MODE_DEF(name)	void Cpu6502::AddrMode##name::operator()( cpuAddrInfo_t& addrInfo )
 
 #define _OP_ADDR(num,name,address,ops,advance,cycles) { \
 													opLUT[num].mnemonic = #name; \
@@ -74,21 +72,24 @@ struct IntrInfo
 #define OP_JMP(num,name,ops,cycles) _OP_ADDR(num,name,None,ops,0,cycles)
 
 
-const StatusBit	STATUS_NONE			= 0x00;
-const StatusBit	STATUS_ALL			= ~STATUS_NONE;
-const StatusBit	STATUS_CARRY		= ( 1 << 0 );
-const StatusBit	STATUS_ZERO			= ( 1 << 1 );
-const StatusBit	STATUS_INTERRUPT	= ( 1 << 2 );
-const StatusBit	STATUS_DECIMAL		= ( 1 << 3 );
-const StatusBit	STATUS_BREAK		= ( 1 << 4 );
-const StatusBit	STATUS_UNUSED		= ( 1 << 5 );
-const StatusBit	STATUS_OVERFLOW		= ( 1 << 6 );
-const StatusBit	STATUS_NEGATIVE		= ( 1 << 7 );
-
-
-union ProcessorStatus
+enum statusBit_t
 {
-	struct ProcessorStatusSemantic
+	STATUS_NONE			= 0x00,
+	STATUS_ALL			= 0xFF,
+	STATUS_CARRY		= ( 1 << 0 ),
+	STATUS_ZERO			= ( 1 << 1 ),
+	STATUS_INTERRUPT	= ( 1 << 2 ),
+	STATUS_DECIMAL		= ( 1 << 3 ),
+	STATUS_BREAK		= ( 1 << 4 ),
+	STATUS_UNUSED		= ( 1 << 5 ),
+	STATUS_OVERFLOW		= ( 1 << 6 ),
+	STATUS_NEGATIVE		= ( 1 << 7 ),
+};
+
+
+union statusReg_t
+{
+	struct semantic
 	{
 		uint8_t c : 1;
 		uint8_t z : 1;
@@ -105,7 +106,7 @@ union ProcessorStatus
 };
 
 
-struct CpuAddrInfo
+struct cpuAddrInfo_t
 {
 	uint32_t	addr;
 	uint8_t		offset;
@@ -117,12 +118,12 @@ struct CpuAddrInfo
 
 struct RegDebugInfo
 {
-	uint8_t X;
-	uint8_t Y;
-	uint8_t A;
-	uint8_t SP;
-	ProcessorStatus P;
-	uint16_t PC;
+	uint8_t			X;
+	uint8_t			Y;
+	uint8_t			A;
+	uint8_t			SP;
+	statusReg_t		P;
+	uint16_t		PC;
 };
 
 
@@ -291,8 +292,8 @@ struct InstrDebugInfo
 class Cpu6502
 {
 public:
-	static const uint32_t InvalidAddress = ~0x00;
-	static const uint32_t NumInstructions = 256;
+	static const uint32_t InvalidAddress	= ~0x00;
+	static const uint32_t NumInstructions	= 256;
 
 	uint16_t		nmiVector;
 	uint16_t		irqVector;
@@ -317,10 +318,10 @@ public:
 	uint8_t			Y;
 	uint8_t			A;
 	uint8_t			SP;
-	ProcessorStatus	P;
+	statusReg_t	P;
 	uint16_t		PC;
 
-	IntrInfo		opLUT[NumInstructions];
+	opInfo_t		opLUT[NumInstructions];
 
 private:
 	cpuCycle_t		instructionCycles;
@@ -378,7 +379,7 @@ private:
 	ADDR_MODE_DECL( IndexedAbsoluteY )
 	ADDR_MODE_DECL( IndexedZeroX )
 	ADDR_MODE_DECL( IndexedZeroY )
-	uint16_t JumpImmediateAddr( const uint16_t addr );
+	uint16_t	JumpImmediateAddr( const uint16_t addr );
 
 	cpuCycle_t	Exec();
 
@@ -390,8 +391,8 @@ private:
 	void		NMI();
 	void		IRQ();
 
-	void		IndexedAbsolute( const uint8_t& reg, CpuAddrInfo& addrInfo );
-	void		IndexedZero( const uint8_t& reg, CpuAddrInfo& addrInfo );
+	void		IndexedAbsolute( const uint8_t& reg, cpuAddrInfo_t& addrInfo );
+	void		IndexedZero( const uint8_t& reg, cpuAddrInfo_t& addrInfo );
 
 	void		Push( const uint8_t value );
 	void		PushWord( const uint16_t value );
