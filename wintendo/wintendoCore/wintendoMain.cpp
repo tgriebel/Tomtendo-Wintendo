@@ -15,10 +15,10 @@ wtSystem nesSystem;
 
 int main()
 {
-	nesSystem.InitSystem( L"Games/Contra.nes" );
+	nesSystem.Init( L"Games/Contra.nes" );
 	nesSystem.headless = true;
 
 	nesSystem.RunFrame();
 
-	nesSystem.ShutdownSystem();
+	nesSystem.Shutdown();
 }

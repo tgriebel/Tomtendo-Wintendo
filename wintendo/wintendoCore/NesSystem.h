@@ -15,7 +15,6 @@
 #include "apu.h"
 #include "bitmap.h"
 
-
 struct wtState;
 struct wtFrameResult;
 struct wtDebugInfo;
@@ -28,16 +27,16 @@ public:
 	static const uint32_t VirtualMemorySize		= 0x10000;
 	static const uint32_t PhysicalMemorySize	= 0x0800;
 	static const uint32_t PageSize				= 0x0100;
-	static const uint32_t ZeroPageSize			= PageSize;
+	static const uint32_t ZeroPageSize			= 0x0100;
 	static const uint32_t BankSize				= 0x4000;
 	static const uint32_t ChrRomSize			= 0x1000;
-	static const uint32_t MemoryWrap			= VirtualMemorySize;
-	static const uint32_t ZeroPageWrap			= ZeroPageSize;
+	static const uint32_t MemoryWrap			= 0x10000;
+	static const uint32_t ZeroPageWrap			= 0x0100;
 
 	// Partition offsets
-	static const uint16_t StackBase				= ZeroPageSize;
+	static const uint16_t StackBase				= 0x0100;
 	static const uint16_t Bank0					= 0x8000;
-	static const uint16_t Bank1					= Bank0 + BankSize;
+	static const uint16_t Bank1					= 0xC000;
 	static const uint16_t ResetVectorAddr		= 0xFFFC;
 	static const uint16_t NmiVectorAddr			= 0xFFFA;
 	static const uint16_t IrqVectorAddr			= 0xFFFE;
@@ -53,18 +52,19 @@ public:
 	static const uint16_t InputRegister0		= 0x4016;
 	static const uint16_t InputRegister1		= 0x4017;
 
-	static const uint32_t NumInstructions = 256;
+	static const uint32_t NumInstructions		= 256;
 
-	// Move this and framebuffer to PPU?
-	static const uint32_t ScreenWidth = 256;
-	static const uint32_t ScreenHeight = 240;
+	// TODO: Move this and framebuffer to PPU?
+	static const uint32_t ScreenWidth			= 256;
+	static const uint32_t ScreenHeight			= 240;
 
-	Cpu6502			cpu;
-	PPU				ppu;
-	APU				apu;
-	masterCycles_t	sysCycles;
+	Cpu6502				cpu;
+	PPU					ppu;
+	APU					apu;
+	masterCycles_t		sysCycles;
 
-	wtCart cart;
+	wstring				fileName;
+	wtCart				cart;
 
 	pair<uint32_t,bool>	finishedFrame;
 	uint32_t			currentFrame;
@@ -75,31 +75,26 @@ public:
 	wtPatternTableImage	patternTable0;
 	wtPatternTableImage	patternTable1;
 
-	wstring				fileName;
-
 	uint8_t				memory[VirtualMemorySize]; // TODO: make physical size
 
-	uint8_t				apuDummyRegister;
-
 	bool				headless;
-	bool				debugNTEnable;
 
 	// TODO: Need to support two controllers and clean this up
 	std::atomic<Controller> controller;
 	bool				strobeOn;
 	uint8_t				btnShift[2];
-	uint8_t				controllerBuffer[2];
 
 	uint8_t				mirrorMode;
-
-	wtDebugInfo			dbgInfo;
 	wtConfig			config;
 
+private:
+	bool				debugNTEnable;
+	wtDebugInfo			dbgInfo;
 #if DEBUG_ADDR == 1
 	std::map<uint16_t, uint8_t> memoryDebug;
 #endif // #if DEBUG_ADDR == 1
 
-
+public:
 	wtSystem()
 	{
 		Reset();
@@ -118,8 +113,6 @@ public:
 		strobeOn = false;
 		btnShift[0] = 0;
 		btnShift[1] = 0;
-		controllerBuffer[0] = 0;
-		controllerBuffer[1] = 0;
 
 		mirrorMode = MIRROR_MODE_HORIZONTAL;
 
@@ -141,13 +134,11 @@ public:
 	uint8_t&	GetStack();
 	uint8_t		ReadMemory( const uint16_t address );
 	void		WriteMemory( const uint16_t address, const uint16_t offset, const uint8_t value );
-	void		WritePhysicalMemory( const uint16_t address, const uint8_t value );
-	uint16_t	MirrorAddress( const uint16_t address );
 	uint8_t		GetMapperId();
 	uint8_t		GetMirrorMode();
 
-	int			InitSystem( const wstring& filePath );
-	void		ShutdownSystem();
+	int			Init( const wstring& filePath );
+	void		Shutdown();
 	void		LoadProgram( wtCart& cart, const uint32_t resetVectorManual = 0x10000 );
 	string		GetPrgBankDissambly( const uint8_t bankNum );
 	void		GenerateRomDissambly( string prgRomAsm[16] );
@@ -164,13 +155,18 @@ public:
 	void		SyncConfig( wtConfig& config );
 	void		InitConfig();
 
+	static bool	MouseInRegion( const wtRect& region );
+
+private:
 	void		DebugPrintFlushLog();
+	void		WritePhysicalMemory( const uint16_t address, const uint8_t value );
+	uint16_t	MirrorAddress( const uint16_t address );
 
 	static bool	IsInputRegister( const uint16_t address );
 	static bool	IsPpuRegister( const uint16_t address );
 	static bool	IsApuRegister( const uint16_t address );
 	static bool	IsDMA( const uint16_t address );
-	static bool	MouseInRegion( const wtRect& region );
+
 };
 
 
@@ -179,14 +175,14 @@ struct wtState
 	static const uint32_t CpuMemorySize = wtSystem::VirtualMemorySize;
 	static const uint32_t PpuMemorySize = PPU::VirtualMemorySize;
 
-	uint8_t X;
-	uint8_t Y;
-	uint8_t A;
-	uint8_t SP;
-	ProcessorStatus P;
-	uint16_t PC;
-	uint8_t cpuMemory[CpuMemorySize];
-	uint8_t ppuMemory[PpuMemorySize];
+	uint8_t				X;
+	uint8_t				Y;
+	uint8_t				A;
+	uint8_t				SP;
+	ProcessorStatus		P;
+	uint16_t			PC;
+	uint8_t				cpuMemory[CpuMemorySize];
+	uint8_t				ppuMemory[PpuMemorySize];
 };
 
 

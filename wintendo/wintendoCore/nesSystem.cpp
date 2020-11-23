@@ -63,7 +63,7 @@ void wtSystem::DebugPrintFlushLog()
 }
 
 
-int wtSystem::InitSystem( const wstring& filePath )
+int wtSystem::Init( const wstring& filePath )
 {
 	LoadNesFile( filePath, cart );
 
@@ -80,7 +80,7 @@ int wtSystem::InitSystem( const wstring& filePath )
 }
 
 
-void wtSystem::ShutdownSystem()
+void wtSystem::Shutdown()
 {
 #if DEBUG_ADDR == 1
 	cpu.logFile.close();
@@ -210,21 +210,21 @@ uint8_t wtSystem::ReadMemory( const uint16_t address )
 		const uint32_t controllerIndex = ( address - InputRegister0 );
 		const ControllerId controllerId = static_cast<ControllerId>( controllerIndex );
 
-		controllerBuffer[controllerIndex] = 0; // FIXME: this register is no longer needed since func returns value now
+		uint8_t keyBuffer = 0;
 
 		if ( strobeOn )
 		{
-			controllerBuffer[controllerIndex] = static_cast<uint8_t>( GetKeyBuffer( controllerId ) & static_cast<ButtonFlags>( 0X80 ) );
+			keyBuffer = static_cast<uint8_t>( GetKeyBuffer( controllerId ) & static_cast<ButtonFlags>( 0X80 ) );
 			btnShift[controllerIndex] = 0;
 
-			return controllerBuffer[controllerIndex];
+			return keyBuffer;
 		}
 
-		controllerBuffer[controllerIndex] = static_cast<uint8_t>( GetKeyBuffer( controllerId ) >> static_cast<ButtonFlags>( 7 - btnShift[controllerIndex] ) ) & 0x01;
+		keyBuffer = static_cast<uint8_t>( GetKeyBuffer( controllerId ) >> static_cast<ButtonFlags>( 7 - btnShift[controllerIndex] ) ) & 0x01;
 		++btnShift[controllerIndex];
 		btnShift[controllerIndex] %= 8;
 
-		return controllerBuffer[controllerIndex];
+		return keyBuffer;
 	}
 	else if ( IsApuRegister( address ) )
 	{
