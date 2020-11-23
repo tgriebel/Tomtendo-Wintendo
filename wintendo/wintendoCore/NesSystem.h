@@ -55,8 +55,6 @@ public:
 	static const uint32_t NumInstructions		= 256;
 
 	// TODO: Move this and framebuffer to PPU?
-	static const uint32_t ScreenWidth			= 256;
-	static const uint32_t ScreenHeight			= 240;
 
 	Cpu6502				cpu;
 	PPU					ppu;

@@ -552,7 +552,7 @@ void PPU::WriteVram()
 
 void PPU::DrawBlankScanline( wtDisplayImage& imageBuffer, const wtRect& imageRect, const uint8_t scanY )
 {
-	for ( int x = 0; x < wtSystem::ScreenWidth; ++x )
+	for ( int x = 0; x < ScreenWidth; ++x )
 	{
 		Pixel pixelColor;
 		pixelColor.vec[0] = 0;
@@ -767,15 +767,15 @@ void PPU::DrawDebugPatternTables( wtPatternTableImage& imageBuffer, const RGBA p
 
 void PPU::DrawDebugNametable( wtNameTableImage& imageBuffer )
 {
-	wtRect ntRects[4] = {		{ 0,						0,							2 * wtSystem::ScreenWidth,	2 * wtSystem::ScreenHeight },
-								{ wtSystem::ScreenWidth,	0,							2 * wtSystem::ScreenWidth,	2 * wtSystem::ScreenHeight },
-								{ 0,						wtSystem::ScreenHeight,		2 * wtSystem::ScreenWidth,	2 * wtSystem::ScreenHeight },
-								{ wtSystem::ScreenWidth,	wtSystem::ScreenHeight,		2 * wtSystem::ScreenWidth,	2 * wtSystem::ScreenHeight }, };
+	wtRect ntRects[4] = {		{ 0,			0,					2 * ScreenWidth,	2 * ScreenHeight },
+								{ ScreenWidth,	0,					2 * ScreenWidth,	2 * ScreenHeight },
+								{ 0,			ScreenHeight,		2 * ScreenWidth,	2 * ScreenHeight },
+								{ ScreenWidth,	ScreenHeight,		2 * ScreenWidth,	2 * ScreenHeight }, };
 
-	wtPoint ntCorners[4] = {	{0,							0 },
-								{ wtSystem::ScreenWidth,	0 },
-								{ 0,						wtSystem::ScreenHeight },
-								{ wtSystem::ScreenWidth,	wtSystem::ScreenHeight }, };
+	wtPoint ntCorners[4] = {	{0,				0 },
+								{ ScreenWidth,	0 },
+								{ 0,			ScreenHeight },
+								{ ScreenWidth,	ScreenHeight }, };
 
 	for ( uint32_t ntId = 0; ntId < 4; ++ntId )
 	{
@@ -967,7 +967,7 @@ bool PPU::DataportEnabled()
 const ppuCycle_t PPU::Exec()
 {
 	// Function advances 1 - 8 cycles at a time. The logic is built on this constaint.
-	static wtRect imageRect = { 0, 0, wtSystem::ScreenWidth, wtSystem::ScreenHeight };
+	static wtRect imageRect = { 0, 0, ScreenWidth, ScreenHeight };
 
 	ppuCycle_t execCycles = ppuCycle_t( 0 );
 

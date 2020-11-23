@@ -201,7 +201,14 @@ public:
 	static const uint32_t PatternTableHeight		= 128;
 	static const uint32_t RegisterCount				= 8;
 	static const uint32_t ScanlineCycles			= 341;
+	static const uint32_t ScreenWidth				= 256;
+	static const uint32_t ScreenHeight				= 240;
 	//static const ppuCycle_t VBlankCycles = ppuCycle_t( 20 * 341 * 5 );
+
+	wtSystem*		system;
+	ppuCycle_t		cycle;
+	const RGBA*		palette;
+	uint8_t			vram[VirtualMemorySize];
 
 private:
 	PpuCtrl			regCtrl;
@@ -250,12 +257,6 @@ private:
 
 	uint8_t			registers[9]; // no need?
 	uint16_t		MirrorMap[MIRROR_MODE_COUNT][VirtualMemorySize];
-
-public:
-	wtSystem*		system;
-	ppuCycle_t		cycle;
-	const RGBA*		palette;
-	uint8_t			vram[VirtualMemorySize];
 
 private:
 	void	BgPipelineShiftRegisters();
