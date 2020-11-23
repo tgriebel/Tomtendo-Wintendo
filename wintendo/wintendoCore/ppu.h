@@ -316,8 +316,6 @@ public:
 	void		DrawDebugNametable( wtNameTableImage& nameTableSheet );
 	void		DrawDebugPalette( wtPaletteImage& imageBuffer );
 
-	void		GenerateNMI();
-	void		GenerateDMA();
 	void		DMA( const uint16_t address );
 
 	uint16_t	StaticMirrorVram( uint16_t addr, uint32_t mirrorMode );

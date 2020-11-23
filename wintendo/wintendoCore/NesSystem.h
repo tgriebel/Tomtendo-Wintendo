@@ -52,10 +52,6 @@ public:
 	static const uint16_t InputRegister0		= 0x4016;
 	static const uint16_t InputRegister1		= 0x4017;
 
-	static const uint32_t NumInstructions		= 256;
-
-	// TODO: Move this and framebuffer to PPU?
-
 	Cpu6502				cpu;
 	PPU					ppu;
 	APU					apu;
@@ -102,7 +98,6 @@ public:
 	{
 		InitConfig();
 
-		cpu.forceStop = false;
 		cpu.cycle = cpuCycle_t( 0 );
 		sysCycles = masterCycles_t( 0 );
 
@@ -152,6 +147,9 @@ public:
 	void		GetConfig( wtConfig& config );
 	void		SyncConfig( wtConfig& config );
 	void		InitConfig();
+	void		RequestNMI();
+	void		RequestIRQ();
+	void		RequestDMA();
 
 	static bool	MouseInRegion( const wtRect& region );
 

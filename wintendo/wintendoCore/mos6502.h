@@ -35,7 +35,7 @@ enum struct AddrMode : uint8_t
 	Branch
 };
 
-typedef uint8_t( Cpu6502::* OpCodeFn )();
+typedef void( Cpu6502::* OpCodeFn )();
 struct IntrInfo
 {
 	const char*	mnemonic;
@@ -46,9 +46,9 @@ struct IntrInfo
 };
 
 #define OP_DECL(name)	template <class AddrModeT> \
-						uint8_t name##();
+						void name##();
 #define OP_DEF(name)	template <class AddrModeT> \
-						uint8_t Cpu6502::##name()
+						void Cpu6502::##name()
 
 #define ADDR_MODE_DECL(name)	struct AddrMode##name \
 								{ \
@@ -61,11 +61,11 @@ struct IntrInfo
 #define ADDR_MODE_DEF(name)	void Cpu6502::AddrMode##name::operator()( CpuAddrInfo& addrInfo )
 
 #define _OP_ADDR(num,name,address,ops,advance,cycles) { \
-													instLookup[num].mnemonic = #name; \
-													instLookup[num].operands = ops; \
-													instLookup[num].baseCycles = cycles; \
-													instLookup[num].pcInc = advance; \
-													instLookup[num].func = &Cpu6502::##name<AddrMode##address>; \
+													opLUT[num].mnemonic = #name; \
+													opLUT[num].operands = ops; \
+													opLUT[num].baseCycles = cycles; \
+													opLUT[num].pcInc = advance; \
+													opLUT[num].func = &Cpu6502::##name<AddrMode##address>; \
 												}
 #define OP_ADDR(num,name,address,ops,cycles) _OP_ADDR(num,name,address,ops,ops,cycles)
 #define OP(num,name,ops,cycles) _OP_ADDR(num,name,None,ops,ops,cycles)
@@ -286,20 +286,18 @@ struct InstrDebugInfo
 };
 
 
-struct Cpu6502
+class Cpu6502
 {
+public:
 	static const uint32_t InvalidAddress = ~0x00;
+	static const uint32_t NumInstructions = 256;
 
-	uint16_t nmiVector;
-	uint16_t irqVector;
-	uint16_t resetVector;
+	uint16_t		nmiVector;
+	uint16_t		irqVector;
+	uint16_t		resetVector;
 
-	wtSystem* system;
-
-	cpuCycle_t cycle;
-	cpuCycle_t instructionCycles;
-
-	uint8_t opCode;
+	wtSystem*		system;
+	cpuCycle_t		cycle;
 
 #if DEBUG_ADDR == 1
 	std::stringstream debugAddr;
@@ -309,26 +307,30 @@ struct Cpu6502
 #endif
 	vector<InstrDebugInfo> dbgMetrics;
 
-	bool forceStop = false;
+	bool			interruptRequestNMI;
+	bool			interruptRequest;
+	bool			oamInProcess;
 
-	bool interruptRequestNMI;
-	bool interruptRequest;
-	bool oamInProcess;
+	uint8_t			X;
+	uint8_t			Y;
+	uint8_t			A;
+	uint8_t			SP;
+	ProcessorStatus	P;
+	uint16_t		PC;
 
-	cpuCycle_t dbgStartCycle;
-	cpuCycle_t dbgTargetCycle;
-	masterCycles_t dbgSysStartCycle;
-	masterCycles_t dbgSysTargetCycle;
+	IntrInfo		opLUT[NumInstructions];
 
-	IntrInfo instLookup[256];
+private:
+	cpuCycle_t		instructionCycles;
+	uint8_t			opCode;
+	bool			forceStop;
 
-	uint8_t X;
-	uint8_t Y;
-	uint8_t A;
-	uint8_t SP;
-	ProcessorStatus P;
-	uint16_t PC;
+	cpuCycle_t		dbgStartCycle;
+	cpuCycle_t		dbgTargetCycle;
+	masterCycles_t	dbgSysStartCycle;
+	masterCycles_t	dbgSysTargetCycle;
 
+public:
 	void Reset()
 	{
 		PC = resetVector;
@@ -345,8 +347,10 @@ struct Cpu6502
 		instructionCycles = cpuCycle_t( 0 );
 		cycle = cpuCycle_t(0); // FIXME? Test log starts cycles at 7. Is there a BRK at power up?
 
+		forceStop = false;
+
 		dbgMetrics.resize(0);
-		BuildInstructionMap();
+		BuildOpLUT();
 	}
 
 	Cpu6502()
@@ -437,41 +441,41 @@ private:
 	ADDR_MODE_DECL( IndexedZeroX )
 	ADDR_MODE_DECL( IndexedZeroY )
 
-	cpuCycle_t Exec();
+	cpuCycle_t	Exec();
 
-	static bool CheckSign( const uint16_t checkValue );
-	static bool CheckCarry( const uint16_t checkValue );
-	static bool CheckZero( const uint16_t checkValue );
-	static bool CheckOverflow( const uint16_t src, const uint16_t temp, const uint8_t finalValue );
+	static bool	CheckSign( const uint16_t checkValue );
+	static bool	CheckCarry( const uint16_t checkValue );
+	static bool	CheckZero( const uint16_t checkValue );
+	static bool	CheckOverflow( const uint16_t src, const uint16_t temp, const uint8_t finalValue );
 
-	void NMI();
-	void IRQ();
+	void		NMI();
+	void		IRQ();
 
-	void IndexedAbsolute( const uint8_t& reg, CpuAddrInfo& addrInfo );
-	void IndexedZero( const uint8_t& reg, CpuAddrInfo& addrInfo );
+	void		IndexedAbsolute( const uint8_t& reg, CpuAddrInfo& addrInfo );
+	void		IndexedZero( const uint8_t& reg, CpuAddrInfo& addrInfo );
 
-	void Push( const uint8_t value );
-	uint8_t Pull();
-	void PushWord( const uint16_t value );
-	uint16_t PullWord();
+	void		Push( const uint8_t value );
+	void		PushWord( const uint16_t value );
+	uint8_t		Pull();
+	uint16_t	PullWord();
 
-	void AdvancePC( const uint16_t places );
-	uint8_t ReadOperand( const uint16_t offset ) const;
-	uint16_t ReadAddressOperand() const;
+	void		AdvancePC( const uint16_t places );
+	uint8_t		ReadOperand( const uint16_t offset ) const;
+	uint16_t	ReadAddressOperand() const;
 
-	void SetAluFlags( const uint16_t value );
+	void		SetAluFlags( const uint16_t value );
 
-	uint16_t CombineIndirect( const uint8_t lsb, const uint8_t msb, const uint32_t wrap );
+	uint16_t	CombineIndirect( const uint8_t lsb, const uint8_t msb, const uint32_t wrap );
 
-	uint8_t AddressCrossesPage( const uint16_t address, const uint16_t offset );
-	uint8_t Branch( const bool takeBranch );
+	uint8_t		AddressCrossesPage( const uint16_t address, const uint16_t offset );
+	uint8_t		Branch( const bool takeBranch );
 	
 	template <class AddrFunctor>
-	uint8_t Read();
+	uint8_t		Read();
 
 	template <class AddrFunctor>
-	void Write( const uint8_t value );
+	void		Write( const uint8_t value );
 
-	cpuCycle_t LookupFunction( const uint16_t instrBegin, const uint8_t opCode );
-	void BuildInstructionMap();
+	cpuCycle_t	OpLookup( const uint16_t instrBegin, const uint8_t opCode );
+	void		BuildOpLUT();
 };

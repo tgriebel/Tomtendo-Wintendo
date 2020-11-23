@@ -52,18 +52,6 @@ uint8_t PPU::ReadReg( uint16_t addr )
 }
 
 
-void PPU::GenerateNMI()
-{
-	system->cpu.interruptRequestNMI = true;
-}
-
-
-void PPU::GenerateDMA()
-{
-	system->cpu.oamInProcess = true;
-}
-
-
 void PPU::DMA( const uint16_t address )
 {
 	for( uint32_t i = 0; i < wtSystem::PageSize; ++i )
@@ -254,14 +242,14 @@ uint8_t PPU::PPUDATA()
 
 void PPU::OAMDMA( const uint8_t value )
 {
-	GenerateDMA();
+	system->RequestDMA();
 	DMA( value );
 }
 
 
 uint8_t PPU::OAMDMA()
 {
-	GenerateDMA();
+	system->RequestDMA();
 	return registers[PPUREG_OAMDMA];
 }
 
@@ -772,7 +760,7 @@ void PPU::DrawDebugNametable( wtNameTableImage& imageBuffer )
 								{ 0,			ScreenHeight,		2 * ScreenWidth,	2 * ScreenHeight },
 								{ ScreenWidth,	ScreenHeight,		2 * ScreenWidth,	2 * ScreenHeight }, };
 
-	wtPoint ntCorners[4] = {	{0,				0 },
+	wtPoint ntCorners[4] = {	{ 0,			0 },
 								{ ScreenWidth,	0 },
 								{ 0,			ScreenHeight },
 								{ ScreenWidth,	ScreenHeight }, };
@@ -1035,7 +1023,7 @@ const ppuCycle_t PPU::Exec()
 			const bool isVblank = static_cast<bool>( regCtrl.sem.nmiVblank );
 			if ( isVblank )
 			{
-				GenerateNMI();
+				system->RequestNMI();
 
 				const uint32_t nextFrame = ( system->currentFrame + 1 ) % 2;
 				if ( system->finishedFrame.second == false ) // FIXME: skips frames

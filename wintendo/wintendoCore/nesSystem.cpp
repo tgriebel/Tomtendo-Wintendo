@@ -391,6 +391,24 @@ void wtSystem::SyncConfig( wtConfig& systemConfig )
 }
 
 
+void wtSystem::RequestNMI()
+{
+	cpu.interruptRequestNMI = true;
+}
+
+
+void wtSystem::RequestIRQ()
+{
+	cpu.interruptRequest = true;
+}
+
+
+void wtSystem::RequestDMA()
+{
+	cpu.oamInProcess = true;
+}
+
+
 bool wtSystem::Run( const masterCycles_t& nextCycle )
 {
 	bool isRunning = true;
@@ -452,7 +470,7 @@ string wtSystem::GetPrgBankDissambly( const uint8_t bankNum )
 		const uint32_t instrAddr = curByte;
 		const uint32_t opCode = bankMem[curByte];
 
-		IntrInfo instrInfo = cpu.instLookup[opCode];
+		IntrInfo instrInfo = cpu.opLUT[opCode];
 		const uint32_t operandCnt = instrInfo.operands;
 		const char* mnemonic = instrInfo.mnemonic;
 

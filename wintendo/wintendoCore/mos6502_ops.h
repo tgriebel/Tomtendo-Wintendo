@@ -5,60 +5,45 @@
 #include "mos6502.h"
 #include "NesSystem.h"
 
-
 OP_DEF( SEC )
 {
 	P.bit.c = 1;
-
-	return 0;
 }
 
 
 OP_DEF( SEI )
 {
 	P.bit.i = 1;
-
-	return 0;
 }
 
 
 OP_DEF( SED )
 {
 	P.bit.d = 1;
-
-	return 0;
 }
 
 
 OP_DEF( CLC )
 {
 	P.bit.c = 0;
-
-	return 0;
 }
 
 
 OP_DEF( CLI )
 {
 	P.bit.i = 0;
-
-	return 0;
 }
 
 
 OP_DEF( CLV )
 {
 	P.bit.v = 0;
-
-	return 0;
 }
 
 
 OP_DEF( CLD )
 {
 	P.bit.d = 0;
-
-	return 0;
 }
 
 
@@ -68,8 +53,6 @@ OP_DEF( CMP )
 
 	P.bit.c = !CheckCarry( result );
 	SetAluFlags( result );
-
-	return 0;
 }
 
 
@@ -79,8 +62,6 @@ OP_DEF( CPX )
 
 	P.bit.c = !CheckCarry( result );
 	SetAluFlags( result );
-
-	return 0;
 }
 
 
@@ -90,8 +71,6 @@ OP_DEF( CPY )
 
 	P.bit.c = !CheckCarry( result );
 	SetAluFlags( result );
-
-	return 0;
 }
 
 
@@ -100,8 +79,6 @@ OP_DEF( LDA )
 	A = Read<AddrModeT>();
 
 	SetAluFlags( A );
-
-	return 0;
 }
 
 
@@ -110,8 +87,6 @@ OP_DEF( LDX )
 	X = Read<AddrModeT>();
 
 	SetAluFlags( X );
-
-	return 0;
 }
 
 
@@ -120,40 +95,30 @@ OP_DEF( LDY )
 	Y = Read<AddrModeT>();
 
 	SetAluFlags( Y );
-
-	return 0;
 }
 
 
 OP_DEF( STA )
 {
 	Write<AddrModeT>( A );
-
-	return 0;
 }
 
 
 OP_DEF( STX )
 {
 	Write<AddrModeT>( X );
-
-	return 0;
 }
 
 
 OP_DEF( STY )
 {
 	Write<AddrModeT>( Y );
-
-	return 0;
 }
 
 
 OP_DEF( TXS )
 {
 	SP = X;
-
-	return 0;
 }
 
 
@@ -161,8 +126,6 @@ OP_DEF( TXA )
 {
 	A = X;
 	SetAluFlags( A );
-
-	return 0;
 }
 
 
@@ -170,8 +133,6 @@ OP_DEF( TYA )
 {
 	A = Y;
 	SetAluFlags( A );
-
-	return 0;
 }
 
 
@@ -179,8 +140,6 @@ OP_DEF( TAX )
 {
 	X = A;
 	SetAluFlags( X );
-
-	return 0;
 }
 
 
@@ -188,8 +147,6 @@ OP_DEF( TAY )
 {
 	Y = A;
 	SetAluFlags( Y );
-
-	return 0;
 }
 
 
@@ -197,8 +154,6 @@ OP_DEF( TSX )
 {
 	X = SP;
 	SetAluFlags( X );
-
-	return 0;
 }
 
 
@@ -217,8 +172,6 @@ OP_DEF( ADC )
 	SetAluFlags( A );
 
 	P.bit.c = ( temp > 0xFF );
-
-	return 0;
 }
 
 
@@ -234,8 +187,6 @@ OP_DEF( SBC )
 	P.bit.c = !CheckCarry( result );
 
 	A = result & 0xFF;
-
-	return 0;
 }
 
 
@@ -243,16 +194,12 @@ OP_DEF( INX )
 {
 	++X;
 	SetAluFlags( X );
-
-	return 0;
 }
 
 OP_DEF( INY )
 {
 	++Y;
 	SetAluFlags( Y );
-
-	return 0;
 }
 
 
@@ -260,8 +207,6 @@ OP_DEF( DEX )
 {
 	--X;
 	SetAluFlags( X );
-
-	return 0;
 }
 
 
@@ -269,8 +214,6 @@ OP_DEF( DEY )
 {
 	--Y;
 	SetAluFlags( Y );
-
-	return 0;
 }
 
 
@@ -281,8 +224,6 @@ OP_DEF( INC )
 	Write<AddrModeT>( result );
 
 	SetAluFlags( result );
-
-	return 0;
 }
 
 
@@ -293,24 +234,18 @@ OP_DEF( DEC )
 	Write<AddrModeT>( result );
 
 	SetAluFlags( result );
-
-	return 0;
 }
 
 
 OP_DEF( PHP )
 {
 	Push( P.byte | STATUS_UNUSED | STATUS_BREAK );
-
-	return 0;
 }
 
 
 OP_DEF( PHA )
 {
 	Push( A );
-
-	return 0;
 }
 
 
@@ -319,8 +254,6 @@ OP_DEF( PLA )
 	A = Pull();
 
 	SetAluFlags( A );
-
-	return 0;
 }
 
 
@@ -329,14 +262,12 @@ OP_DEF( PLP )
 	// https://wiki.nesdev.com/w/index.php/Status_flags
 	const uint8_t status = ~STATUS_BREAK & Pull();
 	P.byte = status | ( P.byte & STATUS_BREAK ) | STATUS_UNUSED;
-
-	return 0;
 }
 
 
 OP_DEF( NOP )
 {
-	return 0;
+
 }
 
 
@@ -348,8 +279,6 @@ OP_DEF( ASL )
 	M <<= 1;
 	Write<AddrModeT>( M );
 	SetAluFlags( M );
-
-	return 0;
 }
 
 
@@ -361,8 +290,6 @@ OP_DEF( LSR )
 	M >>= 1;
 	Write<AddrModeT>( M );
 	SetAluFlags( M );
-
-	return 0;
 }
 
 
@@ -371,8 +298,6 @@ OP_DEF( AND )
 	A &= Read<AddrModeT>();
 
 	SetAluFlags( A );
-
-	return 0;
 }
 
 OP_DEF( BIT )
@@ -382,8 +307,6 @@ OP_DEF( BIT )
 	P.bit.z = !( A & M );
 	P.bit.n = CheckSign( M );
 	P.bit.v = !!( M & 0x40 );
-
-	return 0;
 }
 
 
@@ -392,8 +315,6 @@ OP_DEF( EOR )
 	A ^= Read<AddrModeT>();
 
 	SetAluFlags( A );
-
-	return 0;
 }
 
 
@@ -402,8 +323,6 @@ OP_DEF( ORA )
 	A |= Read<AddrModeT>();
 
 	SetAluFlags( A );
-
-	return 0;
 }
 
 
@@ -412,8 +331,6 @@ OP_DEF( JMP )
 	PC = ReadAddressOperand();
 
 	DEBUG_ADDR_JMP
-
-		return 0;
 }
 
 
@@ -434,8 +351,6 @@ OP_DEF( JMPI )
 	}
 
 	DEBUG_ADDR_JMPI
-
-	return 0;
 }
 
 
@@ -449,8 +364,6 @@ OP_DEF( JSR )
 	PC = ReadAddressOperand();
 
 	DEBUG_ADDR_JSR
-
-	return 0;
 }
 
 
@@ -460,8 +373,6 @@ OP_DEF( BRK )
 	assert( 0 ); // TODO: Test
 	P.bit.b = 1;
 	IRQ();
-
-	return 0;
 }
 
 
@@ -471,8 +382,6 @@ OP_DEF( RTS )
 	const uint8_t hiByte = Pull();
 
 	PC = 1 + Combine( loByte, hiByte );
-
-	return 0;
 }
 
 
@@ -484,56 +393,54 @@ OP_DEF( RTI )
 	const uint8_t hiByte = Pull();
 
 	PC = Combine( loByte, hiByte );
-
-	return 0;
 }
 
 
 OP_DEF( BMI )
 {
-	return Branch( P.bit.n );
+	Branch( P.bit.n );
 }
 
 
 OP_DEF( BVS )
 {
-	return Branch( P.bit.v );
+	Branch( P.bit.v );
 }
 
 
 OP_DEF( BCS )
 {
-	return Branch( P.bit.c );
+	Branch( P.bit.c );
 }
 
 
 OP_DEF( BEQ )
 {
-	return Branch( P.bit.z );
+	Branch( P.bit.z );
 }
 
 
 OP_DEF( BPL )
 {
-	return Branch( !P.bit.n );
+	Branch( !P.bit.n );
 }
 
 
 OP_DEF( BVC )
 {
-	return Branch( !P.bit.v );
+	Branch( !P.bit.v );
 }
 
 
 OP_DEF( BCC )
 {
-	return Branch( !P.bit.c );
+	Branch( !P.bit.c );
 }
 
 
 OP_DEF( BNE )
 {
-	return Branch( !P.bit.z );
+	Branch( !P.bit.z );
 }
 
 
@@ -549,8 +456,6 @@ OP_DEF( ROL )
 	SetAluFlags( temp );
 
 	Write<AddrModeT>( temp & 0xFF );
-
-	return 0;
 }
 
 
@@ -565,34 +470,27 @@ OP_DEF( ROR )
 	SetAluFlags( temp );
 
 	Write<AddrModeT>( temp & 0xFF );
-
-	return 0;
 }
 
 
 OP_DEF( Illegal )
 {
 	assert( 0 );
-	return 0;
 }
 
 OP_DEF( SKB )
 {
 	PC += 1;
-
-	return 0;
 }
 
 
 OP_DEF( SKW )
 {
 	PC += 2;
-
-	return 0;
 }
 
 
-inline void Cpu6502::BuildInstructionMap()
+inline void Cpu6502::BuildOpLUT()
 {
 	OP( 0x00, BRK, 0, 7 )
 	OP_ADDR( 0x01, ORA, IndexedIndirect, 1, 6 )
