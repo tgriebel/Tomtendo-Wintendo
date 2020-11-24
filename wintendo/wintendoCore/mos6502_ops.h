@@ -76,7 +76,6 @@ OP_DEF( CPY )
 OP_DEF( LDA )
 {
 	A = Read<AddrModeT>();
-
 	SetAluFlags( A );
 }
 
@@ -84,7 +83,6 @@ OP_DEF( LDA )
 OP_DEF( LDX )
 {
 	X = Read<AddrModeT>();
-
 	SetAluFlags( X );
 }
 
@@ -92,7 +90,6 @@ OP_DEF( LDX )
 OP_DEF( LDY )
 {
 	Y = Read<AddrModeT>();
-
 	SetAluFlags( Y );
 }
 
@@ -221,7 +218,6 @@ OP_DEF( INC )
 	const uint8_t result = Read<AddrModeT>() + 1;
 
 	Write<AddrModeT>( result );
-
 	SetAluFlags( result );
 }
 
@@ -231,7 +227,6 @@ OP_DEF( DEC )
 	const uint8_t result = Read<AddrModeT>() - 1;
 
 	Write<AddrModeT>( result );
-
 	SetAluFlags( result );
 }
 
@@ -251,7 +246,6 @@ OP_DEF( PHA )
 OP_DEF( PLA )
 {
 	A = Pull();
-
 	SetAluFlags( A );
 }
 
@@ -295,7 +289,6 @@ OP_DEF( LSR )
 OP_DEF( AND )
 {
 	A &= Read<AddrModeT>();
-
 	SetAluFlags( A );
 }
 
@@ -312,7 +305,6 @@ OP_DEF( BIT )
 OP_DEF( EOR )
 {
 	A ^= Read<AddrModeT>();
-
 	SetAluFlags( A );
 }
 
@@ -320,7 +312,6 @@ OP_DEF( EOR )
 OP_DEF( ORA )
 {
 	A |= Read<AddrModeT>();
-
 	SetAluFlags( A );
 }
 

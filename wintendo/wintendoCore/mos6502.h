@@ -91,15 +91,15 @@ union statusReg_t
 {
 	struct semantic
 	{
-		uint8_t c : 1;
-		uint8_t z : 1;
-		uint8_t i : 1;
-		uint8_t d : 1;
+		uint8_t c : 1;	// Carry
+		uint8_t z : 1;	// Zero
+		uint8_t i : 1;	// Interrupt
+		uint8_t d : 1;	// Decimal
 
-		uint8_t u : 1;
-		uint8_t b : 1;
-		uint8_t v : 1;
-		uint8_t n : 1;
+		uint8_t u : 1;	// Unused
+		uint8_t b : 1;	// Break
+		uint8_t v : 1;	// Overflow
+		uint8_t n : 1;	// Negative
 	} bit;
 
 	uint8_t byte;
