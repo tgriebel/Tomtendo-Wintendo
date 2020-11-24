@@ -249,7 +249,7 @@ void wtSystem::WriteMemory( const uint16_t address, const uint16_t offset, const
 	}
 	else if ( wtSystem::IsDMA( address ) )
 	{
-		ppu.OAMDMA( value );
+		ppu.IssueDMA( value );
 	}
 	else if ( address == wtSystem::InputRegister0 )
 	{

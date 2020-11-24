@@ -8,13 +8,13 @@
 #include "common.h"
 #include "debug.h"
 
-struct Cpu6502;
-struct OpCodeMap;
-struct AddrMapTuple;
-struct InstructionMapTuple;
-struct DisassemblerMapTuple;
-class wtSystem;
-struct cpuAddrInfo_t;
+struct	Cpu6502;
+struct	OpCodeMap;
+struct	AddrMapTuple;
+struct	InstructionMapTuple;
+struct	DisassemblerMapTuple;
+class	wtSystem;
+struct	cpuAddrInfo_t;
 
 enum struct addrMode_t : uint8_t
 {
@@ -45,31 +45,31 @@ struct opInfo_t
 	OpCodeFn	func;
 };
 
-#define OP_DECL(name)	template <class AddrModeT> \
-						void name();
-#define OP_DEF(name)	template <class AddrModeT> \
-						void name()
+#define OP_DECL( name )									template <class AddrModeT>										\
+														void name();
 
-#define ADDR_MODE_DECL(name)	struct addrMode_t##name \
-								{ \
-									static const addrMode_t addrMode = addrMode_t::##name; \
-									Cpu6502& cpu; \
-									addrMode_t##name( Cpu6502& cpui ) : cpu( cpui ) {}; \
-									inline void operator()( cpuAddrInfo_t& addrInfo ); \
-								};
+#define OP_DEF( name )									template <class AddrModeT>										\
+														void name()
 
-#define ADDR_MODE_DEF(name)	void Cpu6502::addrMode_t##name::operator()( cpuAddrInfo_t& addrInfo )
+#define ADDR_MODE_DECL( name )							struct addrMode_t##name											\
+														{																\
+															static const addrMode_t addrMode = addrMode_t::##name;		\
+															Cpu6502& cpu;												\
+															addrMode_t##name( Cpu6502& cpui ) : cpu( cpui ) {};			\
+															inline void operator()( cpuAddrInfo_t& addrInfo );			\
+														};
 
-#define _OP_ADDR(num,name,address,ops,advance,cycles) { \
-													opLUT[num].mnemonic = #name; \
-													opLUT[num].operands = ops; \
-													opLUT[num].baseCycles = cycles; \
-													opLUT[num].pcInc = advance; \
-													opLUT[num].func = &Cpu6502::##name<addrMode_t##address>; \
-												}
-#define OP_ADDR(num,name,address,ops,cycles) _OP_ADDR(num,name,address,ops,ops,cycles)
-#define OP(num,name,ops,cycles) _OP_ADDR(num,name,None,ops,ops,cycles)
-#define OP_JMP(num,name,ops,cycles) _OP_ADDR(num,name,None,ops,0,cycles)
+#define ADDR_MODE_DEF( name )							void Cpu6502::addrMode_t##name::operator()( cpuAddrInfo_t& addrInfo )
+
+#define _OP_ADDR( num, name, address, ops, advance, cycles ){															\
+															opLUT[num].mnemonic = #name;								\
+															opLUT[num].operands = ops;									\
+															opLUT[num].baseCycles = cycles;								\
+															opLUT[num].pcInc = advance;									\
+															opLUT[num].func = &Cpu6502::##name<addrMode_t##address>;	\
+														}
+#define OP_ADDR( num, name, address, ops, cycles )		_OP_ADDR(num, name, address, ops, ops, cycles)
+#define OP_JUMP( num, name, ops, cycles )				_OP_ADDR(num, name, None, ops, 0, cycles)
 
 
 enum statusBit_t
@@ -146,7 +146,7 @@ public:
 	uint8_t			Y;
 	uint8_t			A;
 	uint8_t			SP;
-	statusReg_t	P;
+	statusReg_t		P;
 	uint16_t		PC;
 
 	opInfo_t		opLUT[NumInstructions];
@@ -195,7 +195,7 @@ public:
 private:
 	#include "mos6502_ops.h"
 
-	// Special due to system memory access. Causes linker issues.
+	// These functions require system memory.
 	ADDR_MODE_DECL( None )
 	ADDR_MODE_DECL( Absolute )
 	ADDR_MODE_DECL( Zero )

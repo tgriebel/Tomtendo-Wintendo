@@ -163,7 +163,7 @@ private:
 
 union pulseCtrl_t
 {
-	struct semantic_t
+	struct semantic
 	{
 		uint8_t volume		: 4;
 		uint8_t isConstant	: 1;
@@ -171,12 +171,12 @@ union pulseCtrl_t
 		uint8_t duty		: 2;
 	} sem;
 
-	uint8_t raw;
+	uint8_t byte;
 };
 
 union pulseRamp_t
 {
-	struct semantic_t
+	struct semantic
 	{
 		uint8_t shift	: 3;
 		uint8_t negate	: 1;
@@ -184,7 +184,7 @@ union pulseRamp_t
 		uint8_t enabled	: 1;
 	} sem;
 
-	uint8_t raw;
+	uint8_t byte;
 };
 
 union timerCtrl_t
@@ -201,23 +201,23 @@ union timerCtrl_t
 		uint16_t upper		: 8;
 	} sem1;
 
-	uint16_t raw;
+	uint16_t byte2x;
 };
 
 union triangleLinear_t
 {
-	struct semantic_t
+	struct semantic
 	{
 		uint8_t counterLoad : 7;
 		uint8_t counterHalt : 1;
 	} sem;
 
-	uint8_t raw;
+	uint8_t byte;
 };
 
 union noiseCtrl_t
 {
-	struct semantic_t
+	struct semantic
 	{
 		uint8_t volume		: 4;
 		uint8_t isConstant	: 1;
@@ -225,38 +225,38 @@ union noiseCtrl_t
 		uint8_t unused		: 2;
 	} sem;
 
-	uint8_t raw;
+	uint8_t byte;
 };
 
 
 union noiseFreq_t
 {
-	struct semantic_t
+	struct semantic
 	{
 		uint8_t period	: 4;
 		uint8_t unused	: 3;
 		uint8_t mode	: 1;
 	} sem;
 
-	uint8_t raw;
+	uint8_t byte;
 };
 
 
 union noiseLength_t
 {
-	struct semantic_t
+	struct semantic
 	{
 		uint8_t unused : 3;
 		uint8_t length : 5;
 	} sem;
 
-	uint8_t raw;
+	uint8_t byte;
 };
 
 
 union dmcCtrl_t
 {
-	struct semantic_t
+	struct semantic
 	{
 		uint8_t freq		: 4;
 		uint8_t unused		: 2;
@@ -264,25 +264,25 @@ union dmcCtrl_t
 		uint8_t irqEnable	: 1;
 	} sem;
 
-	uint8_t raw;
+	uint8_t byte;
 };
 
 
 union dmcLoad_t
 {
-	struct semantic_t
+	struct semantic
 	{
 		uint8_t counter	: 7;
 		uint8_t unused	: 1;
 	} sem;
 
-	uint8_t raw;
+	uint8_t byte;
 };
 
 
-union status_t
+union apuStatus_t
 {
-	struct semantic_t
+	struct semantic
 	{
 		uint8_t p1		: 1;
 		uint8_t p2		: 1;
@@ -294,20 +294,20 @@ union status_t
 		uint8_t dmcInt	: 1;
 	} sem;
 
-	uint8_t raw;
+	uint8_t byte;
 };
 
 
 union frameCounter_t
 {
-	struct semantic_t
+	struct semantic
 	{
 		uint8_t unused		: 6;
 		uint8_t interrupt	: 1;
 		uint8_t mode		: 1;
 	} sem;
 
-	uint8_t raw;
+	uint8_t byte;
 };
 
 
@@ -358,10 +358,10 @@ public:
 	void Clear()
 	{
 		lastCycle			= apuCycle_t( 0 );
-		regCtrl.raw			= 0;
-		regRamp.raw			= 0;
-		regTune.raw			= 0;
-		timer.raw			= 0;
+		regCtrl.byte			= 0;
+		regRamp.byte			= 0;
+		regTune.byte2x			= 0;
+		timer.byte2x			= 0;
 		memset( &envelope, 0, sizeof( envelope ) );
 		sweep.divider.Reload();
 		sweep.reloadFlag	= false;
@@ -388,8 +388,8 @@ public:
 
 	void Clear()
 	{
-		regLinear.raw	= 0;
-		regTimer.raw	= 0;
+		regLinear.byte	= 0;
+		regTimer.byte2x	= 0;
 		reloadFlag		= false;
 		sequenceStep	= 0;
 		lastCycle		= cpuCycle_t( 0 );
@@ -420,9 +420,9 @@ public:
 
 	void Clear()
 	{
-		regCtrl.raw		= 0;
-		regFreq1.raw	= 0;
-		regFreq2.raw	= 0;
+		regCtrl.byte	= 0;
+		regFreq1.byte	= 0;
+		regFreq2.byte	= 0;
 
 		shift.Reload( 1 );
 		memset( &envelope, 0, sizeof( envelope ) );
@@ -451,8 +451,8 @@ public:
 
 	void Clear()
 	{
-		regCtrl.raw	= 0;
-		regLoad.raw	= 0;
+		regCtrl.byte	= 0;
+		regLoad.byte	= 0;
 		regAddr		= 0;
 		regLength	= 0;
 
@@ -539,7 +539,7 @@ static const uint8_t DmcLUT[ANALOG_MODE_COUNT][16] =
 };
 
 
-struct wtApuOutput
+struct apuOutput_t
 {
 	wtSoundBuffer	dbgPulse1;
 	wtSoundBuffer	dbgPulse2;
@@ -551,7 +551,7 @@ struct wtApuOutput
 };
 
 
-struct wtApuDebug
+struct apuDebug_t
 {
 	PulseChannel	pulse1;
 	PulseChannel	pulse2;
@@ -576,7 +576,7 @@ private:
 	DmcChannel		dmc;
 	frameCounter_t	frameCounter;
 
-	status_t		regStatus;
+	apuStatus_t		regStatus;
 
 	uint32_t		frameSeqTick;
 	uint8_t			frameSeqStep;
@@ -601,9 +601,9 @@ public:
 	apuCycle_t		apuCycle;
 	apuSeqCycle_t	seqCycle;
 
-	wtApuOutput*	frameOutput;
-	wtApuOutput		soundOutputBuffers[SoundBufferCnt];
-	wtApuOutput*	soundOutput;
+	apuOutput_t*	frameOutput;
+	apuOutput_t		soundOutputBuffers[SoundBufferCnt];
+	apuOutput_t*	soundOutput;
 	uint32_t		currentBuffer;
 	wtSystem*		system;
 
@@ -626,11 +626,11 @@ public:
 		pulse2.channelNum = PULSE_2;
 
 		frameSeqStep = 0;
-		frameCounter.raw = 0;
+		frameCounter.byte = 0;
 		currentBuffer = 0;
 		soundOutput = &soundOutputBuffers[0];
 
-		regStatus.raw = 0x1F;
+		regStatus.byte = 0x1F;
 
 		halfClk = false;
 		quarterClk = false;
@@ -660,7 +660,7 @@ public:
 
 	float	GetPulseFrequency( PulseChannel& pulse );
 	float	GetPulsePeriod( PulseChannel& pulse );
-	void	GetDebugInfo( wtApuDebug& apuDebug );
+	void	GetDebugInfo( apuDebug_t& apuDebug );
 
 private:
 	void	ExecPulseChannel( PulseChannel& pulse );

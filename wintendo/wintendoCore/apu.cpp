@@ -21,17 +21,17 @@ void APU::WriteReg( const uint16_t addr, const uint8_t value )
 {
 	switch( addr )
 	{
-		case 0x4000:	pulse1.regCtrl.raw				= value;	break;
-		case 0x4001:	pulse1.regRamp.raw				= value;	break;
+		case 0x4000:	pulse1.regCtrl.byte				= value;	break;
+		case 0x4001:	pulse1.regRamp.byte				= value;	break;
 		case 0x4002:	pulse1.regTune.sem1.lower		= value;	break;
-		case 0x4004:	pulse2.regCtrl.raw				= value;	break;
-		case 0x4005:	pulse2.regRamp.raw				= value;	break;
+		case 0x4004:	pulse2.regCtrl.byte				= value;	break;
+		case 0x4005:	pulse2.regRamp.byte				= value;	break;
 		case 0x4006:	pulse2.regTune.sem1.lower		= value;	break;
-		case 0x4008:	triangle.regLinear.raw			= value;	break;
+		case 0x4008:	triangle.regLinear.byte			= value;	break;
 		case 0x400A:	triangle.regTimer.sem1.lower	= value;	break;
-		case 0x400C:	noise.regCtrl.raw				= value;	break;
-		case 0x4010:	dmc.regCtrl.raw					= value;	break;
-		case 0x4011:	dmc.regLoad.raw					= value;	break;
+		case 0x400C:	noise.regCtrl.byte				= value;	break;
+		case 0x4010:	dmc.regCtrl.byte					= value;	break;
+		case 0x4011:	dmc.regLoad.byte					= value;	break;
 		case 0x4012:	dmc.regAddr						= value;	break;
 		case 0x4013:	dmc.regLength					= value;	break;
 
@@ -59,19 +59,19 @@ void APU::WriteReg( const uint16_t addr, const uint8_t value )
 
 		case 0x400E:
 		{
-			noise.regFreq1.raw = value;
+			noise.regFreq1.byte = value;
 			noise.timer.Reload( NoiseLUT[ NTSC ][ noise.regFreq1.sem.period ] );
 		} break;
 
 		case 0x400F:
 		{
-			noise.regFreq2.raw = value;
+			noise.regFreq2.byte = value;
 			noise.lengthCounter.Reload( LengthLUT[ noise.regFreq2.sem.length ] );
 		} break;
 
 		case 0x4015:
 		{
-			regStatus.raw = value;
+			regStatus.byte = value;
 
 			pulse1.mute		= !regStatus.sem.p1;
 			pulse2.mute		= !regStatus.sem.p2;
@@ -112,7 +112,7 @@ void APU::WriteReg( const uint16_t addr, const uint8_t value )
 			// TODO: Takes effect after 3/4 cycles
 			// https://wiki.nesdev.com/w/index.php/APU - Frame Counter
 			// https://wiki.nesdev.com/w/index.php/APU_Frame_Counter
-			frameCounter.raw = value;
+			frameCounter.byte = value;
 			frameSeqStep = 0;
 			if( frameCounter.sem.mode )
 			{
@@ -137,12 +137,12 @@ uint8_t APU::ReadReg( const uint16_t addr )
 	//	Reading this register clears the frame interrupt flag( but not the DMC interrupt flag ).
 	//	If an interrupt flag was set at the same moment of the read, it will read back as 1 but it will not be cleared.
 
-	status_t result;
+	apuStatus_t result;
 	result.sem.p1 = ( pulse1.timer.sem0.counter > 0 );
 	result.sem.p2 = ( pulse2.timer.sem0.counter > 0 );
 	result.sem.n = !noise.lengthCounter.IsZero();
 
-	return result.raw;
+	return result.byte;
 }
 
 
@@ -520,7 +520,7 @@ float APU::TndMixer( const uint32_t triangle, const uint32_t noise, const uint32
 }
 
 
-void APU::GetDebugInfo( wtApuDebug& apuDebug )
+void APU::GetDebugInfo( apuDebug_t& apuDebug )
 {
 	apuDebug.pulse1		= pulse1;
 	apuDebug.pulse2		= pulse2;

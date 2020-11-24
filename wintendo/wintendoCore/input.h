@@ -19,7 +19,6 @@ enum class ButtonFlags : uint8_t
 	BUTTON_A		= 0X80,
 };
 
-
 inline ButtonFlags operator |( const ButtonFlags lhs, const ButtonFlags rhs )
 {
 	return static_cast<ButtonFlags>( static_cast<uint8_t>( lhs ) | static_cast<uint8_t>( rhs ) );

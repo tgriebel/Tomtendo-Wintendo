@@ -18,7 +18,7 @@ private:
 			uint8_t	chrA12Inversion : 1;
 		} sem;
 
-		uint8_t raw;
+		uint8_t byte;
 	};
 
 	BankSelect bankSelect;
@@ -51,7 +51,7 @@ public:
 		bankDataInit(false)
 	{
 		mapperId = _mapperId;
-		bankSelect.raw = 0;
+		bankSelect.byte = 0;
 	}
 
 	uint8_t OnLoadCpu()
@@ -84,7 +84,7 @@ public:
 		{
 			if( ( address % 2 ) == 0 )
 			{
-				bankSelect.raw = value;
+				bankSelect.byte = value;
 
 				if( bankSelect.sem.prgRomBankMode != oldPrgBankMode )
 				{

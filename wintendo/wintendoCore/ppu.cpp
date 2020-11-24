@@ -63,7 +63,7 @@ void PPU::DMA( const uint16_t address )
 
 void PPU::PPUCTRL( const uint8_t value )
 {
-	regCtrl.raw = value;
+	regCtrl.byte = value;
 	regStatus.current.sem.lastReadLsb = ( value & 0x1F );
 
 	regT.sem.ntId = static_cast<uint8_t>( regCtrl.sem.ntId );
@@ -72,20 +72,20 @@ void PPU::PPUCTRL( const uint8_t value )
 
 uint8_t PPU::PPUCTRL()
 {
-	return regCtrl.raw;
+	return regCtrl.byte;
 }
 
 
 void PPU::PPUMASK( const uint8_t value )
 {
-	regMask.raw = value;
+	regMask.byte = value;
 	regStatus.current.sem.lastReadLsb = ( value & 0x1F );
 }
 
 
 uint8_t PPU::PPUMASK()
 {
-	return regMask.raw;
+	return regMask.byte;
 }
 
 
@@ -114,7 +114,7 @@ uint8_t PPU::PPUSTATUS()
 
 	regW = 0;
 
-	return regStatus.current.raw;
+	return regStatus.current.byte;
 }
 
 
@@ -186,11 +186,11 @@ void PPU::PPUADDR( const uint8_t value )
 
 	if( regW == 0 )
 	{
-		regT.raw = ( regT.raw & 0x00FF) | ( ( value & 0x3F ) << 8 );
+		regT.byte2x = ( regT.byte2x & 0x00FF) | ( ( value & 0x3F ) << 8 );
 	}
 	else
 	{
-		regT.raw = ( regT.raw & 0xFF00 ) | value;
+		regT.byte2x = ( regT.byte2x & 0xFF00 ) | value;
 		regV = regT;
 	}
 
@@ -226,9 +226,9 @@ uint8_t PPU::PPUDATA()
 
 	if ( DataportEnabled() )
 	{
-		ppuReadBuffer[1] = ReadVram( regV.raw );
+		ppuReadBuffer[1] = ReadVram( regV.byte2x );
 
-		if( regV.raw >= PaletteBaseAddr )
+		if( regV.byte2x >= PaletteBaseAddr )
 		{
 			ppuReadBuffer[0] = ppuReadBuffer[1];
 		}
@@ -240,17 +240,10 @@ uint8_t PPU::PPUDATA()
 }
 
 
-void PPU::OAMDMA( const uint8_t value )
+void PPU::IssueDMA( const uint8_t value )
 {
 	system->RequestDMA();
 	DMA( value );
-}
-
-
-uint8_t PPU::OAMDMA()
-{
-	system->RequestDMA();
-	return registers[PPUREG_OAMDMA];
 }
 
 
@@ -259,7 +252,7 @@ void PPU::IncRenderAddr()
 	if( DataportEnabled() )
 	{
 		const bool isLargeIncrement = static_cast<bool>( regCtrl.sem.vramInc );
-		regV.raw += isLargeIncrement ? 0x20 : 0x01;
+		regV.byte2x += isLargeIncrement ? 0x20 : 0x01;
 	}
 }
 
@@ -283,7 +276,7 @@ void PPU::BgPipelineFetch( const uint64_t scanlineCycle )
 	uint32_t cycleCountAdjust = ( scanlineCycle - 1 ) % 8;
 	if ( cycleCountAdjust == 1 )
 	{
-		plLatches.tileId = ReadVram( NameTable0BaseAddr | ( regV.raw & 0x0FFF ) );
+		plLatches.tileId = ReadVram( NameTable0BaseAddr | ( regV.byte2x & 0x0FFF ) );
 	}
 	else if ( cycleCountAdjust == 3 )
 	{
@@ -525,7 +518,7 @@ void PPU::WriteVram()
 	{
 		if ( DataportEnabled() )
 		{
-			const uint16_t adjustedAddr = MirrorVram( regV.raw );
+			const uint16_t adjustedAddr = MirrorVram( regV.byte2x );
 
 			vram[adjustedAddr] = registers[PPUREG_DATA];
 			debugVramWriteCounter[adjustedAddr]++;
@@ -643,9 +636,9 @@ void PPU::DrawChrRomTile( wtRawImageInterface* imageBuffer, const wtRect& imageR
 }
 
 
-PpuSpriteAttrib PPU::GetSpriteData( const uint8_t spriteId, const uint8_t oam[] )
+spriteAttrib_t PPU::GetSpriteData( const uint8_t spriteId, const uint8_t oam[] )
 {
-	PpuSpriteAttrib attribs;
+	spriteAttrib_t attribs;
 	const uint8_t attrib		= oam[spriteId * 4 + 2]; // TODO: finish attrib features
 	attribs.tileId				= oam[spriteId * 4 + 1];
 	attribs.x					= oam[spriteId * 4 + 3];
@@ -659,7 +652,7 @@ PpuSpriteAttrib PPU::GetSpriteData( const uint8_t spriteId, const uint8_t oam[] 
 }
 
 
-void PPU::DrawSpritePixel( wtDisplayImage& imageBuffer, const wtRect& imageRect, const PpuSpriteAttrib attribs, const wtPoint& point, const uint8_t bgPixel, bool sprite0 )
+void PPU::DrawSpritePixel( wtDisplayImage& imageBuffer, const wtRect& imageRect, const spriteAttrib_t attribs, const wtPoint& point, const uint8_t bgPixel, bool sprite0 )
 {
 	if( !regMask.sem.showSprt )
 	{
@@ -952,7 +945,7 @@ bool PPU::DataportEnabled()
 }
 
 
-const ppuCycle_t PPU::Exec()
+ppuCycle_t PPU::Exec()
 {
 	// Function advances 1 - 8 cycles at a time. The logic is built on this constaint.
 	static wtRect imageRect = { 0, 0, ScreenWidth, ScreenHeight };
@@ -965,7 +958,7 @@ const ppuCycle_t PPU::Exec()
 	if ( regStatus.hasLatch )
 	{
 		regStatus.current = regStatus.latched;
-		regStatus.latched.raw = 0;
+		regStatus.latched.byte = 0;
 		regStatus.hasLatch = false;
 	}
 
@@ -999,7 +992,7 @@ const ppuCycle_t PPU::Exec()
 
 			inVBlank = false;
 			regStatus.current.sem.vBlank = 0;
-			regStatus.latched.raw = 0;
+			regStatus.latched.byte = 0;
 			regStatus.hasLatch = false;
 		}
 		else if( cycleCount >= 280 && cycleCount <= 304 )
@@ -1089,7 +1082,7 @@ const ppuCycle_t PPU::Exec()
 
 			for ( uint8_t spriteNum = 0; spriteNum < secondaryOamSpriteCnt; ++spriteNum )
 			{
-				PpuSpriteAttrib& attribs = secondaryOAM[spriteNum];
+				spriteAttrib_t& attribs = secondaryOAM[spriteNum];
 
 				if ( ( beamPosition.x < ( attribs.x + 8 ) ) && ( beamPosition.x >= attribs.x ) )
 				{

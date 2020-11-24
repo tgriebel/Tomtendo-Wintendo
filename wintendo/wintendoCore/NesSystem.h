@@ -186,7 +186,7 @@ struct wtFrameResult
 {
 	uint32_t			currentFrame;
 	wtDisplayImage		frameBuffer;
-	wtApuOutput			soundOutput;
+	apuOutput_t			soundOutput;
 	bool				sndReady;
 
 	// Debug
@@ -200,5 +200,5 @@ struct wtFrameResult
 	wtPaletteImage		paletteDebug;
 	wtPatternTableImage patternTable0;
 	wtPatternTableImage patternTable1;
-	wtApuDebug			apuDebug;
+	apuDebug_t			apuDebug;
 };

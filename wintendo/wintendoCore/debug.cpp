@@ -1,4 +1,8 @@
 
+#include <iomanip>
+#include <sstream>
+#include <fstream>
+#include <iostream>
 #include "debug.h"
 #include "mos6502.h"
 
