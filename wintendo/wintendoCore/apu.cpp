@@ -30,10 +30,7 @@ void APU::WriteReg( const uint16_t addr, const uint8_t value )
 		case 0x4008:	triangle.regLinear.byte			= value;	break;
 		case 0x400A:	triangle.regTimer.sem1.lower	= value;	break;
 		case 0x400C:	noise.regCtrl.byte				= value;	break;
-		case 0x4010:	dmc.regCtrl.byte					= value;	break;
-		case 0x4011:	dmc.regLoad.byte					= value;	break;
-		case 0x4012:	dmc.regAddr						= value;	break;
-		case 0x4013:	dmc.regLength					= value;	break;
+		case 0x4010:	dmc.regCtrl.byte				= value;	break;
 
 		case 0x4003:
 		{
@@ -48,6 +45,25 @@ void APU::WriteReg( const uint16_t addr, const uint8_t value )
 			pulse2.regTune.sem1.upper = value;
 			pulse2.sequenceStep = 0;
 			pulse2.envelope.startFlag = true;
+		} break;
+
+		case 0x4011:
+		{
+			dmc.regLoad.byte = value;
+			dmc.outputLevel.Reload( dmc.regLoad.sem.counter );
+			dmc.emptyBuffer = false;
+		} break;
+
+		case 0x4012:
+		{
+			dmc.regAddr = value;
+			dmc.addr = ( 0xC000 | ( dmc.regAddr << 6 ) ) & 0xFFC0;
+		} break;
+
+		case 0x4013:
+		{
+			dmc.regLength = value;
+			dmc.byteCnt = ( 0x01 | ( value << 4 ) );
 		} break;
 
 		case 0x400B:
@@ -116,7 +132,9 @@ void APU::WriteReg( const uint16_t addr, const uint8_t value )
 			frameSeqStep = 0;
 			if( frameCounter.sem.mode )
 			{
-				// Trigger half and quarter clocks
+				// TODO: check correctness
+				quarterClk = true;
+				halfClk = true;
 			}
 		} break;
 		default: break;
@@ -141,6 +159,8 @@ uint8_t APU::ReadReg( const uint16_t addr )
 	result.sem.p1 = ( pulse1.timer.sem0.counter > 0 );
 	result.sem.p2 = ( pulse2.timer.sem0.counter > 0 );
 	result.sem.n = !noise.lengthCounter.IsZero();
+
+	irqClk = false;
 
 	return result.byte;
 }
@@ -419,7 +439,8 @@ void APU::DmcGenerator()
 	const int sampleCnt = ( apuCycle - dmc.lastCycle ).count();
 	for ( int sample = 0; sample < sampleCnt; sample++ )
 	{
-		dmc.samples.Enque( 0.0f );
+		dmc.samples.Enque( dmc.outputLevel.Value() );
+		dmc.emptyBuffer = true;
 	}
 
 	dmc.lastCycle = apuCycle;
@@ -428,12 +449,40 @@ void APU::DmcGenerator()
 
 void APU::ExecChannelDMC()
 {
-	// if cpuCycle % dmc_table[r]
-	// then generate
-	// Sample address = % 11AAAAAA.AA000000 = $C000 + ( A * 64 )
-	// ( 0xC000 | ( address << 6 ) ) & 0xFFC0
-	// Sample length = %LLLL.LLLL0001 = (L * 16) + 1 bytes
-	// ( 0x01 | ( address << 4 ) )
+	if ( dmc.regCtrl.sem.irqEnable )
+	{
+		system->RequestIRQ();
+	}
+
+	dmc.sampleBuffer = system->ReadMemory( dmc.addr );
+
+	if( dmc.addr == 0xFFFF )
+	{
+		dmc.addr = 0x8000;
+	}
+	else
+	{
+		dmc.addr += 1;
+		dmc.byteCnt--;
+	}
+
+	if( dmc.byteCnt == 0 )
+	{
+		if( dmc.regCtrl.sem.loop )
+		{
+			// TODO: Restart
+		}
+		else if( dmc.regCtrl.sem.irqEnable )
+		{
+			system->RequestIRQ(); // TODO: is this right?
+		}
+	}
+
+	const uint16_t dmcPeriod = DmcLUT[ NTSC] [ dmc.regCtrl.sem.freq ];
+	if( cpuCycle.count() % dmcPeriod )
+	{
+		DmcGenerator();
+	}
 }
 
 
@@ -441,7 +490,6 @@ void APU::ExecFrameCounter()
 {
 	halfClk		= false;
 	quarterClk	= false;
-	irqClk		= false;
 
 	const uint32_t mode = frameCounter.sem.mode;
 	frameSeqEvent_t& event = FrameSeqEvents[frameSeqStep][mode];

@@ -357,17 +357,23 @@ public:
 
 	void Clear()
 	{
-		lastCycle			= apuCycle_t( 0 );
+		lastCycle				= apuCycle_t( 0 );
 		regCtrl.byte			= 0;
 		regRamp.byte			= 0;
 		regTune.byte2x			= 0;
 		timer.byte2x			= 0;
-		memset( &envelope, 0, sizeof( envelope ) );
+
+		sequenceStep			= 0;
+		volume					= 0;
+
+		mute					= true;
+		sweep.reloadFlag		= false;
+		
 		sweep.divider.Reload();
-		sweep.reloadFlag	= false;
+		period.Reload();		
 		samples.Reset();
 
-		mute = true;
+		memset( &envelope, 0, sizeof( envelope ) );
 	}
 };
 
@@ -449,13 +455,25 @@ public:
 	bool				irq;
 	bool				mute;
 
+	uint16_t			addr;
+	uint16_t			byteCnt;
+	uint8_t				sampleBuffer;
+	BitCounter<7>		outputLevel;
+	bool				emptyBuffer;
+
 	void Clear()
 	{
 		regCtrl.byte	= 0;
 		regLoad.byte	= 0;
-		regAddr		= 0;
-		regLength	= 0;
+		regAddr			= 0;
+		regLength		= 0;
 
+		addr			= 0;
+		byteCnt			= 0;
+		sampleBuffer	= 0;
+		emptyBuffer		= true;
+
+		outputLevel.Reload();
 		samples.Reset();
 		lastCycle = apuCycle_t( 0 );
 
@@ -518,21 +536,21 @@ static const uint8_t TriLUT[32] =
 };
 
 
-static const uint8_t LengthLUT[] =
+static const uint16_t LengthLUT[] =
 {
 	10, 254, 20, 2, 40, 4, 80, 6, 160, 8, 60, 10, 14, 12, 26, 14,
 	12, 16, 24, 18, 48, 20, 96, 22, 192, 24, 72, 26, 16, 28, 32, 30,
 };
 
 
-static const uint8_t NoiseLUT[ ANALOG_MODE_COUNT ][16] =
+static const uint16_t NoiseLUT[ ANALOG_MODE_COUNT ][16] =
 {
 	{ 4, 8, 16, 32, 64, 96, 128, 160, 202, 254, 380, 508, 762, 1016, 2034, 4068, }, // NTSC LUT
 	{ 4, 8, 14, 30, 60, 88, 118, 148, 188, 236, 354, 472, 708,  944, 1890, 3778, }, // PAL LUT
 };
 
 
-static const uint8_t DmcLUT[ANALOG_MODE_COUNT][16] =
+static const uint16_t DmcLUT[ANALOG_MODE_COUNT][16] =
 {
 	{ 428, 380, 340, 320, 286, 254, 226, 214, 190, 160, 142, 128, 106,  84,  72,  54 }, // NTSC LUT
 	{ 398, 354, 316, 298, 276, 236, 210, 198, 176, 148, 132, 118,  98,  78,  66,  50 }, // PAL LUT
@@ -622,22 +640,22 @@ public:
 		noise.Clear();
 		dmc.Clear();
 
-		pulse1.channelNum = PULSE_1;
-		pulse2.channelNum = PULSE_2;
+		pulse1.channelNum	= PULSE_1;
+		pulse2.channelNum	= PULSE_2;
 
-		frameSeqStep = 0;
-		frameCounter.byte = 0;
-		currentBuffer = 0;
-		soundOutput = &soundOutputBuffers[0];
+		frameSeqStep		= 0;
+		frameCounter.byte	= 0;
+		currentBuffer		= 0;
+		soundOutput			= &soundOutputBuffers[0];
 
-		regStatus.byte = 0x1F;
+		regStatus.byte		= 0x1F;
 
-		halfClk = false;
-		quarterClk = false;
-		irqClk = false;
+		halfClk				= false;
+		quarterClk			= false;
+		irqClk				= false;
 
-		frameSeqTick = 0;
-		frameOutput = nullptr;
+		frameSeqTick		= 0;
+		frameOutput			= nullptr;
 
 		for ( uint32_t i = 0; i < SoundBufferCnt; ++i )
 		{

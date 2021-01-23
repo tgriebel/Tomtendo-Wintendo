@@ -541,7 +541,7 @@ int wtSystem::RunFrame()
 	auto currentTime = chrono::steady_clock::now();
 
 	auto elapsed = targetTime - currentTime;
-	auto dur = chrono::duration <double, nano>( elapsed ).count();
+	auto dur = chrono::duration<double, nano>( elapsed ).count();
 
 	if ( lockFps && ( elapsed.count() > 0 ) )
 	{

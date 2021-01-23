@@ -52,9 +52,8 @@ public:
 	static const uint16_t InputRegister0		= 0x4016;
 	static const uint16_t InputRegister1		= 0x4017;
 
-	Cpu6502				cpu;
+	// TODO: Need to abstract memory access for mappers
 	PPU					ppu;
-	APU					apu;
 	masterCycles_t		sysCycles;
 
 	wstring				fileName;
@@ -69,7 +68,9 @@ public:
 	wtPatternTableImage	patternTable0;
 	wtPatternTableImage	patternTable1;
 
-	uint8_t				memory[VirtualMemorySize]; // TODO: make physical size
+	// TODO: Need to abstract memory access for mappers
+	// TODO: make physical size
+	uint8_t				memory[VirtualMemorySize];
 
 	bool				headless;
 
@@ -82,6 +83,8 @@ public:
 	wtConfig			config;
 
 private:
+	Cpu6502				cpu;
+	APU					apu;
 	bool				debugNTEnable;
 	wtDebugInfo			dbgInfo;
 #if DEBUG_ADDR == 1
