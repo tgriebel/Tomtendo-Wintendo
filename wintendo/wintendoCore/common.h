@@ -25,6 +25,7 @@ const uint64_t ApuSequenceDivide	= 89490;
 const uint64_t PpuClockDivide		= 4;
 const uint64_t PpuCyclesPerScanline	= 341;
 const uint64_t FPS					= 60;
+const uint64_t MinFPS				= 30;
 
 using masterCycles_t	= std::chrono::duration< uint64_t, std::ratio<1, MasterClockHz> >;
 using ppuCycle_t		= std::chrono::duration< uint64_t, std::ratio<PpuClockDivide, MasterClockHz> >;
