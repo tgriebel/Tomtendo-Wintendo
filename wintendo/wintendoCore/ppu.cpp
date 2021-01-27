@@ -354,16 +354,22 @@ uint16_t PPU::StaticMirrorVram( uint16_t addr, uint32_t mirrorMode )
 	// Nametable Mirroring Modes
 	if ( mirrorMode == MIRROR_MODE_HORIZONTAL )
 	{
-		if ( ( addr >= 0x2400 && addr < 0x2800 ) || ( addr >= 0x2C00 && addr < 0x3000 ) )
-		{
-			return ( addr - PPU::NameTableAttribMemorySize );
+		if ( addr >= 0x2400 && addr < 0x2800 ) {
+			return ( addr - 0x2400 + PPU::NameTable0BaseAddr );
+		} else if ( addr >= 0x2800 && addr < 0x2C00 ) {
+			return ( addr - 0x2800 + PPU::NameTable1BaseAddr );
+		} else if ( addr >= 0x2C00 && addr < 0x3000 ) {
+			return ( addr - 0x2C00 + PPU::NameTable1BaseAddr );
 		}
 	}
 	else if ( mirrorMode == MIRROR_MODE_VERTICAL )
 	{
-		if ( addr >= PPU::NameTable2BaseAddr && addr < 0x3000 )
-		{
-			return ( addr - 2 * PPU::NameTableAttribMemorySize );
+		if ( addr >= 0x2400 && addr < 0x2800 ) {
+			return ( addr - 0x2400 + PPU::NameTable1BaseAddr );
+		} else if ( addr >= 0x2800 && addr < 0x2C00 ) {
+			return ( addr - 0x2800 + PPU::NameTable0BaseAddr );
+		} else if ( addr >= 0x2C00 && addr < 0x3000 ) {
+			return ( addr - 0x2C00 + PPU::NameTable1BaseAddr );
 		}
 	}
 	else if ( mirrorMode == MIRROR_MODE_FOURSCREEN )

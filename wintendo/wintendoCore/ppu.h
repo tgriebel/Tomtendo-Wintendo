@@ -167,7 +167,7 @@ public:
 	static const uint32_t NametableMemorySize		= 0x03C0;
 	static const uint32_t PatternTableMemorySize	= 0x2000;
 	static const uint32_t AttributeTableMemorySize	= 0x0040;
-	static const uint32_t NameTableAttribMemorySize	= NametableMemorySize + AttributeTableMemorySize;
+	static const uint32_t NameTableAttribMemorySize	= 0x0400;
 	static const uint32_t PatternTable0BaseAddr		= 0x0000;
 	static const uint32_t PatternTable1BaseAddr		= 0x1000;
 	static const uint16_t NameTable0BaseAddr		= 0x2000;
