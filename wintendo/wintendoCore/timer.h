@@ -26,7 +26,7 @@ public:
 
 	double GetElapsed()
 	{
-		return ( endTimeMs - startTimeMs ).count();
+		return static_cast<double>( ( endTimeMs - startTimeMs ).count() );
 	}
 
 private:

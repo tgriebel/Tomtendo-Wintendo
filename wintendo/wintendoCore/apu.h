@@ -3,9 +3,9 @@
 #include "stdafx.h"
 #include "common.h"
 
-static const uint32_t ApuSamplesPerSec	= CPU_HZ;
-static const uint32_t ApuBufferMs		= ( 1000.0f / MinFPS );
-static const uint32_t ApuBufferSize		= ApuSamplesPerSec * ( ApuBufferMs / 1000.0f );
+static const uint32_t		ApuSamplesPerSec	= CPU_HZ;
+static constexpr uint32_t	ApuBufferMs			= static_cast<uint32_t>( 1000.0f / MinFPS );
+static constexpr uint32_t	ApuBufferSize		= static_cast<uint32_t>( ApuSamplesPerSec *  ( ApuBufferMs / 1000.0f ) );
 
 class wtSampleQueue
 {

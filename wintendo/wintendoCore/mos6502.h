@@ -8,7 +8,7 @@
 #include "common.h"
 #include "debug.h"
 
-struct	Cpu6502;
+class	Cpu6502;
 struct	OpCodeMap;
 struct	AddrMapTuple;
 struct	InstructionMapTuple;
