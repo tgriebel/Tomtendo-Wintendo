@@ -11,7 +11,7 @@
 #define NES_MODE			(1)
 #define DEBUG_MODE			(0)
 #define DEBUG_ADDR			(0)
-#define MIRROR_OPTIMIZATION	(1)
+#define MIRROR_OPTIMIZATION	(0)
 
 const uint64_t MasterClockHz		= 21477272;
 const uint64_t CpuClockDivide		= 12;

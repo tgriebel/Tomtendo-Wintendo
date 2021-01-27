@@ -3,7 +3,7 @@
 #include "NesSystem.h"
 #include <algorithm>
 
-#pragma optimize("", off)
+//#pragma optimize("", off)
 
 float APU::GetPulseFrequency( PulseChannel& pulse )
 {
@@ -43,8 +43,6 @@ void APU::WriteReg( const uint16_t addr, const uint8_t value )
 			pulse1.regTune.sem1.upper = value;
 			pulse1.sequenceStep = 0;
 			pulse1.envelope.startFlag = true;
-			pulse1.envelope.decayLevel = 0x0F;
-			// TODO: Reload length counter?
 		} break;
 
 		case 0x4005:
@@ -58,7 +56,6 @@ void APU::WriteReg( const uint16_t addr, const uint8_t value )
 			pulse2.regTune.sem1.upper = value;
 			pulse2.sequenceStep = 0;
 			pulse2.envelope.startFlag = true;
-			pulse2.envelope.decayLevel = 0x0F;
 		} break;
 
 		case 0x400B:
@@ -191,30 +188,25 @@ void APU::EnvelopeGenerater( envelope_t& envelope, const uint8_t volume, const b
 	if( !quarterClk )
 		return;
 
-	assert( envelope.divCounter <= 0x0F );
-
 	if( envelope.startFlag )
 	{
 		envelope.decayLevel = 0x0F;
-		envelope.divCounter = envelope.divPeriod;
+		envelope.divCounter = envelope.divPeriod + 1;
 		envelope.startFlag = false;
 	}
 	else
 	{
-		if( envelope.divCounter == 0 )
+		if( ( envelope.divCounter-- ) == 0 )
 		{
-			envelope.divPeriod = volume;
+			envelope.divCounter = envelope.divPeriod + 1;
 
-			if( envelope.decayLevel > 0 ) {
+			if( ( envelope.decayLevel > 0 ) || loop ) {
 				--envelope.decayLevel;
-			} else if( loop ) {
-				envelope.decayLevel = 0x0F;
 			}
 		}
-		else {
-			--envelope.divCounter;
-		}
 	}
+
+	assert( envelope.divCounter <= 0x0F );
 
 	if ( constant ) {
 		envelope.output = volume;
@@ -284,7 +276,7 @@ void APU::PulseSweep( PulseChannel& pulse )
 }
 
 
-bool APU::IsPulseDutyHigh( const PulseChannel& pulse )
+bool APU::IsDutyHigh( const PulseChannel& pulse )
 {
 	return PulseLUT[ pulse.regCtrl.sem.duty ][ ( pulse.sequenceStep + system->config.apu.waveShift ) % 8 ];
 }
@@ -295,22 +287,16 @@ void APU::PulseSequencer( PulseChannel& pulse )
 	const uint32_t sampleCnt = static_cast<uint32_t>( ( apuCycle - pulse.lastCycle ).count() );
 	float volume = pulse.envelope.output;
 
-	if( pulse.period.Value() < 8 )
-	{
+	if( pulse.period.Value() < 8 ) {
 		volume = 0;
 	}
 
-	const float amplitude = volume;
-
 	for ( uint32_t sample = 0; sample < sampleCnt; sample++ )
 	{
-		const float pulseSample = IsPulseDutyHigh( pulse ) ? amplitude : 0;
-		if ( ( pulse.timer.sem0.counter == 0 ) || pulse.mute /*|| pulse.sweep.mute*/ )
-		{
+		const float pulseSample = IsDutyHigh( pulse ) ? volume : 0;
+		if ( ( pulse.timer.sem0.counter == 0 ) || pulse.mute /*|| pulse.sweep.mute*/ ) {
 			pulse.samples.Enque( 0 );
-		}
-		else
-		{
+		} else {
 			pulse.samples.Enque( pulseSample );
 		}
 	}
@@ -332,7 +318,7 @@ void APU::ExecPulseChannel( PulseChannel& pulse )
 	
 	if ( pulse.timer.sem0.timer == 0 )
 	{
-		pulse.timer.sem0.timer = pulse.period.Value();
+		pulse.timer.sem0.timer = pulse.period.Value() + 1;
 		PulseSequencer( pulse );
 	}
 }
@@ -511,8 +497,8 @@ void APU::ExecChannelDMC()
 		{
 			// TODO: Restart
 		}
-		else if( dmc.regCtrl.sem.irqEnable ) 
-		{	system->RequestIRQ(); // TODO: is this right?
+		else if( dmc.regCtrl.sem.irqEnable ) {
+			system->RequestIRQ(); // TODO: is this right?
 		}
 
 		if ( dmc.emptyBuffer )

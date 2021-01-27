@@ -109,7 +109,7 @@ bool wtAudioEngine::AudioSubmit()
 
 	pSourceVoice->GetState( &audioState, 0 );
 
-	static bool stopped = true;
+	static bool stopped = false;
 	if ( audioState.BuffersQueued <= 1 ) {
 		pSourceVoice->Stop();
 		stopped = true;
@@ -197,6 +197,7 @@ bool wtAudioEngine::AudioSubmit()
 		//std::cout << "Lowpass Filter failure: " << err.ErrorMessage();
 	}
 	
+
 	pXAudio2->CommitChanges( XAUDIO2_COMMIT_ALL );
 	return true;
 }

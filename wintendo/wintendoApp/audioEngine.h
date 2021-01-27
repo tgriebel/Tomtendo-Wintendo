@@ -40,7 +40,7 @@ struct wtAudioEngine
 
 	float								audioDuration		= 0.0f;
 	bool								enableSound			= true;
-	bool								audioStopped		= true;
+	bool								audioStopped		= false;
 	float								Q1					= 1.2f;		// [0, 1.5]
 	float								Q2					= 1.2f;		// [0, 1.5]
 	float								Q3					= 1.2f;		// [0, 1.5]

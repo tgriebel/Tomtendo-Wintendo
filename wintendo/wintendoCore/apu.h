@@ -376,6 +376,7 @@ public:
 		samples.Reset();
 
 		memset( &envelope, 0, sizeof( envelope ) );
+		envelope.startFlag = true;
 	}
 };
 
@@ -475,7 +476,7 @@ public:
 		addr			= 0;
 		byteCnt			= 0;
 		sampleBuffer	= 0;
-		emptyBuffer		= true;
+		emptyBuffer		= false;
 
 		shiftReg		= 0;
 		silenceFlag		= false;
@@ -514,12 +515,12 @@ static frameSeqEvent_t FrameSeqEvents[FrameSeqEventCnt][FrameSeqModeCnt] =
 // https://wiki.nesdev.com/w/index.php/APU_Pulse
 static const uint8_t PulseLUT[4][8] = 
 {
-#if 0
+#if 1
 	{ 1, 0, 0, 0, 0, 0, 0, 0 },
 	{ 1, 1, 0, 0, 0, 0, 0, 0 },
 	{ 1, 1, 1, 1, 0, 0, 0, 0 },
-	{ 0, 0, 0, 0, 0, 0, 1, 1 },
-#elif 1
+	{ 0, 0, 1, 1, 1, 1, 1, 1 },
+#elif 0
 	{ 0, 0, 0, 0, 0, 0, 0, 1 },
 	{ 0, 0, 0, 0, 0, 0, 1, 1 },
 	{ 0, 0, 0, 0, 1, 1, 1, 1 },
@@ -692,7 +693,7 @@ private:
 	void	ExecChannelDMC();
 	void	ExecFrameCounter();
 	void	EnvelopeGenerater( envelope_t& envelope, const uint8_t volume, const bool loop, const bool constant );
-	bool	IsPulseDutyHigh( const PulseChannel& pulse );
+	bool	IsDutyHigh( const PulseChannel& pulse );
 	void	PulseSweep( PulseChannel& pulse );
 	void	PulseSequencer( PulseChannel& pulse );
 	void	InitMixerLUT();
