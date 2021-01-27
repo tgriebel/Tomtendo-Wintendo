@@ -3,6 +3,8 @@
 #include "NesSystem.h"
 #include <algorithm>
 
+#pragma optimize("", off)
+
 float APU::GetPulseFrequency( PulseChannel& pulse )
 {
 	float freq = CPU_HZ / ( 16.0f * pulse.period.Value() + 1 );
@@ -22,22 +24,33 @@ void APU::WriteReg( const uint16_t addr, const uint8_t value )
 	switch( addr )
 	{
 		case 0x4000:	pulse1.regCtrl.byte				= value;	break;
-		case 0x4001:	pulse1.regRamp.byte				= value;	break;
 		case 0x4002:	pulse1.regTune.sem1.lower		= value;	break;
 		case 0x4004:	pulse2.regCtrl.byte				= value;	break;
-		case 0x4005:	pulse2.regRamp.byte				= value;	break;
 		case 0x4006:	pulse2.regTune.sem1.lower		= value;	break;
 		case 0x4008:	triangle.regLinear.byte			= value;	break;
 		case 0x400A:	triangle.regTimer.sem1.lower	= value;	break;
 		case 0x400C:	noise.regCtrl.byte				= value;	break;
 		case 0x4010:	dmc.regCtrl.byte				= value;	break;
 
+		case 0x4001:
+		{
+			pulse1.regRamp.byte = value;
+			pulse1.sweep.reloadFlag = true;
+		} break;
+
 		case 0x4003:
 		{
 			pulse1.regTune.sem1.upper = value;
 			pulse1.sequenceStep = 0;
 			pulse1.envelope.startFlag = true;
+			pulse1.envelope.decayLevel = 0x0F;
 			// TODO: Reload length counter?
+		} break;
+
+		case 0x4005:
+		{
+			pulse2.regRamp.byte = value;
+			pulse2.sweep.reloadFlag = true;
 		} break;
 
 		case 0x4007:
@@ -45,6 +58,28 @@ void APU::WriteReg( const uint16_t addr, const uint8_t value )
 			pulse2.regTune.sem1.upper = value;
 			pulse2.sequenceStep = 0;
 			pulse2.envelope.startFlag = true;
+			pulse2.envelope.decayLevel = 0x0F;
+		} break;
+
+		case 0x400B:
+		{
+			triangle.regTimer.sem1.upper = value;
+			triangle.lengthCounter.Reload( LengthLUT[ triangle.regTimer.sem0.counter ] );
+			triangle.reloadFlag = true;
+		} break;
+
+		case 0x400E:
+		{
+			noise.regFreq1.byte = value;
+			noise.timer.Reload( NoiseLUT[ NTSC ][ noise.regFreq1.sem.period ] );
+		} break;
+
+		case 0x400F:
+		{
+			noise.envelope.startFlag = true;
+			noise.envelope.decayLevel = 0x0F;
+			noise.regFreq2.byte = value;
+			noise.lengthCounter.Reload( LengthLUT[ noise.regFreq2.sem.length ] );
 		} break;
 
 		case 0x4011:
@@ -66,25 +101,6 @@ void APU::WriteReg( const uint16_t addr, const uint8_t value )
 			dmc.byteCnt = ( 0x01 | ( value << 4 ) );
 		} break;
 
-		case 0x400B:
-		{
-			triangle.regTimer.sem1.upper = value;
-			triangle.lengthCounter.Reload( LengthLUT[ triangle.regTimer.sem0.counter ] );
-			triangle.reloadFlag = true;
-		} break;
-
-		case 0x400E:
-		{
-			noise.regFreq1.byte = value;
-			noise.timer.Reload( NoiseLUT[ NTSC ][ noise.regFreq1.sem.period ] );
-		} break;
-
-		case 0x400F:
-		{
-			noise.regFreq2.byte = value;
-			noise.lengthCounter.Reload( LengthLUT[ noise.regFreq2.sem.length ] );
-		} break;
-
 		case 0x4015:
 		{
 			regStatus.byte = value;
@@ -95,29 +111,27 @@ void APU::WriteReg( const uint16_t addr, const uint8_t value )
 			noise.mute		= !regStatus.sem.n;
 			dmc.mute		= !regStatus.sem.d;
 
-			if ( pulse1.mute )
-			{
+			if ( pulse1.mute ) {
 				pulse1.timer.sem0.counter = 0;
 			}
 
-			if ( pulse2.mute )
-			{
+			if ( pulse2.mute ) {
 				pulse2.timer.sem0.counter = 0;
 			}
 
-			if( triangle.mute )
-			{
+			if( triangle.mute ) {
 				triangle.lengthCounter.Reload();
 			}
 
-			if ( noise.mute )
-			{
+			if ( noise.mute ) {
 				noise.lengthCounter.Reload();
 			}
-
-			if ( dmc.mute )
-			{
+			
+			if ( dmc.mute ) {
+				dmc.byteCnt = 0;
 			}
+			// If the DMC bit is set, the DMC sample will be restarted only if its bytes remaining is 0.
+			// If there are bits remaining in the 1-byte sample buffer, these will finish playing before the next sample is fetched.
 
 			dmc.irq = false;
 
@@ -177,38 +191,37 @@ void APU::EnvelopeGenerater( envelope_t& envelope, const uint8_t volume, const b
 	if( !quarterClk )
 		return;
 
+	assert( envelope.divCounter <= 0x0F );
+
 	if( envelope.startFlag )
 	{
-		envelope.startFlag = false;
-		envelope.decayLevel = 15;
+		envelope.decayLevel = 0x0F;
 		envelope.divCounter = envelope.divPeriod;
+		envelope.startFlag = false;
 	}
 	else
 	{
 		if( envelope.divCounter == 0 )
 		{
 			envelope.divPeriod = volume;
-			envelope.divCounter = ( envelope.divCounter - 1 ) & 0x0F; // TODO: wrap allowed?
-			if( loop )
-			{
-				envelope.decayLevel = 15;
+
+			if( envelope.decayLevel > 0 ) {
+				--envelope.decayLevel;
+			} else if( loop ) {
+				envelope.decayLevel = 0x0F;
 			}
 		}
-		else
-		{
-			envelope.divCounter = ( envelope.divCounter - 1 ) & 0x0F; // TODO: wrap allowed?
+		else {
+			--envelope.divCounter;
 		}
 	}
 
-	if ( constant )
-	{
+	if ( constant ) {
 		envelope.output = volume;
-	}
-	else
-	{
+	} else {
 		envelope.output = envelope.decayLevel;
 	}
-	assert( volume >= 0 && volume <= 15 );
+	assert( volume >= 0x00 && volume <= 0x0F );
 }
 
 
@@ -229,33 +242,44 @@ void APU::PulseSweep( PulseChannel& pulse )
 	const bool		negate	= pulse.regRamp.sem.negate;
 	const uint8_t	period	= pulse.regRamp.sem.period;
 	const uint8_t	shift	= pulse.regRamp.sem.shift;
-	const bool		mute	= false; // TODO: implement
-	const bool		isZero	= pulse.sweep.divider.IsZero();
 
 	bool& reload = pulse.sweep.reloadFlag;
 	sweep_t& sweep = pulse.sweep;
 
-	if( isZero && enabled && !mute )
-	{
-		uint16_t change = pulse.regTune.sem0.timer >> shift;
-		change *= negate ? -1 : 1;
-		change -= ( pulse.channelNum == PULSE_1 ) ? 1 : 0;
+	sweep.divider.Dec();
 
-		pulse.period.Reload( pulse.regTune.sem0.timer + change );
-	}
-	else
+	if ( reload || pulse.sweep.divider.IsZero() )
 	{
-		pulse.period.Reload( pulse.regTune.sem0.timer );
-	}
-
-	if ( isZero || reload )
-	{
-		sweep.divider.Reload( period );
+		sweep.divider.Reload( period + 1 );
 		reload = false;
 	}
+
+	uint16_t targetPeriod = pulse.period.Value();
+
+	if( pulse.sweep.divider.IsZero() && enabled && ( shift > 0 ) && ( pulse.period.Value() > 8 ) )
+	{
+		int16_t change = pulse.regTune.sem0.timer;
+		change += change >> shift;
+		if( negate ) {
+			change = ( pulse.channelNum == PULSE_1 ) ? ( -change - 1 ) : -change;
+		}
+		
+		targetPeriod += ( change <= 0 ) ? 0 : change;
+	}
 	else
 	{
-		sweep.divider.Dec();
+		targetPeriod = pulse.regTune.sem0.timer;
+	}
+
+	// Check for carry-bit
+	if( targetPeriod > 0x07FF ) {
+	//	sweep.mute = true;
+	} else {
+		sweep.mute = false;
+	}
+
+	if( !sweep.mute ) {
+		pulse.period.Reload( targetPeriod );
 	}
 }
 
@@ -281,7 +305,7 @@ void APU::PulseSequencer( PulseChannel& pulse )
 	for ( int sample = 0; sample < sampleCnt; sample++ )
 	{
 		const float pulseSample = IsPulseDutyHigh( pulse ) ? amplitude : 0;
-		if ( ( pulse.timer.sem0.counter == 0 ) || pulse.mute )
+		if ( ( pulse.timer.sem0.counter == 0 ) || pulse.mute /*|| pulse.sweep.mute*/ )
 		{
 			pulse.samples.Enque( 0 );
 		}
@@ -302,8 +326,7 @@ void APU::ExecPulseChannel( PulseChannel& pulse )
 	EnvelopeGenerater( pulse.envelope, pulse.regCtrl.sem.volume, pulse.regCtrl.sem.counterHalt, pulse.regCtrl.sem.isConstant );
 
 	pulse.timer.sem0.timer--;
-	if ( halfClk && !pulse.regCtrl.sem.counterHalt )
-	{
+	if ( halfClk && !pulse.regCtrl.sem.counterHalt ) {
 		pulse.timer.sem0.counter--;
 	}
 	
@@ -311,8 +334,6 @@ void APU::ExecPulseChannel( PulseChannel& pulse )
 	{
 		pulse.timer.sem0.timer = pulse.period.Value();
 		PulseSequencer( pulse );
-
-		// pulse->volume = pulse->regCtrl.sem.volume;
 	}
 }
 
@@ -327,20 +348,16 @@ void APU::TriSequencer()
 
 	for ( int sample = 0; sample < sampleCnt; sample++ )
 	{
-		if( triangle.mute )
-		{
+		if( triangle.mute ) {
 			triangle.samples.Enque( 0.0f );
-		}
-		else
-		{
+		} else {
 			triangle.samples.Enque( TriLUT[ triangle.sequenceStep ] );
 		}
 	}
 
 	triangle.lastCycle = cpuCycle;
 
-	if( !isSeqHalted )
-	{
+	if( !isSeqHalted ) {
 		triangle.sequenceStep = ( triangle.sequenceStep + 1 ) % 32;
 	}
 }
@@ -350,28 +367,22 @@ void APU::ExecChannelTri()
 {
 	if( quarterClk )
 	{
-		if( triangle.reloadFlag )
-		{
+		if( triangle.reloadFlag ) {
 			triangle.linearCounter.Reload( triangle.regLinear.sem.counterLoad );
-		}
-		else if ( !triangle.linearCounter.IsZero() )
-		{
+		} else if ( !triangle.linearCounter.IsZero() ) {
 			triangle.linearCounter.Dec();
 		}
 
-		if ( !triangle.lengthCounter.IsZero() && !triangle.regLinear.sem.counterHalt )
-		{
+		if ( !triangle.lengthCounter.IsZero() && !triangle.regLinear.sem.counterHalt ) {
 			triangle.lengthCounter.Dec();
 		}
 
-		if( !triangle.regLinear.sem.counterHalt )
-		{
+		if( !triangle.regLinear.sem.counterHalt ) {
 			triangle.reloadFlag = false;
 		}
 	}
 
-	if( triangle.regLinear.sem.counterHalt )
-	{
+	if( triangle.regLinear.sem.counterHalt ) {
 		triangle.lengthCounter.Reload();
 	}
 
@@ -387,10 +398,10 @@ void APU::ExecChannelTri()
 void APU::NoiseGenerator()
 {
 	const uint16_t shiftValue = noise.shift.Value();
-	const uint16_t bitMask = noise.regFreq1.sem.mode ? BIT_MASK_6 : BIT_MASK_1;
-	const uint16_t bitShift = noise.regFreq1.sem.mode ? BIT_6 : BIT_1;
-	const uint16_t feedback = ( shiftValue & 0x01 ) ^ ( ( shiftValue & bitMask ) >> bitShift );
-	const uint16_t newShift = ( shiftValue >> 1 ) | ( feedback << BIT_14 );
+	const uint16_t bitMask	= noise.regFreq1.sem.mode ? BIT_MASK_6 : BIT_MASK_1;
+	const uint16_t bitShift	= noise.regFreq1.sem.mode ? BIT_6 : BIT_1;
+	const uint16_t feedback	= ( shiftValue & BIT_MASK_0 ) ^ ( ( shiftValue & bitMask ) >> bitShift );
+	const uint16_t newShift	= ( ( shiftValue >> 1 ) & ~BIT_MASK_14 ) | ( feedback << BIT_14 );
 
 	noise.shift.Reload( newShift );
 
@@ -399,12 +410,9 @@ void APU::NoiseGenerator()
 	const int sampleCnt = ( apuCycle - noise.lastCycle ).count();
 	for ( int sample = 0; sample < sampleCnt; sample++ )
 	{
-		if ( noise.lengthCounter.IsZero() || ( noise.shift.Value() & 0x01 ) || noise.mute )
-		{
+		if ( noise.lengthCounter.IsZero() || ( noise.shift.Value() & BIT_MASK_0 ) || noise.mute )	{
 			noise.samples.Enque( 0.0f );
-		}
-		else
-		{
+		} else {
 			noise.samples.Enque( volume );
 		}
 	}
@@ -415,12 +423,11 @@ void APU::NoiseGenerator()
 
 void APU::ExecChannelNoise()
 {
-	EnvelopeGenerater( noise.envelope, noise.regCtrl.sem.volume, noise.regCtrl.sem.counterHalt, noise.regCtrl.sem.isConstant );
+	const noiseCtrl_t& ctrl = noise.regCtrl;
+	EnvelopeGenerater( noise.envelope, ctrl.sem.volume, ctrl.sem.counterHalt, ctrl.sem.isConstant );
 
-	if ( quarterClk )
-	{
-		if ( !noise.lengthCounter.IsZero() && !noise.regCtrl.sem.counterHalt )
-		{
+	if ( quarterClk ) {
+		if ( !noise.lengthCounter.IsZero() && !ctrl.sem.counterHalt ) {
 			noise.lengthCounter.Dec();
 		}
 	}
@@ -439,8 +446,11 @@ void APU::DmcGenerator()
 	const int sampleCnt = ( apuCycle - dmc.lastCycle ).count();
 	for ( int sample = 0; sample < sampleCnt; sample++ )
 	{
-		dmc.samples.Enque( dmc.outputLevel.Value() );
-		dmc.emptyBuffer = true;
+		if ( !dmc.silenceFlag ) {
+			dmc.samples.Enque( dmc.outputLevel.Value() );
+		} else {
+			dmc.samples.Enque( 0.0f );
+		}
 	}
 
 	dmc.lastCycle = apuCycle;
@@ -449,38 +459,77 @@ void APU::DmcGenerator()
 
 void APU::ExecChannelDMC()
 {
-	if ( dmc.regCtrl.sem.irqEnable )
-	{
+	if ( dmc.regCtrl.sem.irqEnable ) {
 		system->RequestIRQ();
 	}
 
-	dmc.sampleBuffer = system->ReadMemory( dmc.addr );
-
-	if( dmc.addr == 0xFFFF )
-	{
-		dmc.addr = 0x8000;
+	if( dmc.emptyBuffer ) {
+		dmc.sampleBuffer = system->ReadMemory( dmc.addr );
 	}
-	else
+
+	// https://wiki.nesdev.com/w/index.php/APU_DMC (see output level)
+	// 1. If the silence flag is clear, the output level changes based on bit 0 of the shift register.
+	// If the bit is 1, add 2; otherwise, subtract 2. But if adding or subtracting 2 would cause the
+	// output level to leave the 0-127 range, leave the output level unchanged. This means subtract 2
+	// only if the current level is at least 2, or add 2 only if the current level is at most 125.
+	if( dmc.silenceFlag )
 	{
+		if( dmc.shiftReg & 0x01  )
+		{
+			if( dmc.outputLevel.Value() <= 125 )
+			{
+				dmc.outputLevel.Inc();
+				dmc.outputLevel.Inc(); // TODO: rethink interface or use byte
+			}
+		}
+		else
+		{
+			if ( dmc.outputLevel.Value() >= 2 )
+			{
+				dmc.outputLevel.Dec();
+				dmc.outputLevel.Dec();
+			}
+		}
+	}
+
+	// 2. The right shift register is clocked.
+	dmc.shiftReg >>= 1;
+
+	// 3. As stated above, the bits-remaining counter is decremented. If it becomes zero, a new output cycle is started.
+	if ( dmc.addr == 0xFFFF ) {
+		dmc.addr = 0x8000;
+	} else {
 		dmc.addr += 1;
 		dmc.byteCnt--;
 	}
 
 	if( dmc.byteCnt == 0 )
 	{
+		dmc.byteCnt = 8;
+
 		if( dmc.regCtrl.sem.loop )
 		{
 			// TODO: Restart
 		}
-		else if( dmc.regCtrl.sem.irqEnable )
+		else if( dmc.regCtrl.sem.irqEnable ) 
+		{	system->RequestIRQ(); // TODO: is this right?
+		}
+
+		if ( dmc.emptyBuffer )
 		{
-			system->RequestIRQ(); // TODO: is this right?
+			dmc.silenceFlag = true;
+		}
+		else
+		{
+			dmc.silenceFlag = false;
+			dmc.shiftReg = dmc.sampleBuffer;
+			dmc.emptyBuffer = true;
+			dmc.sampleBuffer = 0;
 		}
 	}
 
 	const uint16_t dmcPeriod = DmcLUT[ NTSC] [ dmc.regCtrl.sem.freq ];
-	if( cpuCycle.count() % dmcPeriod )
-	{
+	if( cpuCycle.count() % dmcPeriod ) {
 		DmcGenerator();
 	}
 }
@@ -583,14 +632,14 @@ void APU::Begin()
 }
 
 
-bool APU::HasAllChannelSamples()
+bool APU::AllChannelHaveSamples()
 {
 	bool hasSamples = true;
 	hasSamples = hasSamples && !pulse1.samples.IsEmpty();
 	hasSamples = hasSamples && !pulse2.samples.IsEmpty();
 	hasSamples = hasSamples && ( triangle.samples.GetSampleCnt() > 1 );
 	hasSamples = hasSamples && !noise.samples.IsEmpty();
-	// hasSamples = hasSamples && !dmc.samples.IsEmpty();
+	hasSamples = hasSamples && !dmc.samples.IsEmpty();
 
 	return hasSamples;
 }
@@ -598,7 +647,7 @@ bool APU::HasAllChannelSamples()
 
 void APU::End()
 {
-	while( HasAllChannelSamples() )
+	while( AllChannelHaveSamples() )
 	{
 		// This doubles up samples from channels other than the triangle channel (which runs at 2x frequency)
 		float pulse1Sample			= pulse1.samples.Deque();
@@ -606,7 +655,7 @@ void APU::End()
 		float triSample1			= triangle.samples.Deque();
 		float triSample2			= triangle.samples.Deque();
 		float noiseSample			= noise.samples.Deque();
-		float dmcSample				= 0;
+		float dmcSample				= dmc.samples.Deque();
 
 		pulse1Sample				= ( system->config.apu.mutePulse1	)	? 0.0f : pulse1Sample;
 		pulse2Sample				= ( system->config.apu.mutePulse2	)	? 0.0f : pulse2Sample;
@@ -629,18 +678,16 @@ void APU::End()
 		soundOutput->dbgTri.Write( triSample2 );
 		soundOutput->dbgNoise.Write( noiseSample );
 		soundOutput->dbgDmc.Write( dmcSample );
-		soundOutput->master.Enque( floor( 65535.0f * mixedSample1 ) );
-		soundOutput->master.Enque( floor( 65535.0f * mixedSample2 ) );
+		soundOutput->master.Enque( floor( 32767.0f * mixedSample1 ) );
+		soundOutput->master.Enque( floor( 32767.0f * mixedSample2 ) );
 	}
 
 	soundOutput->master.SetHz( CPU_HZ );
 
-	soundOutput->dbgLocked = true;
 	frameOutput = soundOutput;
 
 	currentBuffer = ( currentBuffer + 1 ) % SoundBufferCnt;
 	soundOutput = &soundOutputBuffers[currentBuffer];
-	assert( !soundOutput->dbgLocked );
 
 	soundOutput->master.Reset();
 	soundOutput->dbgPulse1.Clear();

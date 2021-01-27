@@ -313,12 +313,10 @@ void wtSystem::GetFrameResult( wtFrameResult& outFrameResult )
 	outFrameResult.mirrorMode = static_cast<wtMirrorMode>( GetMirrorMode() );
 	outFrameResult.mapperId = GetMapperId();
 
-	outFrameResult.soundOutput.dbgLocked = false;
 	if( apu.frameOutput != nullptr )
 	{
 		outFrameResult.soundOutput = *apu.frameOutput;
 		apu.GetDebugInfo( outFrameResult.apuDebug );
-		apu.frameOutput->dbgLocked = false;
 		apu.frameOutput = nullptr;
 	}
 

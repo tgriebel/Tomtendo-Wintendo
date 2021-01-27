@@ -324,6 +324,7 @@ struct envelope_t
 
 struct sweep_t
 {
+	bool			mute;
 	bool			reloadFlag;
 	BitCounter<11>	divider;
 };
@@ -367,7 +368,8 @@ public:
 		volume					= 0;
 
 		mute					= true;
-		sweep.reloadFlag		= false;
+		sweep.reloadFlag		= true;
+		sweep.mute				= false;
 		
 		sweep.divider.Reload();
 		period.Reload();		
@@ -453,6 +455,7 @@ public:
 	wtSampleQueue		samples;
 	apuCycle_t			lastCycle;
 	bool				irq;
+	bool				silenceFlag;
 	bool				mute;
 
 	uint16_t			addr;
@@ -460,6 +463,7 @@ public:
 	uint8_t				sampleBuffer;
 	BitCounter<7>		outputLevel;
 	bool				emptyBuffer;
+	uint8_t				shiftReg;
 
 	void Clear()
 	{
@@ -473,12 +477,14 @@ public:
 		sampleBuffer	= 0;
 		emptyBuffer		= true;
 
+		shiftReg		= 0;
+		silenceFlag		= false;
+		irq				= false;
+		mute			= false;
+
 		outputLevel.Reload();
 		samples.Reset();
 		lastCycle = apuCycle_t( 0 );
-
-		irq = false;
-		mute = true;
 	}
 };
 
@@ -513,7 +519,7 @@ static const uint8_t PulseLUT[4][8] =
 	{ 1, 1, 0, 0, 0, 0, 0, 0 },
 	{ 1, 1, 1, 1, 0, 0, 0, 0 },
 	{ 0, 0, 0, 0, 0, 0, 1, 1 },
-#elif 0
+#elif 1
 	{ 0, 0, 0, 0, 0, 0, 0, 1 },
 	{ 0, 0, 0, 0, 0, 0, 1, 1 },
 	{ 0, 0, 0, 0, 1, 1, 1, 1 },
@@ -565,7 +571,6 @@ struct apuOutput_t
 	wtSoundBuffer	dbgNoise;
 	wtSoundBuffer	dbgDmc;
 	wtSampleQueue	master;
-	bool			dbgLocked;
 };
 
 
@@ -648,7 +653,7 @@ public:
 		currentBuffer		= 0;
 		soundOutput			= &soundOutputBuffers[0];
 
-		regStatus.byte		= 0x1F;
+		regStatus.byte		= 0x00;
 
 		halfClk				= false;
 		quarterClk			= false;
@@ -696,5 +701,5 @@ private:
 	void	TriSequencer();
 	void	NoiseGenerator();
 	void	DmcGenerator();
-	bool	HasAllChannelSamples();
+	bool	AllChannelHaveSamples();
 };
