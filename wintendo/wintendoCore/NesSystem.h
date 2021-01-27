@@ -187,7 +187,7 @@ struct wtState
 
 struct wtFrameResult
 {
-	uint32_t			currentFrame;
+	uint64_t			currentFrame;
 	wtDisplayImage		frameBuffer;
 	apuOutput_t			soundOutput;
 	bool				sndReady;

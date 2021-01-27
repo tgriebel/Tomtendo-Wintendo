@@ -292,7 +292,7 @@ bool APU::IsPulseDutyHigh( const PulseChannel& pulse )
 
 void APU::PulseSequencer( PulseChannel& pulse )
 {
-	const int sampleCnt = ( apuCycle - pulse.lastCycle ).count();
+	const uint32_t sampleCnt = static_cast<uint32_t>( ( apuCycle - pulse.lastCycle ).count() );
 	float volume = pulse.envelope.output;
 
 	if( pulse.period.Value() < 8 )
@@ -302,7 +302,7 @@ void APU::PulseSequencer( PulseChannel& pulse )
 
 	const float amplitude = volume;
 
-	for ( int sample = 0; sample < sampleCnt; sample++ )
+	for ( uint32_t sample = 0; sample < sampleCnt; sample++ )
 	{
 		const float pulseSample = IsPulseDutyHigh( pulse ) ? amplitude : 0;
 		if ( ( pulse.timer.sem0.counter == 0 ) || pulse.mute /*|| pulse.sweep.mute*/ )
@@ -340,13 +340,13 @@ void APU::ExecPulseChannel( PulseChannel& pulse )
 
 void APU::TriSequencer()
 {
-	const int sampleCnt = ( cpuCycle - triangle.lastCycle ).count();
+	const uint32_t sampleCnt = static_cast<uint32_t>( ( cpuCycle - triangle.lastCycle ).count() );
 
 	bool isSeqHalted = false;
 	isSeqHalted |= triangle.lengthCounter.IsZero();
 	isSeqHalted |= triangle.linearCounter.IsZero();
 
-	for ( int sample = 0; sample < sampleCnt; sample++ )
+	for ( uint32_t sample = 0; sample < sampleCnt; sample++ )
 	{
 		if( triangle.mute ) {
 			triangle.samples.Enque( 0.0f );
@@ -407,8 +407,8 @@ void APU::NoiseGenerator()
 
 	const uint8_t volume = noise.envelope.output;
 
-	const int sampleCnt = ( apuCycle - noise.lastCycle ).count();
-	for ( int sample = 0; sample < sampleCnt; sample++ )
+	const uint32_t sampleCnt = static_cast<uint32_t>( ( apuCycle - noise.lastCycle ).count() );
+	for ( uint32_t sample = 0; sample < sampleCnt; sample++ )
 	{
 		if ( noise.lengthCounter.IsZero() || ( noise.shift.Value() & BIT_MASK_0 ) || noise.mute )	{
 			noise.samples.Enque( 0.0f );
@@ -443,8 +443,8 @@ void APU::ExecChannelNoise()
 
 void APU::DmcGenerator()
 {
-	const int sampleCnt = ( apuCycle - dmc.lastCycle ).count();
-	for ( int sample = 0; sample < sampleCnt; sample++ )
+	const uint32_t sampleCnt = static_cast<uint32_t>( ( apuCycle - dmc.lastCycle ).count() );
+	for ( uint32_t sample = 0; sample < sampleCnt; sample++ )
 	{
 		if ( !dmc.silenceFlag ) {
 			dmc.samples.Enque( dmc.outputLevel.Value() );
