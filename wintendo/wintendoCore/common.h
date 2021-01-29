@@ -139,6 +139,8 @@ public:
 	virtual uint8_t OnLoadPpu() = 0;
 	virtual uint8_t Write( const uint16_t addr, const uint16_t offset, const uint8_t value ) = 0;
 	virtual bool InWriteWindow( const uint16_t addr, const uint16_t offset ) = 0;
+
+	virtual void Clock() {};
 };
 
 
@@ -171,10 +173,11 @@ struct wtCart
 
 struct wtDebugInfo
 {
-	uint32_t frameTimeUs;
-	masterCycles_t masterCpu;
-	masterCycles_t masterPpu;
-	masterCycles_t masterApu;
+	uint32_t		frameTimeUs;
+	masterCycles_t	masterCpu;
+	masterCycles_t	masterPpu;
+	masterCycles_t	masterApu;
+
 };
 
 
@@ -196,7 +199,10 @@ struct wtConfig
 
 	struct PPU
 	{
-		int32_t chrPalette;
+		int32_t	chrPalette;
+		int32_t	spriteLimit;
+		bool	showBG;
+		bool	showSprite;
 	} ppu;
 };
 

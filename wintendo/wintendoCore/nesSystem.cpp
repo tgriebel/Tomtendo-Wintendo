@@ -11,7 +11,7 @@
 #include "NesSystem.h"
 #include "mos6502.h"
 #include "input.h"
-#include "nesMapper.h"
+#include "mapper.h"
 
 using namespace std;
 
@@ -300,6 +300,7 @@ void wtSystem::GetFrameResult( wtFrameResult& outFrameResult )
 	outFrameResult.paletteDebug		= paletteDebug;
 	outFrameResult.patternTable0	= patternTable0;
 	outFrameResult.patternTable1	= patternTable1;
+	outFrameResult.ppuDebug			= ppu.dbgInfo;
 
 	finishedFrame.second = false;
 	frameBuffer[lastFrameNumber].locked = false;
@@ -363,6 +364,9 @@ void wtSystem::InitConfig()
 {
 	// PPU
 	config.ppu.chrPalette		= 0;
+	config.ppu.showBG			= true;
+	config.ppu.showSprite		= true;
+	config.ppu.spriteLimit		= PPU::SecondarySprites;
 	// APU
 	config.apu.frequencyScale	= 1.0f;
 	config.apu.volume			= 1.0f;

@@ -11,7 +11,7 @@
 
 struct wtAudioEngine
 {
-	static const uint32_t				SndBufferCnt		= 5;
+	static const uint32_t				SndBufferCnt		= 10;
 	static const uint32_t				SamplesPerSubmit	= 100000;
 	static const uint32_t				SampleSize			= sizeof( int16_t );
 	static const uint32_t				BytesPerSubmit		= SampleSize * SamplesPerSubmit;

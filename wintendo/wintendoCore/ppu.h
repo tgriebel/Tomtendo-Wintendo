@@ -129,14 +129,17 @@ struct ppuAttribPaletteId_t
 
 struct spriteAttrib_t
 {
-	uint8_t x;
-	uint8_t y;
-	uint8_t tileId;
+	uint8_t	x;
+	uint8_t	y;
+	uint8_t	tileId;
 
-	uint8_t palette;
-	uint8_t priority;
-	uint8_t flippedHorizontal;
-	uint8_t flippedVertical;
+	uint8_t	palette;
+	uint8_t	priority;
+	uint8_t	flippedHorizontal;
+	uint8_t	flippedVertical;
+	uint8_t	oamIndex;
+	uint8_t	secondaryOamIndex; // debugging
+	bool	sprite0;
 };
 
 
@@ -154,6 +157,12 @@ enum ppuScanLine_t
 {
 	POSTRENDER_SCANLINE	= 240,
 	PRERENDER_SCANLINE	= 261,
+};
+
+
+struct ppuDebug_t
+{
+	spriteAttrib_t	spritePicked;
 };
 
 
@@ -201,6 +210,7 @@ public:
 	//static const ppuCycle_t VBlankCycles = ppuCycle_t( 20 * 341 * 5 );
 
 	wtSystem*		system;
+	ppuDebug_t		dbgInfo;
 	ppuCycle_t		cycle;
 	const RGBA*		palette;
 	uint8_t			vram[VirtualMemorySize];
@@ -228,13 +238,11 @@ private:
 	ppuScroll_t		regT;
 	uint16_t		regX = 0x0000;
 	uint16_t		regW = 0x0000;
-	uint8_t			spriteLimit = SecondarySprites;
 
 	uint32_t		debugVramWriteCounter[VirtualMemorySize];
 	uint8_t			primaryOAM[OamSize];
 	spriteAttrib_t	secondaryOAM[OamSize];
 	uint8_t			secondaryOamSpriteCnt;
-	bool			sprite0InList; // In secondary OAM
 
 	uint8_t			ppuReadBuffer[2];
 
@@ -333,7 +341,7 @@ private:
 	void		DrawBlankScanline( wtDisplayImage& imageBuffer, const wtRect& imageRect, const uint8_t scanY );
 	void		DrawTile( wtNameTableImage& imageBuffer, const wtRect& imageRect, const wtPoint& nametableTile, const uint32_t ntId, const uint32_t ptrnTableId );
 	void		DrawChrRomTile( wtRawImageInterface* imageBuffer, const wtRect& imageRect, const RGBA palette[4], const uint32_t tileId, const uint32_t ptrnTableId );
-	void		DrawSpritePixel( wtDisplayImage& imageBuffer, const wtRect& imageRect, const spriteAttrib_t attribs, const wtPoint& point, const uint8_t bgPixel, bool sprite0 );
+	bool		DrawSpritePixel( wtDisplayImage& imageBuffer, const wtRect& imageRect, const spriteAttrib_t attribs, const wtPoint& point, const uint8_t bgPixel );
 
 	bool		BgDataFetchEnabled();
 	void		BgPipelineShiftRegisters();

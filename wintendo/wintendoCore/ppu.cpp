@@ -653,16 +653,18 @@ spriteAttrib_t PPU::GetSpriteData( const uint8_t spriteId, const uint8_t oam[] )
 	attribs.priority			= ( attrib & 0x20 ) >> 5;
 	attribs.flippedHorizontal	= ( attrib & 0x40 ) >> 6;
 	attribs.flippedVertical		= ( attrib & 0x80 ) >> 7;
+	attribs.sprite0				= ( spriteId == 0 );
+	attribs.oamIndex			= spriteId;
 
 	return attribs;
 }
 
 
-void PPU::DrawSpritePixel( wtDisplayImage& imageBuffer, const wtRect& imageRect, const spriteAttrib_t attribs, const wtPoint& point, const uint8_t bgPixel, bool sprite0 )
+bool PPU::DrawSpritePixel( wtDisplayImage& imageBuffer, const wtRect& imageRect, const spriteAttrib_t attribs, const wtPoint& point, const uint8_t bgPixel )
 {
 	if( !regMask.sem.showSprt )
 	{
-		return;
+		return false;
 	}
 
 	Pixel pixelColor;
@@ -706,7 +708,7 @@ void PPU::DrawSpritePixel( wtDisplayImage& imageBuffer, const wtRect& imageRect,
 	const uint8_t colorIx = ReadVram( SpritePaletteAddr + attribs.palette + finalPalette );
 
 	// Sprite 0 Hit happens regardless of priority but still draws normal
-	if ( sprite0 )
+	if ( attribs.sprite0 )
 	{
 		if ( ( bgPixel != 0 ) && ( finalPalette != 0 ) && ( point.x != 255 ) && ( regMask.sem.showBg ) )
 		{
@@ -714,12 +716,16 @@ void PPU::DrawSpritePixel( wtDisplayImage& imageBuffer, const wtRect& imageRect,
 		}
 	}
 
-	if ( finalPalette == 0x00 )
-		return;
+	if ( finalPalette == 0x00 ) {
+		return false;
+	}
 
-	if ( ( attribs.priority == 1 ) && ( bgPixel != 0 ) )
-	{
-		return;
+	if ( ( attribs.priority == 1 ) && ( bgPixel != 0 ) ) {
+		return true;
+	}
+
+	if( !system->config.ppu.showSprite ) {
+		return true;
 	}
 
 	pixelColor.rgba = palette[colorIx];
@@ -730,13 +736,16 @@ void PPU::DrawSpritePixel( wtDisplayImage& imageBuffer, const wtRect& imageRect,
 	{
 		pixelColor.rawABGR = ~pixelColor.rawABGR;
 		pixelColor.rgba.alpha = 0xFF;
-
+		
+		dbgInfo.spritePicked = attribs;
 		imageBuffer.Set( imageIndex, pixelColor );
 	}
 	else
 	{
 		imageBuffer.Set( imageIndex, pixelColor );
 	}
+
+	return true;
 }
 
 
@@ -801,21 +810,18 @@ void PPU::DrawDebugPalette( wtPaletteImage& imageBuffer )
 
 void PPU::LoadSecondaryOAM()
 {
-	if( !loadingSecondaryOAM )
-	{
+	if( !loadingSecondaryOAM ) {
 		return;
 	}
 
 	uint8_t destSpriteNum = 0;
-
-	sprite0InList = false;
 	memset( &secondaryOAM, 0xFF, OamSize );
 
 	for ( uint8_t spriteNum = 0; spriteNum < 64; ++spriteNum )
 	{
-		uint8_t y = 1 + primaryOAM[spriteNum * 4];
+		const uint8_t y = 1 + primaryOAM[spriteNum * 4];
 		const bool isLargeSpriteMode = static_cast<bool>( regCtrl.sem.sprite8x16Mode );
-		uint32_t spriteHeight = isLargeSpriteMode ? 16 : 8;
+		const uint32_t spriteHeight = isLargeSpriteMode ? 16 : 8;
 
 		if ( ( beamPosition.y >= static_cast<int32_t>( y + spriteHeight ) ) || ( beamPosition.y < static_cast<int32_t>( y ) ) )
 			continue;
@@ -824,17 +830,11 @@ void PPU::LoadSecondaryOAM()
 			continue;
 
 		secondaryOAM[destSpriteNum] = GetSpriteData( spriteNum, primaryOAM );
-
-		if( spriteNum == 0 )
-		{
-			sprite0InList = true;
-		}
-
+		secondaryOAM[ destSpriteNum ].secondaryOamIndex = destSpriteNum;
 		destSpriteNum++;
 
-		if ( destSpriteNum >= spriteLimit )
-		{
-			break;
+		if ( destSpriteNum >= system->config.ppu.spriteLimit ) {
+			break; // TODO: overflow flag
 		}
 	}
 
@@ -1041,7 +1041,6 @@ ppuCycle_t PPU::Exec()
 		execCycles++;
 		scanelineCycle++;
 
-		sprite0InList = false;
 		loadingSecondaryOAM = true;
 		LoadSecondaryOAM();
 //		OAMDATA( 0xFF );
@@ -1064,7 +1063,11 @@ ppuCycle_t PPU::Exec()
 
 			uint8_t bgPixel = 0;
 
-			if ( !regMask.sem.showBg )
+			bool bgMask = ( !regMask.sem.bgLeft && ( beamPosition.x < 8 ) );
+			bgMask = bgMask || !regMask.sem.showBg;
+			bgMask = bgMask || !system->config.ppu.showBG;
+
+			if ( bgMask )
 			{
 				Pixel pixelColor;
 				const uint8_t colorIx = ReadVram( PPU::PaletteBaseAddr );
@@ -1086,14 +1089,20 @@ ppuCycle_t PPU::Exec()
 				system->frameBuffer[system->currentFrame].Set( imageIx, pixelColor );
 			}
 
-			for ( uint8_t spriteNum = 0; spriteNum < secondaryOamSpriteCnt; ++spriteNum )
-			{
-				spriteAttrib_t& attribs = secondaryOAM[spriteNum];
+			uint8_t spriteCount = secondaryOamSpriteCnt;
+			if( !regMask.sem.sprtLeft && ( beamPosition.x < 8 ) ) {
+				spriteCount = 0;
+			}
 
-				if ( ( beamPosition.x < ( attribs.x + 8 ) ) && ( beamPosition.x >= attribs.x ) )
-				{
-					DrawSpritePixel( system->frameBuffer[system->currentFrame], imageRect, attribs, beamPosition, bgPixel & 0x03, ( spriteNum == 0 ) && sprite0InList );
-				}
+			for ( uint8_t spriteIndex = 0; spriteIndex < spriteCount; ++spriteIndex )
+			{
+				spriteAttrib_t& attribs = secondaryOAM[ spriteIndex ];			
+				if ( ( beamPosition.x >= ( attribs.x + 8 ) ) || ( beamPosition.x < attribs.x ) )
+					continue;
+				
+				wtDisplayImage& fb = system->frameBuffer[ system->currentFrame ];
+				if( DrawSpritePixel( fb, imageRect, attribs, beamPosition, bgPixel & 0x03 ) )
+					break;
 			}
 		}
 
@@ -1117,7 +1126,18 @@ ppuCycle_t PPU::Exec()
 			regV.sem.ntId = ( regV.sem.ntId & 0x2 ) | ( regT.sem.ntId & 0x1 );
 		}
 	}
-	else if ( cycleCount <= 320 ) // [258 - 320]
+	else if ( cycleCount <= 259 ) // [258 - 259]
+	{
+		execCycles += ppuCycle_t( 1 );
+		scanelineCycle += ppuCycle_t( 1 );
+	}
+	else if ( cycleCount == 260 )
+	{
+		execCycles += ppuCycle_t( 1 );
+		scanelineCycle += ppuCycle_t( 1 );
+		system->cart.mapper->Clock(); // TODO: How big of a hack is this?
+	}
+	else if ( cycleCount <= 320 ) // [261 - 320]
 	{
 		// Prefetch the 8 sprites on next scanline
 		execCycles += ppuCycle_t( 1 );

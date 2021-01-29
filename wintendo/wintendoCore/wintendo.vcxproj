@@ -174,7 +174,7 @@
     <ClInclude Include="bitmap.h" />
     <ClInclude Include="debug.h" />
     <ClInclude Include="mos6502_ops.h" />
-    <ClInclude Include="nesMapper.h" />
+    <ClInclude Include="mapper.h" />
     <ClInclude Include="NesSystem.h" />
     <ClInclude Include="ppu.h" />
     <ClInclude Include="stdafx.h" />

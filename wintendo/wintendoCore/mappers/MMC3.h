@@ -21,14 +21,15 @@ private:
 		uint8_t byte;
 	};
 
-	BankSelect bankSelect;
-	uint16_t R[8];
-	uint8_t irqLatch;
-	bool irqReload;
-	bool irqEnable;
-	int8_t oldPrgBankMode;
-	int8_t oldChrBankMode;
-	bool bankDataInit;
+	BankSelect	bankSelect;
+	uint16_t	R[8];
+	uint8_t		irqLatch;
+	uint8_t		irqCounter;
+	bool		irqReload;
+	bool		irqEnable;
+	int8_t		oldPrgBankMode;
+	int8_t		oldChrBankMode;
+	bool		bankDataInit;
 
 	uint8_t GetMirrorMode()
 	{
@@ -43,12 +44,13 @@ private:
 public:
 
 	MMC3( const uint32_t _mapperId ) :
-		irqReload(false),
-		irqLatch(0),
-		irqEnable(true),
-		oldPrgBankMode(-1),
-		oldChrBankMode(-1),
-		bankDataInit(false)
+		irqReload( false ),
+		irqLatch( 0x00 ),
+		irqCounter( 0x00 ),
+		irqEnable( false ),
+		oldPrgBankMode( -1 ),
+		oldChrBankMode( -1 ),
+		bankDataInit( false )
 	{
 		mapperId = _mapperId;
 		bankSelect.byte = 0;
@@ -71,6 +73,22 @@ public:
 	bool InWriteWindow( const uint16_t addr, const uint16_t offset )
 	{
 		return ( system->cart.GetMapperId() == mapperId ) && ( addr >= 0x8000 ) && ( addr <= 0xFFFF );
+	}
+
+
+	void Clock()
+	{
+		if( ( irqCounter == 0 ) || irqReload )
+		{
+			if( irqEnable ) {
+			//	system->RequestIRQ();
+			}
+			
+			irqCounter = irqLatch;
+			irqReload = false;
+		} else {
+			--irqCounter;
+		}
 	}
 
 
@@ -136,12 +154,9 @@ public:
 		}
 		else if ( InRange( address, 0xC000, 0xDFFF ) )
 		{
-			if ( ( address % 2 ) == 0 )
-			{
+			if ( ( address % 2 ) == 0 )	{
 				irqLatch = value;
-			}
-			else
-			{
+			} else {
 				irqReload = true;
 			}
 		}
@@ -149,8 +164,10 @@ public:
 		{
 			if ( ( address % 2 ) == 0 )
 			{
+				if ( irqEnable ) {
+				//	system->RequestIRQ();
+				}
 				irqEnable = false;
-				// TODO: ack pending interrupts
 			}
 			else
 			{

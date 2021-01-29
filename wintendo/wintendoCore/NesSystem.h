@@ -204,4 +204,5 @@ struct wtFrameResult
 	wtPatternTableImage patternTable0;
 	wtPatternTableImage patternTable1;
 	apuDebug_t			apuDebug;
+	ppuDebug_t			ppuDebug;
 };
