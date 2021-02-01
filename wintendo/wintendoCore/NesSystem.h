@@ -193,7 +193,6 @@ struct wtFrameResult
 	bool				sndReady;
 
 	// Debug
-	OpDebugInfo			dbgMetrics;
 	wtDebugInfo			dbgInfo;
 	wtState				state;
 	wtRomHeader			romHeader;
@@ -205,4 +204,5 @@ struct wtFrameResult
 	wtPatternTableImage patternTable1;
 	apuDebug_t			apuDebug;
 	ppuDebug_t			ppuDebug;
+	std::vector<OpDebugInfo>* dbgMetrics;
 };

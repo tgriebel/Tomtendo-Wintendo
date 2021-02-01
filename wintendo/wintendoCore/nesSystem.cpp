@@ -50,7 +50,7 @@ static void LoadNesFile( const std::wstring& fileName, wtCart& outCart )
 void wtSystem::DebugPrintFlushLog()
 {
 #if DEBUG_ADDR == 1
-	if ( cpu.logFrameCount == 0 )
+	if ( cpu.logFrameCount == 0 && cpu.logToFile )
 	{
 		for( OpDebugInfo& dbgInfo : cpu.dbgMetrics )
 		{
@@ -83,7 +83,7 @@ int wtSystem::Init( const wstring& filePath )
 void wtSystem::Shutdown()
 {
 #if DEBUG_ADDR == 1
-	cpu.logFile.close();
+//	cpu.logFile.close();
 #endif // #if DEBUG_ADDR == 1
 }
 
@@ -307,7 +307,7 @@ void wtSystem::GetFrameResult( wtFrameResult& outFrameResult )
 
 	GetState( outFrameResult.state );
 #if DEBUG_ADDR
-	outFrameResult.dbgMetrics = cpu.dbgMetrics[0];
+	outFrameResult.dbgMetrics = &cpu.dbgMetrics;
 #endif
 	outFrameResult.dbgInfo = dbgInfo;
 	outFrameResult.romHeader = cart.header;
@@ -362,11 +362,15 @@ void wtSystem::SyncState( wtState& state )
 
 void wtSystem::InitConfig()
 {
+	// CPU
+	config.cpu.traceFrameCount	= 0;
+
 	// PPU
 	config.ppu.chrPalette		= 0;
 	config.ppu.showBG			= true;
 	config.ppu.showSprite		= true;
 	config.ppu.spriteLimit		= PPU::SecondarySprites;
+
 	// APU
 	config.apu.frequencyScale	= 1.0f;
 	config.apu.volume			= 1.0f;
@@ -418,7 +422,17 @@ bool wtSystem::Run( const masterCycles_t& nextCycle )
 	static const masterCycles_t ticks( CpuClockDivide );
 
 #if DEBUG_ADDR == 1
-	if( ( cpu.logFrameCount > 0 ) && !cpu.logFile.is_open() )
+	if( config.cpu.traceFrameCount ) {
+		cpu.resetLog = true;
+		cpu.logFrameCount = config.cpu.traceFrameCount;
+	}
+
+	if( cpu.resetLog ) {
+		cpu.dbgMetrics.resize( 0 );
+		cpu.resetLog = false;
+	}
+
+	if( ( cpu.logFrameCount > 0 ) && !cpu.logFile.is_open() && cpu.logToFile )
 	{
 		cpu.logFile.open( "tomTendo.log" );
 	}
@@ -449,11 +463,13 @@ bool wtSystem::Run( const masterCycles_t& nextCycle )
 #endif // #if DEBUG_MODE == 1
 
 #if DEBUG_ADDR == 1
-	if ( cpu.logFrameCount <= 0 )
-	{
-		cpu.logFile.close();
+	if ( cpu.logFrameCount <= 0 ) {
+		if( cpu.logToFile ) {
+			cpu.logFile.close();
+		}
+	} else {
+		cpu.logFrameCount--;
 	}
-	cpu.logFrameCount--;
 #endif // #if DEBUG_ADDR == 1
 
 	return isRunning;

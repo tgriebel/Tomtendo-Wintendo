@@ -109,5 +109,5 @@ void OpDebugInfo::ToString( std::string& buffer, bool registerDebug )
 		debugStream << uppercase << "CYC:" << dec << ( 7 + cpuCycles.count() ) << "\0"; // 7 is to match the init value from the nintendolator log
 	}
 
-	buffer = debugStream.str();
+	buffer += debugStream.str();
 }

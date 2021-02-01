@@ -10,7 +10,7 @@
 
 #define NES_MODE			(1)
 #define DEBUG_MODE			(0)
-#define DEBUG_ADDR			(0)
+#define DEBUG_ADDR			(1)
 #define MIRROR_OPTIMIZATION	(0)
 
 const uint64_t MasterClockHz		= 21477272;
@@ -183,6 +183,11 @@ struct wtDebugInfo
 
 struct wtConfig
 {
+	struct CPU
+	{
+		int32_t		traceFrameCount;
+	} cpu;
+
 	struct APU
 	{
 		float		volume;

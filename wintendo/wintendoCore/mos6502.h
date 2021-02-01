@@ -123,43 +123,44 @@ public:
 	static const uint32_t InvalidAddress	= ~0x00;
 	static const uint32_t NumInstructions	= 256;
 
-	uint16_t		nmiVector;
-	uint16_t		irqVector;
-	uint16_t		resetVector;
+	uint16_t			nmiVector;
+	uint16_t			irqVector;
+	uint16_t			resetVector;
 
-	wtSystem*		system;
-	cpuCycle_t		cycle;
+	wtSystem*			system;
+	cpuCycle_t			cycle;
 
 #if DEBUG_ADDR == 1
-	std::stringstream debugAddr;
-	std::ofstream logFile;
-	bool printToOutput = false;
-	int logFrameCount = 2;
+	std::stringstream	debugAddr;
+	std::ofstream		logFile;
+	bool				logToFile = false;
+	int					logFrameCount = 0;
 #endif
-	vector<OpDebugInfo> dbgMetrics;
+	bool				resetLog;
+	vector<OpDebugInfo>	dbgMetrics;
 
-	bool			interruptRequestNMI;
-	bool			interruptRequest;
-	bool			oamInProcess;
+	bool				interruptRequestNMI;
+	bool				interruptRequest;
+	bool				oamInProcess;
 
-	uint8_t			X;
-	uint8_t			Y;
-	uint8_t			A;
-	uint8_t			SP;
-	statusReg_t		P;
-	uint16_t		PC;
+	uint8_t				X;
+	uint8_t				Y;
+	uint8_t				A;
+	uint8_t				SP;
+	statusReg_t			P;
+	uint16_t			PC;
 
-	opInfo_t		opLUT[NumInstructions];
+	opInfo_t			opLUT[NumInstructions];
 
 private:
-	cpuCycle_t		instructionCycles;
-	uint8_t			opCode;
-	bool			forceStop;
+	cpuCycle_t			instructionCycles;
+	uint8_t				opCode;
+	bool				forceStop;
 
-	cpuCycle_t		dbgStartCycle;
-	cpuCycle_t		dbgTargetCycle;
-	masterCycles_t	dbgSysStartCycle;
-	masterCycles_t	dbgSysTargetCycle;
+	cpuCycle_t			dbgStartCycle;
+	cpuCycle_t			dbgTargetCycle;
+	masterCycles_t		dbgSysStartCycle;
+	masterCycles_t		dbgSysTargetCycle;
 
 public:
 	void Reset()
@@ -180,12 +181,14 @@ public:
 
 		forceStop = false;
 
+		resetLog = false;
 		dbgMetrics.resize(0);
 		BuildOpLUT();
 	}
 
 	Cpu6502()
 	{
+		resetLog = false;
 		dbgMetrics.reserve( 10000000 );
 		Reset();
 	}
@@ -193,6 +196,7 @@ public:
 	bool Step( const cpuCycle_t& nextCycle );
 
 private:
+	// All ops included here
 	#include "mos6502_ops.h"
 
 	// These functions require system memory.

@@ -25,7 +25,6 @@ private:
 	uint16_t	R[8];
 	uint8_t		irqLatch;
 	uint8_t		irqCounter;
-	bool		irqReload;
 	bool		irqEnable;
 	int8_t		oldPrgBankMode;
 	int8_t		oldChrBankMode;
@@ -44,7 +43,6 @@ private:
 public:
 
 	MMC3( const uint32_t _mapperId ) :
-		irqReload( false ),
 		irqLatch( 0x00 ),
 		irqCounter( 0x00 ),
 		irqEnable( false ),
@@ -78,16 +76,14 @@ public:
 
 	void Clock()
 	{
-		if( ( irqCounter == 0 ) || irqReload )
-		{
-			if( irqEnable ) {
-			//	system->RequestIRQ();
-			}
-			
+		if( irqCounter <= 0 ) {		
 			irqCounter = irqLatch;
-			irqReload = false;
 		} else {
 			--irqCounter;
+		}
+
+		if ( ( irqCounter == 0 ) && irqEnable ) {
+			system->RequestIRQ();
 		}
 	}
 
@@ -157,17 +153,15 @@ public:
 			if ( ( address % 2 ) == 0 )	{
 				irqLatch = value;
 			} else {
-				irqReload = true;
+				irqCounter = 0;
 			}
 		}
 		else if ( InRange( address, 0xE000, 0xFFFF ) )
 		{
 			if ( ( address % 2 ) == 0 )
 			{
-				if ( irqEnable ) {
-				//	system->RequestIRQ();
-				}
 				irqEnable = false;
+			//	system->RequestIRQ();
 			}
 			else
 			{

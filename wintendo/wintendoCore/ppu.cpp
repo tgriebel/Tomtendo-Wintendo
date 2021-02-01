@@ -834,7 +834,8 @@ void PPU::LoadSecondaryOAM()
 		destSpriteNum++;
 
 		if ( destSpriteNum >= system->config.ppu.spriteLimit ) {
-			break; // TODO: overflow flag
+			regStatus.current.sem.spriteOverflow = true; //  // TODO: accuracy
+			break;
 		}
 	}
 
@@ -994,6 +995,7 @@ ppuCycle_t PPU::Exec()
 	{
 		if ( cycleCount == 1 )
 		{
+			regStatus.current.sem.spriteOverflow = false;
 			regStatus.current.sem.spriteHit = false;
 
 			inVBlank = false;
@@ -1135,7 +1137,10 @@ ppuCycle_t PPU::Exec()
 	{
 		execCycles += ppuCycle_t( 1 );
 		scanelineCycle += ppuCycle_t( 1 );
-		system->cart.mapper->Clock(); // TODO: How big of a hack is this?
+
+		if( ( currentScanline >= 0 ) && ( currentScanline <= POSTRENDER_SCANLINE ) && RenderEnabled() ) {
+			system->cart.mapper->Clock(); // TODO: How big of a hack is this?
+		}
 	}
 	else if ( cycleCount <= 320 ) // [261 - 320]
 	{
