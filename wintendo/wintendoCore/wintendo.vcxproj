@@ -177,6 +177,7 @@
     <ClInclude Include="mapper.h" />
     <ClInclude Include="NesSystem.h" />
     <ClInclude Include="ppu.h" />
+    <ClInclude Include="serializer.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
     <ClInclude Include="common.h" />
@@ -189,6 +190,8 @@
     <ClCompile Include="bitmap.cpp" />
     <ClCompile Include="nesSystem.cpp" />
     <ClCompile Include="ppu.cpp" />
+    <ClCompile Include="serializer.cpp" />
+    <ClCompile Include="systemSerialize.cpp" />
     <ClCompile Include="wintendoMain.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>

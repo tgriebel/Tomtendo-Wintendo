@@ -161,7 +161,6 @@ public:
 			if ( ( address % 2 ) == 0 )
 			{
 				irqEnable = false;
-			//	system->RequestIRQ();
 			}
 			else
 			{

@@ -6,6 +6,7 @@
 #include <vector>
 #include <assert.h>
 #include "common.h"
+#include "serializer.h"
 #include "debug.h"
 
 class	Cpu6502;
@@ -247,6 +248,8 @@ private:
 
 	template <class AddrFunctor>
 	void		Write( const uint8_t value );
+
+	void		Serialize( Serializer& serializer, const serializeMode_t mode );
 
 	cpuCycle_t	OpLookup( const uint16_t instrBegin, const uint8_t opCode );
 };

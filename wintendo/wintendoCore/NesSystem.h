@@ -14,6 +14,7 @@
 #include "ppu.h"
 #include "apu.h"
 #include "bitmap.h"
+#include "serializer.h"
 
 struct wtState;
 struct wtFrameResult;
@@ -136,10 +137,10 @@ public:
 	int			Init( const wstring& filePath );
 	void		Shutdown();
 	void		LoadProgram( wtCart& cart, const uint32_t resetVectorManual = 0x10000 );
+	void		Serialize( Serializer& serializer, const serializeMode_t mode );
 	string		GetPrgBankDissambly( const uint8_t bankNum );
 	void		GenerateRomDissambly( string prgRomAsm[16] );
 	void		GenerateChrRomTables( wtPatternTableImage chrRom[16] );
-	unique_ptr<wtMapper> AssignMapper( const uint32_t mapperId );
 	bool		Run( const masterCycles_t& nextCycle );
 	int			RunFrame();
 	void		CaptureInput( const Controller keys );
@@ -153,6 +154,9 @@ public:
 	void		RequestNMI();
 	void		RequestIRQ();
 	void		RequestDMA();
+
+	// Implemented in "mapper.h"
+	unique_ptr<wtMapper> AssignMapper( const uint32_t mapperId );
 
 	static bool	MouseInRegion( const wtRect& region );
 

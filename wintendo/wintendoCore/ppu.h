@@ -286,42 +286,42 @@ public:
 
 	void Reset()
 	{
-		cycle				= ppuCycle_t( 0 );
+		cycle					= ppuCycle_t( 0 );
 
-		genNMI				= false;
-		attrib				= 0;
-		chrLatch[0]			= 0;
-		chrLatch[1]			= 0;
-		chrShifts[0]		= 0;
-		chrShifts[1]		= 0;
-		loadingSecondaryOAM	= false;
-		nmiOccurred			= false;
-		palLatch[0]			= 0;
-		palLatch[1]			= 0;
-		palShifts[0]		= 0;
-		palShifts[1]		= 0;
-		ppuReadBuffer[0]	= 0;
-		ppuReadBuffer[1]	= 0;
+		genNMI					= false;
+		attrib					= 0;
+		chrLatch[0]				= 0;
+		chrLatch[1]				= 0;
+		chrShifts[0]			= 0;
+		chrShifts[1]			= 0;
+		loadingSecondaryOAM		= false;
+		nmiOccurred				= false;
+		palLatch[0]				= 0;
+		palLatch[1]				= 0;
+		palShifts[0]			= 0;
+		palShifts[1]			= 0;
+		ppuReadBuffer[0]		= 0;
+		ppuReadBuffer[1]		= 0;
 
-		system				= nullptr;
+		system					= nullptr;
 
-		currentScanline		= PRERENDER_SCANLINE;
-		scanelineCycle		= ppuCycle_t( 0 );
+		currentScanline			= PRERENDER_SCANLINE;
+		scanelineCycle			= ppuCycle_t( 0 );
 
-		vramWritePending	= false;
+		vramWritePending		= false;
 
-		beamPosition.x		= 0;
-		beamPosition.y		= 0;
+		beamPosition.x			= 0;
+		beamPosition.y			= 0;
 
-		regT.byte2x			= 0;
-		regV.byte2x			= 0;
+		regT.byte2x				= 0;
+		regV.byte2x				= 0;
 
-		curShift			= 0;
+		curShift				= 0;
 
-		inVBlank			= true;
+		inVBlank				= true;
 
-		regCtrl.byte		= 0;
-		regMask.byte		= 0;
+		regCtrl.byte			= 0;
+		regMask.byte			= 0;
 		regStatus.current.byte	= 0;
 		regStatus.latched.byte	= 0;
 		regStatus.hasLatch		= false;
@@ -393,4 +393,6 @@ private:
 
 	void		PPUDATA( const uint8_t value );
 	uint8_t		PPUDATA();
+
+	void		Serialize( Serializer& serializer, const serializeMode_t mode );
 };
