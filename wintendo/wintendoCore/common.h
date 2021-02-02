@@ -186,6 +186,8 @@ struct wtConfig
 	struct CPU
 	{
 		int32_t		traceFrameCount;
+		bool		requestSaveState;
+		bool		requestLoadState;
 	} cpu;
 
 	struct APU

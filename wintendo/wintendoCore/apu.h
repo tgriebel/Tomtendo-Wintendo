@@ -2,6 +2,7 @@
 
 #include "stdafx.h"
 #include "common.h"
+#include "serializer.h"
 
 static const uint32_t		ApuSamplesPerSec	= static_cast<uint32_t>( CPU_HZ );
 static constexpr uint32_t	ApuBufferMs			= static_cast<uint32_t>( 1000.0f / MinFPS );
@@ -685,6 +686,8 @@ public:
 	float	GetPulseFrequency( PulseChannel& pulse );
 	float	GetPulsePeriod( PulseChannel& pulse );
 	void	GetDebugInfo( apuDebug_t& apuDebug );
+
+	void	Serialize( Serializer& serializer, const serializeMode_t mode );
 
 private:
 	void	ExecPulseChannel( PulseChannel& pulse );

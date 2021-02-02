@@ -3,8 +3,14 @@
 
 void wtSystem::Serialize( Serializer& serializer, const serializeMode_t mode )
 {
-	// cpu.cycle = cpuCycle_t( 0 );
-	// sysCycles = masterCycles_t( 0 );
+	if( mode == serializeMode_t::LOAD ) {
+		uint64_t cycles = sysCycles.count();
+		serializer.Next64b( *reinterpret_cast<uint64_t*>( &cycles ),		mode );
+		sysCycles = masterCycles_t( cycles );
+	} else {
+		uint64_t cycles = sysCycles.count();
+		serializer.Next64b( *reinterpret_cast<uint64_t*>( &cycles ),		mode );
+	}
 
 	serializer.Next32b( currentFrame, mode );
 	serializer.Next64b( frameNumber, mode );
@@ -16,15 +22,27 @@ void wtSystem::Serialize( Serializer& serializer, const serializeMode_t mode )
 	serializer.Next8b( *reinterpret_cast<uint8_t*>( &finishedFrame.second ),mode );
 
 	serializer.NextArray( memory, VirtualMemorySize, mode );
+
+	cpu.Serialize( serializer, mode );
+	ppu.Serialize( serializer, mode );
+	apu.Serialize( serializer, mode );
 }
 
 
 void Cpu6502::Serialize( Serializer& serializer, const serializeMode_t mode )
 {
+	if ( mode == serializeMode_t::LOAD ) {
+		uint8_t cycles = cycle.count();
+		serializer.Next64b( *reinterpret_cast<uint64_t*>( &cycles ),		mode );
+		cycle = cpuCycle_t( cycles );
+	} else {
+		uint8_t cycles = cycle.count();
+		serializer.Next64b( *reinterpret_cast<uint64_t*>( &cycles ),		mode );
+	}
+
 	serializer.Next16b( nmiVector,											mode );
 	serializer.Next16b( irqVector,											mode );
 	serializer.Next16b( resetVector,										mode );
-	// TODO: 'cycle'
 	serializer.Next8b( *reinterpret_cast<uint8_t*>( &interruptRequestNMI ),	mode );
 	serializer.Next8b( *reinterpret_cast<uint8_t*>( &interruptRequest ),	mode );
 	serializer.Next8b( *reinterpret_cast<uint8_t*>( &oamInProcess ),		mode );
@@ -38,8 +56,21 @@ void Cpu6502::Serialize( Serializer& serializer, const serializeMode_t mode )
 
 void PPU::Serialize( Serializer& serializer, const serializeMode_t mode )
 {
-	// TODO: 'cycle'
-	// TODO: 'scanelineCycle'
+	if ( mode == serializeMode_t::LOAD ) {
+		uint64_t cycles = cycle.count();
+		serializer.Next64b( *reinterpret_cast<uint64_t*>( &cycles ),		mode );
+		
+		cycle = ppuCycle_t( cycles );
+		serializer.Next64b( *reinterpret_cast<uint64_t*>( &cycles ),		mode );
+		scanelineCycle = ppuCycle_t( cycles );
+	}
+	else {
+		uint64_t cycles = cycle.count();
+		serializer.Next64b( *reinterpret_cast<uint64_t*>( &cycles ),		mode );
+
+		cycles = scanelineCycle.count();
+		serializer.Next64b( *reinterpret_cast<uint64_t*>( &cycles ),		mode );
+	}
 
 	serializer.Next8b( *reinterpret_cast<uint8_t*>( &genNMI ),				mode );
 	serializer.Next8b( *reinterpret_cast<uint8_t*>( &loadingSecondaryOAM ),	mode );
@@ -71,4 +102,9 @@ void PPU::Serialize( Serializer& serializer, const serializeMode_t mode )
 
 	serializer.NextArray( reinterpret_cast<uint8_t*>( &secondaryOAM ), OamSize * sizeof( spriteAttrib_t ), mode );
 	serializer.NextArray( reinterpret_cast<uint8_t*>( &vram ), VirtualMemorySize, mode );
+}
+
+
+void APU::Serialize( Serializer& serializer, const serializeMode_t mode )
+{
 }

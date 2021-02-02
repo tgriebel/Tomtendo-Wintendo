@@ -331,6 +331,8 @@ public:
 		memset( debugVramWriteCounter, 0, VirtualMemorySize );
 	}
 
+	void		Serialize( Serializer& serializer, const serializeMode_t mode );
+
 private:
 	static uint8_t	GetChrRomPalette( const uint8_t plane0, const uint8_t plane1, const uint8_t col );
 
@@ -393,6 +395,4 @@ private:
 
 	void		PPUDATA( const uint8_t value );
 	uint8_t		PPUDATA();
-
-	void		Serialize( Serializer& serializer, const serializeMode_t mode );
 };

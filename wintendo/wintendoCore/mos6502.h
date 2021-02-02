@@ -196,6 +196,8 @@ public:
 
 	bool Step( const cpuCycle_t& nextCycle );
 
+	void Serialize( Serializer& serializer, const serializeMode_t mode );
+
 private:
 	// All ops included here
 	#include "mos6502_ops.h"
@@ -248,8 +250,6 @@ private:
 
 	template <class AddrFunctor>
 	void		Write( const uint8_t value );
-
-	void		Serialize( Serializer& serializer, const serializeMode_t mode );
 
 	cpuCycle_t	OpLookup( const uint16_t instrBegin, const uint8_t opCode );
 };

@@ -86,6 +86,8 @@ public:
 private:
 	Cpu6502				cpu;
 	APU					apu;
+	bool				savedState;
+	bool				loadedState;
 	bool				debugNTEnable;
 	wtDebugInfo			dbgInfo;
 #if DEBUG_ADDR == 1
@@ -115,6 +117,9 @@ public:
 
 		headless = false;
 		debugNTEnable = true;
+
+		loadedState = false;
+		savedState = false;
 
 		frameBuffer[0].SetDebugName( "FrameBuffer1" );
 		frameBuffer[1].SetDebugName( "FrameBuffer2" );
@@ -195,6 +200,8 @@ struct wtFrameResult
 	wtDisplayImage		frameBuffer;
 	apuOutput_t			soundOutput;
 	bool				sndReady;
+	bool				savedState;
+	bool				loadedState;
 
 	// Debug
 	wtDebugInfo			dbgInfo;

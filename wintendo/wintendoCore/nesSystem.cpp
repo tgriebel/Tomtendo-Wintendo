@@ -322,6 +322,8 @@ void wtSystem::GetFrameResult( wtFrameResult& outFrameResult )
 	}
 
 	outFrameResult.currentFrame = frameNumber;
+	outFrameResult.savedState = savedState;
+	outFrameResult.loadedState = loadedState;
 }
 
 
@@ -364,6 +366,8 @@ void wtSystem::InitConfig()
 {
 	// CPU
 	config.cpu.traceFrameCount	= 0;
+	config.cpu.requestLoadState = false;
+	config.cpu.requestSaveState = false;
 
 	// PPU
 	config.ppu.chrPalette		= 0;
@@ -573,7 +577,7 @@ int wtSystem::RunFrame()
 
 	auto startTime = chrono::steady_clock::now();
 
-	bool isRunning = isRunning = Run( nextCycle );
+	bool isRunning = Run( nextCycle );
 
 	auto endTime = chrono::steady_clock::now();
 	auto frameTimeUs = endTime - startTime;
@@ -588,6 +592,25 @@ int wtSystem::RunFrame()
 	{
 		return false;
 	}
+
+	// TEMP TEST CODE
+	loadedState = false;
+	savedState = false;
+	static Serializer serializer( 100000 );
+	if ( config.cpu.requestSaveState )
+	{
+		serializer.Reset();
+		Serialize( serializer, serializeMode_t::STORE );
+		savedState = true;
+	}
+
+	if ( config.cpu.requestLoadState )
+	{
+		serializer.Reset();
+		Serialize( serializer, serializeMode_t::LOAD );
+		loadedState = true;
+	}
+	// END
 
 	++frameNumber;
 

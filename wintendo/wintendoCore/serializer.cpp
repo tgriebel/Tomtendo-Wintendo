@@ -5,20 +5,30 @@ uint8_t* Serializer::GetPtr()
 	return bytes;
 }
 
+
+void Serializer::Reset()
+{
+	index = 0;
+}
+
+
 uint32_t Serializer::CurrentSize() const
 {
 	return index;
 }
+
 
 uint32_t Serializer::BufferSize() const
 {
 	return byteCount;
 }
 
+
 bool Serializer::CanStore( const uint32_t sizeInBytes ) const
 {
 	return ( CurrentSize() + sizeInBytes <= BufferSize() );
 }
+
 
 bool Serializer::Next8b( uint8_t& b8, serializeMode_t mode )
 {
@@ -37,6 +47,7 @@ bool Serializer::Next8b( uint8_t& b8, serializeMode_t mode )
 
 	return true;
 }
+
 
 bool Serializer::Next16b( uint16_t& b16, serializeMode_t mode )
 {
@@ -62,6 +73,7 @@ bool Serializer::Next16b( uint16_t& b16, serializeMode_t mode )
 
 	return true;
 }
+
 
 bool Serializer::Next32b( uint32_t& b32, serializeMode_t mode )
 {
@@ -91,6 +103,7 @@ bool Serializer::Next32b( uint32_t& b32, serializeMode_t mode )
 
 	return true;
 }
+
 
 bool Serializer::Next64b( uint64_t& b64, serializeMode_t mode )
 {
@@ -128,6 +141,7 @@ bool Serializer::Next64b( uint64_t& b64, serializeMode_t mode )
 
 	return true;
 }
+
 
 bool Serializer::NextArray( uint8_t* b8, uint32_t sizeInBytes, serializeMode_t mode )
 {

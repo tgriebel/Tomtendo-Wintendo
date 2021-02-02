@@ -33,7 +33,7 @@ class Serializer
 {
 public:
 	
-	Serializer( const uint8_t sizeInBytes )
+	Serializer( const uint32_t sizeInBytes )
 	{
 		bytes = new uint8_t[ sizeInBytes ];
 		byteCount = sizeInBytes;
@@ -52,6 +52,7 @@ public:
 	Serializer operator=( const Serializer& ) = delete;
 
 	uint8_t*	GetPtr();
+	void		Reset();
 	uint32_t	CurrentSize() const;
 	uint32_t	BufferSize() const;
 	bool		CanStore( const uint32_t sizeInBytes ) const;
