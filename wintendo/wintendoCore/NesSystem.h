@@ -104,7 +104,6 @@ public:
 	{
 		InitConfig();
 
-		cpu.cycle = cpuCycle_t( 0 );
 		sysCycles = masterCycles_t( 0 );
 
 		memset( memory, 0, sizeof( memory ) );

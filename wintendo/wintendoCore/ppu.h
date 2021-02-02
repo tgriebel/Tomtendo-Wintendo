@@ -227,17 +227,17 @@ private:
 
 	bool			debugPrefetchTiles = false;
 
-	bool			genNMI = false;
+	bool			genNMI;
 	bool			nmiOccurred;
 	bool			vramWritePending;
-	bool			vramAccessed = false;
-	bool			loadingSecondaryOAM = false;
+	bool			vramAccessed;
+	bool			loadingSecondaryOAM;
 
 	// Internal registers
 	ppuScroll_t		regV;
 	ppuScroll_t		regT;
-	uint16_t		regX = 0x0000;
-	uint16_t		regW = 0x0000;
+	uint16_t		regX;
+	uint16_t		regW;
 
 	uint32_t		debugVramWriteCounter[VirtualMemorySize];
 	uint8_t			primaryOAM[OamSize];
@@ -294,6 +294,7 @@ public:
 		chrLatch[1]				= 0;
 		chrShifts[0]			= 0;
 		chrShifts[1]			= 0;
+		vramAccessed			= false;
 		loadingSecondaryOAM		= false;
 		nmiOccurred				= false;
 		palLatch[0]				= 0;
@@ -315,6 +316,8 @@ public:
 
 		regT.byte2x				= 0;
 		regV.byte2x				= 0;
+		regX					= 0;
+		regW					= 0;
 
 		curShift				= 0;
 

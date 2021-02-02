@@ -51,6 +51,7 @@ void Cpu6502::Serialize( Serializer& serializer, const serializeMode_t mode )
 	serializer.Next8b( A,													mode );
 	serializer.Next8b( SP,													mode );
 	serializer.Next8b( P.byte,												mode );
+	serializer.Next16b( PC,													mode );
 }
 
 
@@ -75,6 +76,7 @@ void PPU::Serialize( Serializer& serializer, const serializeMode_t mode )
 	serializer.Next8b( *reinterpret_cast<uint8_t*>( &genNMI ),				mode );
 	serializer.Next8b( *reinterpret_cast<uint8_t*>( &loadingSecondaryOAM ),	mode );
 	serializer.Next8b( *reinterpret_cast<uint8_t*>( &nmiOccurred ),			mode );
+	serializer.Next8b( *reinterpret_cast<uint8_t*>( &vramAccessed ),		mode );
 	serializer.Next8b( *reinterpret_cast<uint8_t*>( &vramWritePending ),	mode );
 	serializer.Next8b( *reinterpret_cast<uint8_t*>( &inVBlank ),			mode );
 	serializer.Next16b( chrShifts[ 0 ],										mode );
@@ -93,15 +95,22 @@ void PPU::Serialize( Serializer& serializer, const serializeMode_t mode )
 	serializer.Next32b( *reinterpret_cast<uint32_t*>( &beamPosition.y ),	mode );
 	serializer.Next16b( regT.byte2x,										mode );
 	serializer.Next16b( regV.byte2x,										mode );
+	serializer.Next16b( regX,												mode );
+	serializer.Next16b( regW,												mode );
 	serializer.Next8b( curShift,											mode );
+	serializer.Next8b( secondaryOamSpriteCnt,								mode );
 	serializer.Next8b( regCtrl.byte,										mode );
 	serializer.Next8b( regMask.byte,										mode );
 	serializer.Next8b( regStatus.current.byte,								mode );
 	serializer.Next8b( regStatus.latched.byte,								mode );
 	serializer.Next8b( *reinterpret_cast<uint8_t*>( &regStatus.hasLatch ),	mode );
-
+	
+	serializer.NextArray( reinterpret_cast<uint8_t*>( &primaryOAM ), OamSize, mode );
 	serializer.NextArray( reinterpret_cast<uint8_t*>( &secondaryOAM ), OamSize * sizeof( spriteAttrib_t ), mode );
-	serializer.NextArray( reinterpret_cast<uint8_t*>( &vram ), VirtualMemorySize, mode );
+	serializer.NextArray( vram, VirtualMemorySize, mode );
+	serializer.NextArray( registers, 9, mode );
+	serializer.NextArray( reinterpret_cast<uint8_t*>( &plShifts ), 2 * sizeof( pipelineData_t ), mode );
+	serializer.NextArray( reinterpret_cast<uint8_t*>( &plLatches ), sizeof( pipelineData_t ), mode );
 }
 
 

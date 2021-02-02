@@ -508,7 +508,6 @@ uint8_t PPU::GetChrRomPalette( const uint8_t plane0, const uint8_t plane1, const
 	return ( lowerBits & 0x03 );
 }
 
-static int chrRamAddr = 0;
 
 uint8_t PPU::ReadVram( const uint16_t addr )
 {
@@ -566,8 +565,6 @@ uint8_t PPU::BgPipelineDecodePalette()
 
 	paletteId = GetChrRomPalette( palShifts[0], palShifts[1], static_cast< uint8_t >( regX ) );
 	paletteId <<= 2;
-
-	static uint8_t shiftRegX = 0;
 
 	chrRomColor = GetChrRomPalette( chrRom0, chrRom1, static_cast< uint8_t >( regX ) );
 
