@@ -1,3 +1,4 @@
+#include <assert.h>
 #include "serializer.h"
 
 uint8_t* Serializer::GetPtr()
@@ -6,9 +7,17 @@ uint8_t* Serializer::GetPtr()
 }
 
 
-void Serializer::Reset()
+void Serializer::SetPosition( const uint32_t index )
 {
-	index = 0;
+	this->index = 0;
+	dbgText.str( "" );
+}
+
+
+void Serializer::Clear()
+{
+	memset( bytes, 0, CurrentSize() );
+	SetPosition( 0 );
 }
 
 
@@ -30,10 +39,67 @@ bool Serializer::CanStore( const uint32_t sizeInBytes ) const
 }
 
 
+bool Serializer::NextBool( bool& v, serializeMode_t mode )
+{
+	return Next8b( *reinterpret_cast<uint8_t*>( &v ), mode );
+}
+
+bool Serializer::NextChar( int8_t& v, serializeMode_t mode )
+{
+	return Next8b( *reinterpret_cast<uint8_t*>( &v ), mode );
+}
+
+bool Serializer::NextUchar( uint8_t& v, serializeMode_t mode )
+{
+	return Next8b( v, mode );
+}
+
+bool Serializer::NextShort( int16_t& v, serializeMode_t mode )
+{
+	return Next16b( *reinterpret_cast<uint16_t*>( &v ), mode );
+}
+
+bool Serializer::NextUshort( uint16_t& v, serializeMode_t mode )
+{
+	return Next16b( v, mode );
+}
+
+bool Serializer::NextInt( int32_t& v, serializeMode_t mode )
+{
+	return Next32b( *reinterpret_cast<uint32_t*>( &v ), mode );
+}
+
+bool Serializer::NextUint( uint32_t& v, serializeMode_t mode )
+{
+	return Next32b( v, mode );
+}
+
+bool Serializer::NextLong( int64_t& v, serializeMode_t mode )
+{
+	return Next64b( *reinterpret_cast<uint64_t*>( &v ), mode );
+}
+
+bool Serializer::NextUlong( uint64_t& v, serializeMode_t mode )
+{
+	return Next64b( v, mode );
+}
+
+bool Serializer::NextFloat( float& v, serializeMode_t mode )
+{
+	return Next32b( *reinterpret_cast<uint32_t*>( &v ), mode );
+}
+
+bool Serializer::NextDouble( double& v, serializeMode_t mode )
+{
+	return Next64b( *reinterpret_cast<uint64_t*>( &v ), mode );
+}
+
+
 bool Serializer::Next8b( uint8_t& b8, serializeMode_t mode )
 {
 	const uint32_t size = sizeof( b8 );
 	if ( !CanStore( size ) ) {
+		assert( 0 ); // TODO: remove
 		return false;
 	}
 
@@ -45,6 +111,10 @@ bool Serializer::Next8b( uint8_t& b8, serializeMode_t mode )
 	}
 	index += size;
 
+#if DBG_SERIALIZER
+	dbgText << (int)b8 << "\n";
+#endif
+
 	return true;
 }
 
@@ -53,6 +123,7 @@ bool Serializer::Next16b( uint16_t& b16, serializeMode_t mode )
 {
 	const uint32_t size = sizeof( b16 );
 	if ( !CanStore( size ) ) {
+		assert( 0 ); // TODO: remove
 		return false;
 	}
 
@@ -71,6 +142,10 @@ bool Serializer::Next16b( uint16_t& b16, serializeMode_t mode )
 	}
 	index += size;
 
+#if DBG_SERIALIZER
+	dbgText << b16 << "\n";
+#endif
+
 	return true;
 }
 
@@ -79,6 +154,7 @@ bool Serializer::Next32b( uint32_t& b32, serializeMode_t mode )
 {
 	const uint32_t size = sizeof( b32 );
 	if ( !CanStore( size ) ) {
+		assert( 0 ); // TODO: remove
 		return false;
 	}
 
@@ -101,6 +177,10 @@ bool Serializer::Next32b( uint32_t& b32, serializeMode_t mode )
 	}
 	index += size;
 
+#if DBG_SERIALIZER
+	dbgText << b32 << "\n";
+#endif
+
 	return true;
 }
 
@@ -109,6 +189,7 @@ bool Serializer::Next64b( uint64_t& b64, serializeMode_t mode )
 {
 	const uint32_t size = sizeof( b64 );
 	if ( !CanStore( size ) ) {
+		assert( 0 ); // TODO: remove
 		return false;
 	}
 
@@ -139,6 +220,10 @@ bool Serializer::Next64b( uint64_t& b64, serializeMode_t mode )
 	}
 	index += size;
 
+#if DBG_SERIALIZER
+	dbgText << b64 << "\n";
+#endif
+
 	return true;
 }
 
@@ -146,16 +231,28 @@ bool Serializer::Next64b( uint64_t& b64, serializeMode_t mode )
 bool Serializer::NextArray( uint8_t* b8, uint32_t sizeInBytes, serializeMode_t mode )
 {
 	if ( !CanStore( sizeInBytes ) ) {
+		assert( 0 ); // TODO: remove
 		return false;
 	}
 
 	if ( mode == serializeMode_t::LOAD ) {
-		memcpy( b8, bytes + index, sizeInBytes );
+	//	memcpy( b8, bytes + index, sizeInBytes );
+		for ( uint32_t i = 0; i < sizeInBytes; ++i )
+		{
+			b8[ i ] = bytes[ index ];			
+			dbgText << b8[ i ] << " ";
+			++index;
+		}
+	} else {
+	//	memcpy( bytes + index, b8, sizeInBytes );
+		for( uint32_t i = 0; i < sizeInBytes; ++i )
+		{
+			bytes[ index ] = b8[ i ];
+			dbgText << bytes[ index ] << " ";
+			++index;
+		}
 	}
-	else {
-		memcpy( bytes + index, b8, sizeInBytes );
-	}
-	index += sizeInBytes;
+	//index += sizeInBytes;
 
 	return true;
 }

@@ -7,6 +7,7 @@
 #include <thread>
 #include <chrono>
 #include "bitmap.h"
+#include "serializer.h"
 
 #define NES_MODE			(1)
 #define DEBUG_MODE			(0)
@@ -29,6 +30,7 @@ using apuCycle_t		= std::chrono::duration< uint64_t, std::ratio<ApuClockDivide, 
 using apuSeqCycle_t		= std::chrono::duration< uint64_t, std::ratio<ApuSequenceDivide, MasterClockHz> >;
 using scanCycle_t		= std::chrono::duration< uint64_t, std::ratio<PpuCyclesPerScanline * PpuClockDivide, MasterClockHz> >; // TODO: Verify
 using frameRate_t		= std::chrono::duration< double, std::ratio<1, FPS> >;
+using timePoint_t		= std::chrono::time_point< std::chrono::steady_clock >;
 
 static constexpr uint64_t CPU_HZ = chrono::duration_cast<cpuCycle_t>( chrono::seconds( 1 ) ).count();
 static constexpr uint64_t APU_HZ = chrono::duration_cast<apuCycle_t>( chrono::seconds( 1 ) ).count();
@@ -135,12 +137,13 @@ protected:
 public:
 	wtSystem* system;
 
-	virtual uint8_t OnLoadCpu() = 0;
-	virtual uint8_t OnLoadPpu() = 0;
-	virtual uint8_t Write( const uint16_t addr, const uint16_t offset, const uint8_t value ) = 0;
-	virtual bool InWriteWindow( const uint16_t addr, const uint16_t offset ) = 0;
-
-	virtual void Clock() {};
+	virtual uint8_t	OnLoadCpu() = 0;
+	virtual uint8_t	OnLoadPpu() = 0;
+	virtual uint8_t	Write( const uint16_t addr, const uint16_t offset, const uint8_t value ) = 0;
+	virtual bool	InWriteWindow( const uint16_t addr, const uint16_t offset ) = 0;
+	
+	virtual void	Serialize( Serializer& serializer, const serializeMode_t mode ) {};
+	virtual void	Clock() {};
 };
 
 
@@ -233,16 +236,16 @@ struct wtRect
 class wtRawImageInterface
 {
 public:
-	virtual void SetPixel( const uint32_t x, const uint32_t y, const Pixel& pixel ) = 0;
-	virtual void Set( const uint32_t index, const Pixel value ) = 0;
-	virtual void Clear() = 0;
+	virtual void					SetPixel( const uint32_t x, const uint32_t y, const Pixel& pixel ) = 0;
+	virtual void					Set( const uint32_t index, const Pixel value ) = 0;
+	virtual void					Clear() = 0;
 
-	virtual const uint32_t *const GetRawBuffer() const = 0;
-	virtual uint32_t GetWidth() const = 0;
-	virtual uint32_t GetHeight() const = 0;
-	virtual uint32_t GetBufferLength() const = 0;
-	virtual const char* GetDebugName() const = 0;
-	virtual void SetDebugName( const char* debugName ) = 0;
+	virtual const uint32_t *const	GetRawBuffer() const = 0;
+	virtual uint32_t				GetWidth() const = 0;
+	virtual uint32_t				GetHeight() const = 0;
+	virtual uint32_t				GetBufferLength() const = 0;
+	virtual const char*				GetDebugName() const = 0;
+	virtual void					SetDebugName( const char* debugName ) = 0;
 };
 
 

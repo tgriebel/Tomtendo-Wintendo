@@ -1,16 +1,26 @@
 
 #include "NesSystem.h"
 
+template<typename Cycle>
+static inline void SerializeCycle( Serializer& serializer, const serializeMode_t mode, Cycle& c )
+{
+	if ( mode == serializeMode_t::LOAD ) {
+		uint64_t cycles = c.count();
+		serializer.Next64b( *reinterpret_cast<uint64_t*>( &cycles ), mode );
+		c = Cycle( cycles );
+	}
+	else {
+		uint64_t cycles = c.count();
+		serializer.Next64b( *reinterpret_cast<uint64_t*>( &cycles ), mode );
+	}
+}
+
+
 void wtSystem::Serialize( Serializer& serializer, const serializeMode_t mode )
 {
-	if( mode == serializeMode_t::LOAD ) {
-		uint64_t cycles = sysCycles.count();
-		serializer.Next64b( *reinterpret_cast<uint64_t*>( &cycles ),		mode );
-		sysCycles = masterCycles_t( cycles );
-	} else {
-		uint64_t cycles = sysCycles.count();
-		serializer.Next64b( *reinterpret_cast<uint64_t*>( &cycles ),		mode );
-	}
+	SerializeCycle( serializer, mode, sysCycles );
+	SerializeCycle( serializer, mode, frame );
+	// SerializeCycle( serializer, mode, previousTime );
 
 	serializer.Next32b( currentFrame, mode );
 	serializer.Next64b( frameNumber, mode );
@@ -26,19 +36,13 @@ void wtSystem::Serialize( Serializer& serializer, const serializeMode_t mode )
 	cpu.Serialize( serializer, mode );
 	ppu.Serialize( serializer, mode );
 	apu.Serialize( serializer, mode );
+	cart.mapper->Serialize( serializer, mode );
 }
 
 
 void Cpu6502::Serialize( Serializer& serializer, const serializeMode_t mode )
 {
-	if ( mode == serializeMode_t::LOAD ) {
-		uint8_t cycles = cycle.count();
-		serializer.Next64b( *reinterpret_cast<uint64_t*>( &cycles ),		mode );
-		cycle = cpuCycle_t( cycles );
-	} else {
-		uint8_t cycles = cycle.count();
-		serializer.Next64b( *reinterpret_cast<uint64_t*>( &cycles ),		mode );
-	}
+	SerializeCycle( serializer, mode, cycle );
 
 	serializer.Next16b( nmiVector,											mode );
 	serializer.Next16b( irqVector,											mode );
@@ -57,21 +61,8 @@ void Cpu6502::Serialize( Serializer& serializer, const serializeMode_t mode )
 
 void PPU::Serialize( Serializer& serializer, const serializeMode_t mode )
 {
-	if ( mode == serializeMode_t::LOAD ) {
-		uint64_t cycles = cycle.count();
-		serializer.Next64b( *reinterpret_cast<uint64_t*>( &cycles ),		mode );
-		
-		cycle = ppuCycle_t( cycles );
-		serializer.Next64b( *reinterpret_cast<uint64_t*>( &cycles ),		mode );
-		scanelineCycle = ppuCycle_t( cycles );
-	}
-	else {
-		uint64_t cycles = cycle.count();
-		serializer.Next64b( *reinterpret_cast<uint64_t*>( &cycles ),		mode );
-
-		cycles = scanelineCycle.count();
-		serializer.Next64b( *reinterpret_cast<uint64_t*>( &cycles ),		mode );
-	}
+	SerializeCycle( serializer, mode, cycle );
+	SerializeCycle( serializer, mode, scanelineCycle );
 
 	serializer.Next8b( *reinterpret_cast<uint8_t*>( &genNMI ),				mode );
 	serializer.Next8b( *reinterpret_cast<uint8_t*>( &loadingSecondaryOAM ),	mode );

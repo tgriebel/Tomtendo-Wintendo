@@ -560,8 +560,8 @@ uint8_t PPU::BgPipelineDecodePalette()
 	uint8_t chrRomColor;
 
 	uint8_t paletteId = plShifts[curShift].attribId;
-	uint8_t chrRom0 = static_cast< uint8_t >( chrShifts[0] >> 8 );
-	uint8_t chrRom1 = static_cast< uint8_t >( chrShifts[1] >> 8 );
+	const uint8_t chrRom0 = static_cast<uint8_t>( chrShifts[0] >> 8 );
+	const uint8_t chrRom1 = static_cast<uint8_t>( chrShifts[1] >> 8 );
 
 	paletteId = GetChrRomPalette( palShifts[0], palShifts[1], static_cast< uint8_t >( regX ) );
 	paletteId <<= 2;
@@ -610,6 +610,7 @@ void PPU::DrawTile( wtNameTableImage& imageBuffer, const wtRect& imageRect, cons
 	}
 }
 
+
 void PPU::DrawChrRomTile( wtRawImageInterface* imageBuffer, const wtRect& imageRect, const RGBA dbgPalette[4], const uint32_t tileId, const uint32_t ptrnTableId )
 {
 	for ( uint32_t y = 0; y < PPU::TilePixels; ++y )
@@ -621,10 +622,8 @@ void PPU::DrawChrRomTile( wtRawImageInterface* imageBuffer, const wtRect& imageR
 			chrRomPoint.x = x;
 			chrRomPoint.y = y;
 
-			static uint32_t toggleTable = 0;
-
-			const uint8_t chrRom0 = toggleTable == 1 ? 0 : GetChrRomBank8x8( tileId, 0, ptrnTableId, chrRomPoint.y );
-			const uint8_t chrRom1 = toggleTable == 2 ? 0 : GetChrRomBank8x8( tileId, 1, ptrnTableId, chrRomPoint.y );
+			const uint8_t chrRom0 = GetChrRomBank8x8( tileId, 0, ptrnTableId, chrRomPoint.y );
+			const uint8_t chrRom1 = GetChrRomBank8x8( tileId, 1, ptrnTableId, chrRomPoint.y );
 
 			const uint16_t chrRomColor = GetChrRomPalette( chrRom0, chrRom1, chrRomPoint.x );
 

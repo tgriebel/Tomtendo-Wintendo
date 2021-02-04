@@ -1,7 +1,10 @@
 #pragma once
 #include <stdio.h>
 #include <string>
+#include <sstream>
 #include <cstdint>
+
+#define DBG_SERIALIZER 1
 
 enum class serializeMode_t
 {
@@ -37,14 +40,14 @@ public:
 	{
 		bytes = new uint8_t[ sizeInBytes ];
 		byteCount = sizeInBytes;
-		index = 0;
+		Clear();
 	}
 
 	~Serializer()
 	{
 		delete[] bytes;
 		byteCount = 0;
-		index = 0;
+		SetPosition( 0 );
 	}
 
 	Serializer() = delete;
@@ -52,10 +55,24 @@ public:
 	Serializer operator=( const Serializer& ) = delete;
 
 	uint8_t*	GetPtr();
-	void		Reset();
+	void		SetPosition( const uint32_t index );
+	void		Clear();
 	uint32_t	CurrentSize() const;
 	uint32_t	BufferSize() const;
 	bool		CanStore( const uint32_t sizeInBytes ) const;
+
+	bool		NextBool( bool& v, serializeMode_t mode );
+	bool		NextChar( int8_t& v, serializeMode_t mode );
+	bool		NextUchar( uint8_t& v, serializeMode_t mode );
+	bool		NextShort( int16_t& v, serializeMode_t mode );
+	bool		NextUshort( uint16_t& v, serializeMode_t mode );
+	bool		NextInt( int32_t& v, serializeMode_t mode );
+	bool		NextUint( uint32_t& v, serializeMode_t mode );
+	bool		NextLong( int64_t& v, serializeMode_t mode );
+	bool		NextUlong( uint64_t& v, serializeMode_t mode );
+	bool		NextFloat( float& v, serializeMode_t mode );
+	bool		NextDouble( double& v, serializeMode_t mode );
+
 	bool		Next8b( uint8_t& b8, serializeMode_t mode );
 	bool		Next16b( uint16_t& b16, serializeMode_t mode );
 	bool		Next32b( uint32_t& b32, serializeMode_t mode );
@@ -66,4 +83,6 @@ private:
 	uint8_t*	bytes;
 	uint32_t	byteCount;
 	uint32_t	index;
+public: // FIXME: temp
+	std::stringstream dbgText;
 };

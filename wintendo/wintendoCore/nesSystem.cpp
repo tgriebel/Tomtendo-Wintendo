@@ -15,14 +15,10 @@
 
 using namespace std;
 
+// TODO: remove globals
 ButtonFlags keyBuffer[2] = { ButtonFlags::BUTTON_NONE, ButtonFlags::BUTTON_NONE };
 wtPoint mousePoint;
-
-typedef std::chrono::time_point<std::chrono::steady_clock> timePoint_t;
-timePoint_t previousTime;
 bool lockFps = true;
-frameRate_t frame( 1 );
-
 
 static void LoadNesFile( const std::wstring& fileName, wtCart& outCart )
 {
@@ -344,24 +340,6 @@ void wtSystem::GetState( wtState& state )
 }
 
 
-void wtSystem::SyncState( wtState& state )
-{
-	// TODO: Handle safe timing
-	static_assert( sizeof( wtState ) == 131080, "Update wtSystem::SyncState()" );
-	static_assert( VirtualMemorySize >= wtState::CpuMemorySize, "wtSystem::SyncState(): Buffer Overflow." );
-	static_assert( PPU::VirtualMemorySize >= wtState::PpuMemorySize, "wtSystem::SyncState(): Buffer Overflow." );
-
-	cpu.A = state.A;
-	cpu.X = state.X;
-	cpu.Y = state.Y;
-	cpu.P = state.P;
-	cpu.PC = state.PC;
-	cpu.SP = state.SP;
-	memcpy( memory, state.cpuMemory, VirtualMemorySize );
-	memcpy( ppu.vram, state.ppuMemory, PPU::VirtualMemorySize );
-}
-
-
 void wtSystem::InitConfig()
 {
 	// CPU
@@ -423,7 +401,7 @@ bool wtSystem::Run( const masterCycles_t& nextCycle )
 {
 	bool isRunning = true;
 
-	static const masterCycles_t ticks( CpuClockDivide );
+	static constexpr masterCycles_t ticks( CpuClockDivide );
 
 #if DEBUG_ADDR == 1
 	if( config.cpu.traceFrameCount ) {
@@ -596,19 +574,48 @@ int wtSystem::RunFrame()
 	// TEMP TEST CODE
 	loadedState = false;
 	savedState = false;
-	static Serializer serializer( 100000 );
 	if ( config.cpu.requestSaveState )
 	{
-		serializer.Reset();
+		Serializer serializer( 1000 * KB_1 );
+		serializer.Clear();
 		Serialize( serializer, serializeMode_t::STORE );
 		savedState = true;
+
+		std::ofstream saveFile;
+		saveFile.open( "state.st", ios::binary );
+		saveFile.write( reinterpret_cast<char*>( serializer.GetPtr() ), serializer.CurrentSize() );
+		saveFile.close();
+
+		std::ofstream txt;
+		txt.open( "saveState.txt", ios::trunc );
+		txt.write( serializer.dbgText.str().c_str(), serializer.dbgText.str().size() );
+		txt.close();
 	}
 
 	if ( config.cpu.requestLoadState )
 	{
-		serializer.Reset();
-		Serialize( serializer, serializeMode_t::LOAD );
+		std::ifstream loadFile;
+		loadFile.open( "state.st", ios::binary );	
+		
+		loadFile.seekg( 0, std::ios::end );
+		const uint32_t len = static_cast<uint32_t>( loadFile.tellg() );
+			
+		Serializer serializer( len );
+		serializer.Clear();
+
+		loadFile.seekg( 0, std::ios::beg );
+		loadFile.read( reinterpret_cast<char*>( serializer.GetPtr() ), len );
+		// serializer.SetPosition( len ); // start at 0
+
+		loadFile.close();				
 		loadedState = true;
+
+		Serialize( serializer, serializeMode_t::LOAD );
+
+		std::ofstream txt;
+		txt.open( "loadState.txt", ios::trunc );
+		txt.write( serializer.dbgText.str().c_str(), serializer.dbgText.str().size() );
+		txt.close();
 	}
 	// END
 

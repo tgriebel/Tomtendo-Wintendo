@@ -54,7 +54,7 @@ public:
 		bankSelect.byte = 0;
 	}
 
-	uint8_t OnLoadCpu()
+	uint8_t OnLoadCpu() override
 	{
 		const size_t lastBank = ( system->cart.header.prgRomBanks - 1 );
 		memcpy( &system->memory[wtSystem::Bank0], system->cart.rom, wtSystem::BankSize );
@@ -63,18 +63,29 @@ public:
 		return 0;
 	}
 
-	uint8_t OnLoadPpu()
+	uint8_t OnLoadPpu() override
 	{
 		return 0;
 	}
 
-	bool InWriteWindow( const uint16_t addr, const uint16_t offset )
+	bool InWriteWindow( const uint16_t addr, const uint16_t offset ) override
 	{
 		return ( system->cart.GetMapperId() == mapperId ) && ( addr >= 0x8000 ) && ( addr <= 0xFFFF );
 	}
 
+	void Serialize( Serializer& serializer, const serializeMode_t mode ) override
+	{
+		serializer.Next8b( irqLatch, mode );
+		serializer.Next8b( irqCounter, mode );
+		serializer.Next8b( bankSelect.byte, mode );
+		serializer.NextBool( irqEnable, mode );
+		serializer.NextBool( bankDataInit, mode );
+		serializer.NextChar( oldPrgBankMode, mode );
+		serializer.NextChar( oldChrBankMode, mode );
+		serializer.NextArray( reinterpret_cast<uint8_t*>( &R[ 0 ] ), 8 * sizeof( R[ 0 ] ), mode );
+	}
 
-	void Clock()
+	void Clock() override
 	{
 		if( irqCounter <= 0 ) {		
 			irqCounter = irqLatch;
@@ -88,7 +99,7 @@ public:
 	}
 
 
-	uint8_t Write( const uint16_t addr, const uint16_t offset, const uint8_t value )
+	uint8_t Write( const uint16_t addr, const uint16_t offset, const uint8_t value ) override
 	{
 		const uint16_t address = ( addr + offset );
 		bool swapPrgBanks = false;

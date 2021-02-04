@@ -89,6 +89,8 @@ private:
 	bool				savedState;
 	bool				loadedState;
 	bool				debugNTEnable;
+	frameRate_t			frame;
+	timePoint_t			previousTime;
 	wtDebugInfo			dbgInfo;
 #if DEBUG_ADDR == 1
 	std::map<uint16_t, uint8_t> memoryDebug;
@@ -130,6 +132,8 @@ public:
 		finishedFrame.first = 0;
 		finishedFrame.second = false;
 		frameNumber = 0;
+		frame = frameRate_t( 0 );
+		previousTime = chrono::steady_clock::now();
 	}
 
 	uint8_t&	GetStack();
@@ -151,7 +155,6 @@ public:
 	void		WriteInput( const uint8_t value );
 	void		GetFrameResult( wtFrameResult& outFrameResult );
 	void		GetState( wtState& state );
-	void		SyncState( wtState& state );
 	void		GetConfig( wtConfig& config );
 	void		SyncConfig( wtConfig& config );
 	void		InitConfig();
