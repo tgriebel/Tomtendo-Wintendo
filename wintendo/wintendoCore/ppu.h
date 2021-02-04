@@ -209,16 +209,17 @@ public:
 	static const uint32_t ScreenHeight				= 240;
 	//static const ppuCycle_t VBlankCycles = ppuCycle_t( 20 * 341 * 5 );
 
-	wtSystem*		system;
 	ppuDebug_t		dbgInfo;
-	ppuCycle_t		cycle;
 	const RGBA*		palette;
 	uint8_t			vram[VirtualMemorySize];
 
 	ppuCycle_t		scanelineCycle;
-	int				currentScanline = 0;
+	int32_t			currentScanline = 0;
 
 private:
+	wtSystem*		system;
+	ppuCycle_t		cycle;
+
 	ppuCtrl			regCtrl;
 	ppuMask_t		regMask;
 	ppuStatus_t		regStatus;
@@ -333,6 +334,10 @@ public:
 		memset( vram, 0, PPU::VirtualMemorySize );
 		memset( debugVramWriteCounter, 0, VirtualMemorySize );
 	}
+
+	void		Begin();
+	void		End();
+	void		RegisterSystem( wtSystem* sys );
 
 	void		Serialize( Serializer& serializer, const serializeMode_t mode );
 

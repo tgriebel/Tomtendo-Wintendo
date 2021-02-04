@@ -49,6 +49,7 @@ uint8_t PPU::ReadReg( uint16_t addr )
 		case 7:	return PPUDATA();
 		default: break;
 	}
+	return 0;
 }
 
 
@@ -237,6 +238,24 @@ uint8_t PPU::PPUDATA()
 	}
 
 	return ppuReadBuffer[0];
+}
+
+
+void PPU::Begin()
+{
+
+}
+
+
+void PPU::End()
+{
+
+}
+
+
+void PPU::RegisterSystem( wtSystem* sys )
+{
+	system = sys;
 }
 
 

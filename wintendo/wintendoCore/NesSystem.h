@@ -139,8 +139,8 @@ public:
 	uint8_t&	GetStack();
 	uint8_t		ReadMemory( const uint16_t address );
 	void		WriteMemory( const uint16_t address, const uint16_t offset, const uint8_t value );
-	uint8_t		GetMapperId();
-	uint8_t		GetMirrorMode();
+	uint8_t		GetMapperId() const;
+	uint8_t		GetMirrorMode() const;
 
 	int			Init( const wstring& filePath );
 	void		Shutdown();
@@ -158,9 +158,9 @@ public:
 	void		GetConfig( wtConfig& config );
 	void		SyncConfig( wtConfig& config );
 	void		InitConfig();
-	void		RequestNMI();
-	void		RequestIRQ();
-	void		RequestDMA();
+	void		RequestNMI() const;
+	void		RequestIRQ() const;
+	void		RequestDMA() const;
 
 	// Implemented in "mapper.h"
 	unique_ptr<wtMapper> AssignMapper( const uint32_t mapperId );
@@ -170,7 +170,7 @@ public:
 private:
 	void		DebugPrintFlushLog();
 	void		WritePhysicalMemory( const uint16_t address, const uint8_t value );
-	uint16_t	MirrorAddress( const uint16_t address );
+	uint16_t	MirrorAddress( const uint16_t address ) const;
 
 	static bool	IsInputRegister( const uint16_t address );
 	static bool	IsPpuRegister( const uint16_t address );

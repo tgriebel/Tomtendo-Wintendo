@@ -625,19 +625,20 @@ private:
 
 	uint32_t		apuTicks;
 
-	float			squareLUT[SquareLutEntries];
-	float			tndLUT[TndLutEntries];
-
-public:
-	// TODO: make this stuff private
 	cpuCycle_t		cpuCycle;
 	apuCycle_t		apuCycle;
 	apuSeqCycle_t	seqCycle;
 
-	apuOutput_t*	frameOutput;
-	apuOutput_t		soundOutputBuffers[SoundBufferCnt];
-	apuOutput_t*	soundOutput;
+	float			squareLUT[SquareLutEntries];
+	float			tndLUT[TndLutEntries];
+
 	uint32_t		currentBuffer;
+	apuOutput_t*	soundOutput;
+	apuOutput_t		soundOutputBuffers[ SoundBufferCnt ];
+
+public:
+	// TODO: make 'frameOutput' private
+	apuOutput_t*	frameOutput;
 	wtSystem*		system;
 
 	APU()
@@ -690,6 +691,8 @@ public:
 
 	void	Begin();
 	void	End();
+	void	RegisterSystem( wtSystem* system );
+
 	bool	Step( const cpuCycle_t& nextCpuCycle );
 	void	WriteReg( const uint16_t addr, const uint8_t value );
 	uint8_t	ReadReg( const uint16_t addr );

@@ -140,9 +140,9 @@ public:
 	bool				resetLog;
 	vector<OpDebugInfo>	dbgMetrics;
 
-	bool				interruptRequestNMI;
-	bool				interruptRequest;
-	bool				oamInProcess;
+	mutable bool		interruptRequestNMI;
+	mutable bool		interruptRequest;
+	mutable bool		oamInProcess;
 
 	uint8_t				X;
 	uint8_t				Y;

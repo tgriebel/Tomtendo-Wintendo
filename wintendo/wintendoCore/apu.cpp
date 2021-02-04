@@ -612,11 +612,6 @@ void APU::GetDebugInfo( apuDebug_t& apuDebug )
 	apuDebug.dmc		= dmc;
 }
 
-void APU::Begin()
-{
-	apuTicks = 0;
-}
-
 
 bool APU::AllChannelHaveSamples()
 {
@@ -628,6 +623,18 @@ bool APU::AllChannelHaveSamples()
 	hasSamples = hasSamples && !dmc.samples.IsEmpty();
 
 	return hasSamples;
+}
+
+
+void APU::Begin()
+{
+	apuTicks = 0;
+}
+
+
+void APU::RegisterSystem( wtSystem* sys )
+{
+	system = sys;
 }
 
 

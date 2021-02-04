@@ -64,10 +64,10 @@ int wtSystem::Init( const wstring& filePath )
 	LoadNesFile( filePath, cart );
 
 	ppu.Reset();
-	ppu.system = this;
+	ppu.RegisterSystem( this );
 
 	apu.Reset();
-	apu.system = this;
+	apu.RegisterSystem( this );
 
 	LoadProgram( cart );
 	fileName = filePath;
@@ -149,7 +149,7 @@ bool wtSystem::IsDMA( const uint16_t address )
 }
 
 
-uint16_t wtSystem::MirrorAddress( const uint16_t address )
+uint16_t wtSystem::MirrorAddress( const uint16_t address ) const
 {
 	if ( IsPpuRegister( address ) )
 	{
@@ -176,13 +176,13 @@ uint8_t& wtSystem::GetStack()
 }
 
 
-uint8_t wtSystem::GetMapperId()
+uint8_t wtSystem::GetMapperId() const
 {
 	return ( cart.header.controlBits1.mappedNumberUpper << 4 ) | cart.header.controlBits0.mapperNumberLower;
 }
 
 
-uint8_t wtSystem::GetMirrorMode()
+uint8_t wtSystem::GetMirrorMode() const
 {
 	return mirrorMode;
 }
@@ -379,19 +379,19 @@ void wtSystem::SyncConfig( wtConfig& systemConfig )
 }
 
 
-void wtSystem::RequestNMI()
+void wtSystem::RequestNMI() const
 {
 	cpu.interruptRequestNMI = true;
 }
 
 
-void wtSystem::RequestIRQ()
+void wtSystem::RequestIRQ() const
 {
 	cpu.interruptRequest = true;
 }
 
 
-void wtSystem::RequestDMA()
+void wtSystem::RequestDMA() const
 {
 	cpu.oamInProcess = true;
 }
@@ -605,7 +605,6 @@ int wtSystem::RunFrame()
 
 		loadFile.seekg( 0, std::ios::beg );
 		loadFile.read( reinterpret_cast<char*>( serializer.GetPtr() ), len );
-		// serializer.SetPosition( len ); // start at 0
 
 		loadFile.close();				
 		loadedState = true;
