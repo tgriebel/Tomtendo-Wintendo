@@ -11,7 +11,7 @@ public:
 		mapperId = _mapperId;
 	}
 
-	uint8_t OnLoadCpu()
+	uint8_t OnLoadCpu() override
 	{
 		const size_t lastBank = ( system->cart.header.prgRomBanks - 1 );
 		memcpy( &system->memory[wtSystem::Bank0], system->cart.rom, wtSystem::BankSize );
@@ -20,14 +20,14 @@ public:
 		return 0; 
 	};
 
-	uint8_t OnLoadPpu()
+	uint8_t OnLoadPpu() override
 	{
 		const uint16_t chrRomStart = system->cart.header.prgRomBanks * KB_16;
 		memcpy( system->ppu.vram, &system->cart.rom[chrRomStart], PPU::PatternTableMemorySize );
 		return 0;
 	};
 
-	uint8_t Write( const uint16_t addr, const uint16_t offset, const uint8_t value )
+	uint8_t Write( const uint16_t addr, const uint16_t offset, const uint8_t value ) override
 	{
 		size_t bank = ( value & 0x07 );
 		memcpy( &system->memory[wtSystem::Bank0], &system->cart.rom[bank * wtSystem::BankSize], wtSystem::BankSize );
@@ -35,7 +35,7 @@ public:
 		return 0;
 	};
 
-	bool InWriteWindow( const uint16_t addr, const uint16_t offset )
+	bool InWriteWindow( const uint16_t addr, const uint16_t offset ) override
 	{
 		const uint16_t address = ( addr + offset );
 		return ( system->cart.GetMapperId() == 2 ) && InRange( address, 0x8000, 0xFFFF );
