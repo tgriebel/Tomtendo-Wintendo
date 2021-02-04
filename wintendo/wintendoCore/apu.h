@@ -379,6 +379,8 @@ public:
 		memset( &envelope, 0, sizeof( envelope ) );
 		envelope.startFlag = true;
 	}
+
+	void Serialize( Serializer& serializer, const serializeMode_t mode );
 };
 
 
@@ -411,6 +413,8 @@ public:
 
 		mute = true;
 	}
+
+	void Serialize( Serializer& serializer, const serializeMode_t mode );
 };
 
 
@@ -443,6 +447,8 @@ public:
 
 		mute = true;
 	}
+
+	void Serialize( Serializer& serializer, const serializeMode_t mode );
 };
 
 
@@ -488,6 +494,8 @@ public:
 		samples.Reset();
 		lastCycle = apuCycle_t( 0 );
 	}
+
+	void Serialize( Serializer& serializer, const serializeMode_t mode );
 };
 
 
@@ -641,6 +649,9 @@ public:
 	void Reset()
 	{
 		cpuCycle = cpuCycle_t( 0 );
+		apuCycle = apuCycle_t( 0 );
+		seqCycle = apuSeqCycle_t( 0 );
+		
 		pulse1.Clear();
 		pulse2.Clear();
 		triangle.Clear();

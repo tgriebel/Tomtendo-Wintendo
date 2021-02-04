@@ -4,15 +4,53 @@
 template<typename Cycle>
 static inline void SerializeCycle( Serializer& serializer, const serializeMode_t mode, Cycle& c )
 {
-	if ( mode == serializeMode_t::LOAD ) {
-		uint64_t cycles = c.count();
+	if ( mode == serializeMode_t::LOAD )
+	{
+		uint64_t cycles;
 		serializer.Next64b( *reinterpret_cast<uint64_t*>( &cycles ), mode );
 		c = Cycle( cycles );
 	}
-	else {
-		uint64_t cycles = c.count();
+	else if ( mode == serializeMode_t::STORE )
+	{
+		uint64_t cycles = static_cast<uint64_t>( c.count() );
 		serializer.Next64b( *reinterpret_cast<uint64_t*>( &cycles ), mode );
 	}
+}
+
+
+template<typename Counter>
+static inline void SerializeBitCounter( Serializer& serializer, const serializeMode_t mode, Counter& c )
+{
+	if ( mode == serializeMode_t::LOAD )
+	{
+		uint16_t value;
+		serializer.Next16b( *reinterpret_cast<uint16_t*>( &value ), mode );
+		c.Reload( value );
+	}
+	else if ( mode == serializeMode_t::STORE )
+	{
+		uint16_t value = c.Value();
+		serializer.Next16b( *reinterpret_cast<uint16_t*>( &value ), mode );
+	}
+}
+
+
+static inline void SerializeEnvelope( Serializer& serializer, const serializeMode_t mode, envelope_t& e )
+{
+	serializer.NextBool( e.startFlag,	mode );
+	serializer.Next8b( e.divider,		mode );
+	serializer.Next8b( e.decayLevel,	mode );
+	serializer.Next8b( e.divPeriod,		mode );
+	serializer.Next8b( e.divCounter,	mode );
+	serializer.Next8b( e.output,		mode );
+}
+
+
+static inline void SerializeSweep( Serializer& serializer, const serializeMode_t mode, sweep_t& s )
+{
+	serializer.NextBool( s.mute, mode );
+	serializer.NextBool( s.reloadFlag, mode );
+	SerializeBitCounter( serializer, mode, s.divider );
 }
 
 
@@ -20,7 +58,10 @@ void wtSystem::Serialize( Serializer& serializer, const serializeMode_t mode )
 {
 	SerializeCycle( serializer, mode, sysCycles );
 	SerializeCycle( serializer, mode, frame );
-	// SerializeCycle( serializer, mode, previousTime );
+
+	if( mode == serializeMode_t::LOAD ) {
+		previousTime = chrono::steady_clock::now(); // This might not be needed
+	}
 
 	serializer.Next32b( currentFrame, mode );
 	serializer.Next64b( frameNumber, mode );
@@ -107,4 +148,94 @@ void PPU::Serialize( Serializer& serializer, const serializeMode_t mode )
 
 void APU::Serialize( Serializer& serializer, const serializeMode_t mode )
 {
+	serializer.Next32b( currentBuffer,		mode);
+	if( mode == serializeMode_t::LOAD ) {
+		soundOutput = &soundOutputBuffers[ currentBuffer ];
+		frameOutput = soundOutput;
+	}
+
+	// TODO: soundOutputBuffers?
+	pulse1.Serialize( serializer, mode );
+	pulse2.Serialize( serializer, mode );
+	triangle.Serialize( serializer, mode );
+	noise.Serialize( serializer, mode );
+	dmc.Serialize( serializer, mode );
+
+	serializer.Next8b( frameCounter.byte,	mode );
+	serializer.Next8b( regStatus.byte,		mode );
+	serializer.NextBool( halfClk,			mode );
+	serializer.NextBool( quarterClk,		mode );
+	serializer.NextBool( irqClk,			mode );
+
+	serializer.Next32b( frameSeqTick,		mode );
+	serializer.Next8b( frameSeqStep,		mode );
+	serializer.Next32b( apuTicks,			mode );
+}
+
+
+void PulseChannel::Serialize( Serializer& serializer, const serializeMode_t mode )
+{
+	serializer.Next8b( regCtrl.byte, mode );
+	serializer.Next16b( regTune.byte2x, mode );
+	serializer.Next8b( regRamp.byte, mode );
+	serializer.Next16b( timer.byte2x, mode );
+	serializer.Next32b( volume, mode );
+	serializer.Next8b( sequenceStep, mode );
+	serializer.NextBool( mute, mode );
+
+	SerializeEnvelope( serializer, mode, envelope );
+	SerializeSweep( serializer, mode, sweep );
+	SerializeBitCounter( serializer, mode, period );
+	SerializeCycle( serializer, mode, lastCycle );
+}
+
+
+void TriangleChannel::Serialize( Serializer& serializer, const serializeMode_t mode )
+{
+	serializer.Next8b( regLinear.byte,		mode );
+	serializer.Next8b( sequenceStep,		mode );
+	serializer.Next16b( regTimer.byte2x,	mode );
+	serializer.NextBool( reloadFlag,		mode );
+	serializer.NextBool( mute,				mode );
+
+	SerializeBitCounter( serializer, mode, linearCounter );
+	SerializeBitCounter( serializer, mode, lengthCounter );
+	SerializeBitCounter( serializer, mode, timer );	
+	SerializeCycle( serializer, mode, lastCycle );
+}
+
+
+void NoiseChannel::Serialize( Serializer& serializer, const serializeMode_t mode )
+{
+	serializer.Next8b( regCtrl.byte, mode );
+	serializer.Next8b( regFreq1.byte, mode );
+	serializer.Next8b( regFreq2.byte, mode );
+	serializer.NextBool( mute, mode );
+	
+	SerializeBitCounter( serializer, mode, shift );
+	SerializeBitCounter( serializer, mode, timer );
+	SerializeBitCounter( serializer, mode, lengthCounter );
+	SerializeEnvelope( serializer, mode, envelope );
+	SerializeCycle( serializer, mode, lastCycle );
+}
+
+
+void DmcChannel::Serialize( Serializer& serializer, const serializeMode_t mode )
+{
+	serializer.Next8b( regCtrl.byte, mode );
+	serializer.Next8b( regLoad.byte, mode );
+	serializer.Next8b( regAddr, mode );
+	serializer.Next8b( regLength, mode );
+	serializer.NextBool( irq, mode );
+	serializer.NextBool( silenceFlag, mode );
+	serializer.NextBool( mute, mode );
+
+	serializer.Next16b( addr, mode );
+	serializer.Next16b( byteCnt, mode );
+	serializer.Next8b( sampleBuffer, mode );
+	serializer.NextBool( emptyBuffer, mode );
+	serializer.Next8b( shiftReg, mode );
+
+	SerializeBitCounter( serializer, mode, outputLevel );
+	SerializeCycle( serializer, mode, lastCycle );
 }
