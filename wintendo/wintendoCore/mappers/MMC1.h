@@ -122,7 +122,7 @@ public:
 		memset( prgRamBank, 0, KB_8 );
 	}
 
-	uint8_t OnLoadCpu()
+	uint8_t OnLoadCpu() override
 	{
 		const size_t lastBank = ( system->cart.header.prgRomBanks - 1 );
 		memcpy( &system->memory[wtSystem::Bank0], system->cart.rom, wtSystem::BankSize );
@@ -131,20 +131,41 @@ public:
 		return 0;
 	}
 
-	uint8_t OnLoadPpu()
+	uint8_t OnLoadPpu() override
 	{
 		const uint16_t chrRomStart = system->cart.header.prgRomBanks * KB_16;
 		memcpy( system->ppu.vram, &system->cart.rom[chrRomStart], PPU::PatternTableMemorySize );
 		return 0;
 	}
 
-	bool InWriteWindow( const uint16_t addr, const uint16_t offset )
+	void Serialize( Serializer& serializer, const serializeMode_t mode ) override
+	{
+		serializer.Next8b( ctrlReg, mode );
+		serializer.Next8b( chrBank0Reg, mode );
+		serializer.Next8b( chrBank1Reg, mode );
+
+		if( mode == serializeMode_t::STORE ) {
+			uint8_t shift = shiftRegister.GetValue();
+			serializer.Next8b( shift, mode );
+		} else if ( mode == serializeMode_t::LOAD ) {
+			uint8_t shift;
+			serializer.Next8b( shift, mode );
+			shiftRegister.Set( shift );
+		}
+
+		serializer.NextArray( reinterpret_cast<uint8_t*>( &chrRomBank0[ 0 ] ), KB_4, mode );
+		serializer.NextArray( reinterpret_cast<uint8_t*>( &chrRomBank1[ 0 ] ), KB_4, mode );
+		serializer.NextArray( reinterpret_cast<uint8_t*>( &prgRomBank0[ 0 ] ), KB_16, mode );
+		serializer.NextArray( reinterpret_cast<uint8_t*>( &prgRomBank1[ 0 ] ), KB_16, mode );
+		serializer.NextArray( reinterpret_cast<uint8_t*>( &prgRamBank[ 0 ] ), KB_8, mode );
+	}
+
+	bool InWriteWindow( const uint16_t addr, const uint16_t offset ) override
 	{
 		return ( system->cart.GetMapperId() == 1 ) && ( addr >= 0x8000 ) && ( addr <= 0xFFFF );
 	}
 
-
-	uint8_t Write( const uint16_t addr, const uint16_t offset, const uint8_t value )
+	uint8_t Write( const uint16_t addr, const uint16_t offset, const uint8_t value ) override
 	{
 		const uint16_t address = ( addr + offset );
 
