@@ -13,10 +13,6 @@ public:
 
 	uint8_t OnLoadCpu() override
 	{
-		const size_t lastBank = ( system->cart.header.prgRomBanks - 1 );
-		memcpy( &system->memory[wtSystem::Bank0], system->cart.rom, wtSystem::BankSize );
-		memcpy( &system->memory[wtSystem::Bank1], &system->cart.rom[lastBank * wtSystem::BankSize], wtSystem::BankSize );
-
 		return 0;
 	};
 
@@ -26,6 +22,17 @@ public:
 		memcpy( system->ppu.vram, &system->cart.rom[chrRomStart], PPU::PatternTableMemorySize );
 		return 0;
 	};
+
+	uint8_t	ReadRom( const uint16_t addr ) override
+	{
+		if( InRange( addr, wtSystem::Bank0, 0xFFFF ) )
+		{
+			const uint16_t bankAddr = ( addr - wtSystem::Bank0 );
+			return system->cart.rom[ bankAddr ];
+		}
+		assert( 0 );
+		return 0;
+	}
 
 	uint8_t Write( const uint16_t addr, const uint16_t offset, const uint8_t value ) override { return 0; };
 

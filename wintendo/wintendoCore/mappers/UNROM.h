@@ -5,18 +5,21 @@
 
 class UNROM : public wtMapper
 {
+private:
+	uint8_t bank;
+	uint8_t lastBank;
 public:
 	UNROM( const uint32_t _mapperId )
 	{
 		mapperId = _mapperId;
+		bank = 0;
+		lastBank = 0;
 	}
 
 	uint8_t OnLoadCpu() override
 	{
-		const size_t lastBank = ( system->cart.header.prgRomBanks - 1 );
-		memcpy( &system->memory[wtSystem::Bank0], system->cart.rom, wtSystem::BankSize );
-		memcpy( &system->memory[wtSystem::Bank1], &system->cart.rom[lastBank * wtSystem::BankSize], wtSystem::BankSize );
-
+		bank = 0;
+		lastBank = ( system->cart.header.prgRomBanks - 1 );
 		return 0; 
 	};
 
@@ -27,11 +30,25 @@ public:
 		return 0;
 	};
 
+	uint8_t	ReadRom( const uint16_t addr ) override
+	{
+		if ( InRange( addr, wtSystem::Bank0, wtSystem::Bank0End ) )
+		{
+			const uint16_t bankAddr = ( addr - wtSystem::Bank0 );
+			return system->cart.GetPrgRomBank( bank )[ bankAddr ];
+		}
+		else if ( InRange( addr, wtSystem::Bank1, wtSystem::Bank1End ) )
+		{
+			const uint16_t bankAddr = ( addr - wtSystem::Bank1 );
+			return system->cart.GetPrgRomBank( lastBank )[ bankAddr ];
+		}
+		assert( 0 );
+		return 0;
+	}
+
 	uint8_t Write( const uint16_t addr, const uint16_t offset, const uint8_t value ) override
 	{
-		size_t bank = ( value & 0x07 );
-		memcpy( &system->memory[wtSystem::Bank0], &system->cart.rom[bank * wtSystem::BankSize], wtSystem::BankSize );
-
+		bank = ( value & 0x07 );
 		return 0;
 	};
 
@@ -39,5 +56,11 @@ public:
 	{
 		const uint16_t address = ( addr + offset );
 		return ( system->cart.GetMapperId() == 2 ) && InRange( address, 0x8000, 0xFFFF );
+	}
+
+	void Serialize( Serializer& serializer, const serializeMode_t mode ) override
+	{
+		serializer.Next8b( bank,		mode );
+		serializer.Next8b( lastBank,	mode );
 	}
 };

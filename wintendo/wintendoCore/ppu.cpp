@@ -528,11 +528,17 @@ uint8_t PPU::GetChrRomPalette( const uint8_t plane0, const uint8_t plane1, const
 }
 
 
+bool PPU::IsMemoryMapped( const uint16_t addr ) const
+{
+	return false;
+}
+
+
 uint8_t PPU::ReadVram( const uint16_t addr )
 {
 	const uint16_t adjustedAddr = MirrorVram( addr );
 	assert( adjustedAddr < VirtualMemorySize );
-	return vram[adjustedAddr];
+	return vram[ adjustedAddr ];
 }
 
 

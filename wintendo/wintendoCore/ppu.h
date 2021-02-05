@@ -274,6 +274,7 @@ public:
 
 	void		WriteVram();
 	uint8_t		ReadVram( const uint16_t addr );
+	bool		IsMemoryMapped( const uint16_t addr ) const;
 
 	ppuCycle_t	Exec();
 	bool		Step( const ppuCycle_t& nextCycle );

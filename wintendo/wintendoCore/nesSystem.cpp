@@ -93,32 +93,24 @@ void wtSystem::LoadProgram( wtCart& loadCart, const uint32_t resetVectorManual )
 	loadCart.mapper->OnLoadCpu();
 	loadCart.mapper->OnLoadPpu();
 
-	if ( resetVectorManual == 0x10000 )
-	{
-		cpu.resetVector = ( memory[ResetVectorAddr + 1] << 8 ) | memory[ResetVectorAddr];
-	}
-	else
-	{
+	if ( resetVectorManual == 0x10000 )	{	
+		cpu.resetVector = Combine( ReadMemory( ResetVectorAddr ), ReadMemory( ResetVectorAddr + 1 ) );
+	} else {
 		cpu.resetVector = static_cast< uint16_t >( resetVectorManual & 0xFFFF );
 	}
 
-	cpu.nmiVector = Combine( memory[NmiVectorAddr], memory[NmiVectorAddr + 1] );
-	cpu.irqVector = Combine( memory[IrqVectorAddr], memory[IrqVectorAddr + 1] );
+	cpu.nmiVector = Combine( ReadMemory( NmiVectorAddr ), ReadMemory( NmiVectorAddr + 1 ) );
+	cpu.irqVector = Combine( ReadMemory( IrqVectorAddr ), ReadMemory( IrqVectorAddr + 1 ) );
 
 	cpu.interruptRequestNMI = false;
 	cpu.Reset(); // TODO: move this
 	cpu.system = this;
 
-	if ( loadCart.header.controlBits0.fourScreenMirror )
-	{
+	if ( loadCart.header.controlBits0.fourScreenMirror ) {
 		mirrorMode = MIRROR_MODE_FOURSCREEN;
-	}
-	else if ( loadCart.header.controlBits0.mirror )
-	{
+	} else if ( loadCart.header.controlBits0.mirror ) {
 		mirrorMode = MIRROR_MODE_VERTICAL;
-	}
-	else
-	{
+	} else {
 		mirrorMode = MIRROR_MODE_HORIZONTAL;
 	}
 }
@@ -139,6 +131,18 @@ bool wtSystem::IsPpuRegister( const uint16_t address )
 bool wtSystem::IsApuRegister( const uint16_t address )
 {
 	return ( ( address >= ApuRegisterBase ) && ( address <= ApuRegisterEnd ) && ( address != PpuOamDma ) );
+}
+
+
+bool wtSystem::IsCartMemory( const uint16_t address )
+{
+	return InRange( address, ExpansionRomBase, 0xFFFF );
+}
+
+
+bool wtSystem::IsPhysicalMemory( const uint16_t address )
+{
+	return InRange( address, 0x0000, 0x1FFF );
 }
 
 
@@ -196,7 +200,11 @@ bool wtSystem::MouseInRegion( const wtRect& region ) // TODO: draft code, kill l
 
 uint8_t wtSystem::ReadMemory( const uint16_t address )
 {
-	if ( IsPpuRegister( address ) )
+	if( IsCartMemory( address ) )
+	{
+		return cart.mapper->ReadRom( address );
+	}
+	else if ( IsPpuRegister( address ) )
 	{
 		return ppu.ReadReg( address );
 	}
@@ -325,9 +333,7 @@ void wtSystem::GetFrameResult( wtFrameResult& outFrameResult )
 
 void wtSystem::GetState( wtState& state )
 {
-	static_assert( sizeof( wtState ) == 131080, "Update wtSystem::GetState()" );
-	static_assert( wtState::CpuMemorySize >= VirtualMemorySize, "wtSystem::GetState(): Buffer Overflow." );
-	static_assert( wtState::PpuMemorySize >= PPU::VirtualMemorySize, "wtSystem::GetState(): Buffer Overflow." );
+	static_assert( sizeof( wtState ) == 67592, "Update wtSystem::GetState()" );
 
 	state.A = cpu.A;
 	state.X = cpu.X;
@@ -335,8 +341,8 @@ void wtSystem::GetState( wtState& state )
 	state.P = cpu.P;
 	state.PC = cpu.PC;
 	state.SP = cpu.SP;
-	memcpy( state.cpuMemory, memory, VirtualMemorySize );
-	memcpy( state.ppuMemory, ppu.vram, PPU::VirtualMemorySize );
+	memcpy( state.cpuMemory, memory, wtState::CpuMemorySize );
+	memcpy( state.ppuMemory, ppu.vram, wtState::PpuMemorySize );
 }
 
 

@@ -139,6 +139,8 @@ public:
 
 	virtual uint8_t	OnLoadCpu() = 0;
 	virtual uint8_t	OnLoadPpu() = 0;
+	virtual uint8_t	ReadRom( const uint16_t addr ) = 0;
+	virtual uint8_t	ReadVram( const uint16_t addr ) { return 0; };
 	virtual uint8_t	Write( const uint16_t addr, const uint16_t offset, const uint8_t value ) = 0;
 	virtual bool	InWriteWindow( const uint16_t addr, const uint16_t offset ) = 0;
 	
@@ -156,8 +158,7 @@ struct wtCart
 	size_t					size;
 	unique_ptr<wtMapper>	mapper;
 
-	uint8_t* GetPrgRomBank( const uint8_t bankNum )
-	{
+	uint8_t* GetPrgRomBank( const uint8_t bankNum ) {
 		return &rom[bankNum * KB_16];
 	}
 
@@ -167,8 +168,7 @@ struct wtCart
 		return &rom[chrRomStart + bankNum * ( sizeIs8KB ? KB_8 : KB_4 )];
 	}
 
-	uint32_t GetMapperId() const
-	{
+	uint32_t GetMapperId() const {
 		return ( header.controlBits1.mappedNumberUpper << 4 ) | header.controlBits0.mapperNumberLower;
 	}
 };

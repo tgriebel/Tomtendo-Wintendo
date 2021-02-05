@@ -73,18 +73,6 @@ public:
 		return ( system->cart.GetMapperId() == mapperId ) && ( addr >= 0x8000 ) && ( addr <= 0xFFFF );
 	}
 
-	void Serialize( Serializer& serializer, const serializeMode_t mode ) override
-	{
-		serializer.Next8b( irqLatch, mode );
-		serializer.Next8b( irqCounter, mode );
-		serializer.Next8b( bankSelect.byte, mode );
-		serializer.NextBool( irqEnable, mode );
-		serializer.NextBool( bankDataInit, mode );
-		serializer.NextChar( oldPrgBankMode, mode );
-		serializer.NextChar( oldChrBankMode, mode );
-		serializer.NextArray( reinterpret_cast<uint8_t*>( &R[ 0 ] ), 8 * sizeof( R[ 0 ] ), mode );
-	}
-
 	void Clock() override
 	{
 		if( irqCounter <= 0 ) {		
@@ -98,6 +86,10 @@ public:
 		}
 	}
 
+	uint8_t	ReadRom( const uint16_t addr ) override
+	{
+		return system->memory[ addr ];
+	}
 
 	uint8_t Write( const uint16_t addr, const uint16_t offset, const uint8_t value ) override
 	{
@@ -226,5 +218,17 @@ public:
 		//memcpy( &system->memory[prgDestBank], &system->cart.rom[prgSrcBank * KB_16], prgBankSize );
 
 		return 0;
+	}
+
+	void Serialize( Serializer& serializer, const serializeMode_t mode ) override
+	{
+		serializer.Next8b( irqLatch, mode );
+		serializer.Next8b( irqCounter, mode );
+		serializer.Next8b( bankSelect.byte, mode );
+		serializer.NextBool( irqEnable, mode );
+		serializer.NextBool( bankDataInit, mode );
+		serializer.NextChar( oldPrgBankMode, mode );
+		serializer.NextChar( oldChrBankMode, mode );
+		serializer.NextArray( reinterpret_cast<uint8_t*>( &R[ 0 ] ), 8 * sizeof( R[ 0 ] ), mode );
 	}
 };

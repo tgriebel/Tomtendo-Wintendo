@@ -30,14 +30,20 @@ public:
 	static const uint32_t PageSize				= 0x0100;
 	static const uint32_t ZeroPageSize			= 0x0100;
 	static const uint32_t BankSize				= 0x4000;
+	static const uint32_t SramSize				= 0x2000;
 	static const uint32_t ChrRomSize			= 0x1000;
 	static const uint32_t MemoryWrap			= 0x10000;
 	static const uint32_t ZeroPageWrap			= 0x0100;
 
 	// Partition offsets
 	static const uint16_t StackBase				= 0x0100;
+	static const uint16_t ExpansionRomBase		= 0x4020;
+	static const uint16_t SramBase				= 0x6000;
+	static const uint16_t SramEnd				= 0x7FFF;
 	static const uint16_t Bank0					= 0x8000;
+	static const uint16_t Bank0End				= 0xBFFF;
 	static const uint16_t Bank1					= 0xC000;
+	static const uint16_t Bank1End				= 0xFFFF;
 	static const uint16_t ResetVectorAddr		= 0xFFFC;
 	static const uint16_t NmiVectorAddr			= 0xFFFA;
 	static const uint16_t IrqVectorAddr			= 0xFFFE;
@@ -175,6 +181,8 @@ private:
 	static bool	IsInputRegister( const uint16_t address );
 	static bool	IsPpuRegister( const uint16_t address );
 	static bool	IsApuRegister( const uint16_t address );
+	static bool IsCartMemory( const uint16_t address );
+	static bool IsPhysicalMemory( const uint16_t address );
 	static bool	IsDMA( const uint16_t address );
 
 };
@@ -182,7 +190,7 @@ private:
 
 struct wtState
 {
-	static const uint32_t CpuMemorySize = wtSystem::VirtualMemorySize;
+	static const uint32_t CpuMemorySize = wtSystem::PhysicalMemorySize;
 	static const uint32_t PpuMemorySize = PPU::VirtualMemorySize;
 
 	uint8_t				X;

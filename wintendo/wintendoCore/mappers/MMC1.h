@@ -18,6 +18,9 @@ private:
 	uint8_t chrBank1Reg;
 	uint8_t prgBankReg;
 
+	uint8_t bank0;
+	uint8_t bank1;
+
 	wtShiftReg<5> shiftRegister;
 
 	static const uint8_t ClearBit		= 0x80;
@@ -47,16 +50,12 @@ private:
 
 		const bool hasChrRom = system->cart.header.chrRomBanks > 0;
 		const uint32_t chrRomStart = system->cart.header.prgRomBanks * KB_16;
-		uint16_t prgBankSize = KB_16;
 		uint16_t chrRomBankSize = KB_8;
-		uint16_t prgSrcBank = 0;
-		uint16_t prgDestBank = 0;
 
 		if ( InRange( address, 0x8000, 0x9FFF ) )
 		{
 			ctrlReg = regValue;		
 			system->mirrorMode = GetMirrorMode();
-			
 		}
 		else if ( hasChrRom && InRange( address, 0xA000, 0xBFFF ) )
 		{			
@@ -85,20 +84,21 @@ private:
 		{
 			assert( system->cart.header.prgRomBanks > 0 );
 
-			if ( ctrlReg & 0x08 )
+			if ( ctrlReg & 0x08 )  // 16 KB mode
 			{
-				prgBankSize	= KB_16;
-				prgSrcBank	= regValue & 0x0F;
-				prgDestBank	= ( ctrlReg & 0x04 ) ? wtSystem::Bank0 : wtSystem::Bank1;
+				const uint8_t prgSrcBank = regValue & 0x0F;
+				if ( ctrlReg & 0x04 ) {
+					bank0 = prgSrcBank;
+				} else {
+					bank1 = prgSrcBank;
+				}
 			}
-			else
+			else // 32 KB mode
 			{
-				prgBankSize	= KB_32;
-				prgSrcBank	= regValue & 0x0E;
-				prgDestBank	= wtSystem::Bank0;
+				const uint8_t prgSrcBank = regValue & 0x0E;
+				bank0 = prgSrcBank;
+				bank1 = prgSrcBank + 1;
 			}
-
-			memcpy( &system->memory[prgDestBank], &system->cart.rom[prgSrcBank * KB_16], prgBankSize );
 		}
 		
 		return 0;
@@ -110,7 +110,9 @@ public:
 		ctrlReg( CtrlRegDefault ),
 		chrBank0Reg(0),
 		chrBank1Reg(0),
-		prgBankReg(0)
+		prgBankReg(0),
+		bank0(0),
+		bank1(0)
 	{
 		mapperId = _mapperId;
 		shiftRegister.Clear();
@@ -124,10 +126,8 @@ public:
 
 	uint8_t OnLoadCpu() override
 	{
-		const size_t lastBank = ( system->cart.header.prgRomBanks - 1 );
-		memcpy( &system->memory[wtSystem::Bank0], system->cart.rom, wtSystem::BankSize );
-		memcpy( &system->memory[wtSystem::Bank1], &system->cart.rom[lastBank * wtSystem::BankSize], wtSystem::BankSize );
-
+		bank0 = 0;
+		bank1 = ( system->cart.header.prgRomBanks - 1 );
 		return 0;
 	}
 
@@ -135,6 +135,68 @@ public:
 	{
 		const uint16_t chrRomStart = system->cart.header.prgRomBanks * KB_16;
 		memcpy( system->ppu.vram, &system->cart.rom[chrRomStart], PPU::PatternTableMemorySize );
+		return 0;
+	}
+
+	uint8_t	ReadRom( const uint16_t addr ) override
+	{
+		if ( InRange( addr, wtSystem::Bank0, wtSystem::Bank0End ) )
+		{
+			const uint16_t bankAddr = ( addr - wtSystem::Bank0 );
+			return system->cart.GetPrgRomBank( bank0 )[ bankAddr ];
+		}
+		else if ( InRange( addr, wtSystem::Bank1, wtSystem::Bank1End ) )
+		{
+			const uint16_t bankAddr = ( addr - wtSystem::Bank1 );
+			return system->cart.GetPrgRomBank( bank1 )[ bankAddr ];
+		}
+		else if ( InRange( addr, wtSystem::SramBase, wtSystem::SramEnd ) )
+		{
+			const uint16_t sramAddr = ( addr - wtSystem::SramBase );
+			return prgRamBank[ sramAddr ];
+		}
+		
+		assert( 0 );
+		return 0;
+	}
+
+	bool InWriteWindow( const uint16_t addr, const uint16_t offset ) override
+	{
+		const uint16_t address = ( addr + offset );
+		return ( system->cart.GetMapperId() == 1 ) && InRange( address, wtSystem::SramBase, wtSystem::Bank1End );
+	}
+
+	uint8_t Write( const uint16_t addr, const uint16_t offset, const uint8_t value ) override
+	{
+		const uint16_t address = ( addr + offset );
+
+		if ( !InRange( address, wtSystem::SramBase, wtSystem::Bank1End ) ) {
+			return 0;
+		}
+
+		if( InRange( address, wtSystem::SramBase, wtSystem::SramEnd ) ) {
+			const uint16_t sramAddr = ( address - wtSystem::SramBase );
+			prgRamBank[ sramAddr ] = value;
+			return 0;
+		}
+
+		if ( ( value & 0x80 ) > 0 )
+		{
+			shiftRegister.Clear();
+			ctrlReg |= 0x0C;
+
+			return 0;
+		}
+
+		shiftRegister.Shift( value & 1 );
+
+		if ( shiftRegister.IsFull() )
+		{
+			const uint8_t regValue = shiftRegister.GetValue();
+			shiftRegister.Clear();
+			MapMemory( address, regValue );
+		}
+
 		return 0;
 	}
 
@@ -158,37 +220,5 @@ public:
 		serializer.NextArray( reinterpret_cast<uint8_t*>( &prgRomBank0[ 0 ] ), KB_16, mode );
 		serializer.NextArray( reinterpret_cast<uint8_t*>( &prgRomBank1[ 0 ] ), KB_16, mode );
 		serializer.NextArray( reinterpret_cast<uint8_t*>( &prgRamBank[ 0 ] ), KB_8, mode );
-	}
-
-	bool InWriteWindow( const uint16_t addr, const uint16_t offset ) override
-	{
-		return ( system->cart.GetMapperId() == 1 ) && ( addr >= 0x8000 ) && ( addr <= 0xFFFF );
-	}
-
-	uint8_t Write( const uint16_t addr, const uint16_t offset, const uint8_t value ) override
-	{
-		const uint16_t address = ( addr + offset );
-
-		if ( !InRange( address, 0x8000, 0xFFFF ) )
-			return 0;
-
-		if ( ( value & 0x80 ) > 0 )
-		{
-			shiftRegister.Clear();
-			ctrlReg |= 0x0C;
-
-			return 0;
-		}
-
-		shiftRegister.Shift( value & 1 );
-
-		if ( shiftRegister.IsFull() )
-		{
-			const uint8_t regValue = shiftRegister.GetValue();
-			shiftRegister.Clear();
-			MapMemory( address, regValue );
-		}
-
-		return 0;
 	}
 };
