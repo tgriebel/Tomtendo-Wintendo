@@ -30,6 +30,11 @@ private:
 	int8_t		oldChrBankMode;
 	bool		bankDataInit;
 
+	uint8_t		bank0;
+	uint8_t		bank1;
+	uint8_t		bank2;
+	uint8_t		bank3;
+
 	uint8_t GetMirrorMode()
 	{
 		return 0;
@@ -48,7 +53,11 @@ public:
 		irqEnable( false ),
 		oldPrgBankMode( -1 ),
 		oldChrBankMode( -1 ),
-		bankDataInit( false )
+		bankDataInit( false ),
+		bank0(0),
+		bank1(0),
+		bank2(0),
+		bank3(0)
 	{
 		mapperId = _mapperId;
 		bankSelect.byte = 0;
@@ -214,9 +223,6 @@ public:
 			}
 		}
 		
-		//memcpy( &system->ppu.vram[PPU::PatternTable1BaseAddr], &system->cart.rom[chrRomStart + chrBank1Reg * KB_4], KB_4 );
-		//memcpy( &system->memory[prgDestBank], &system->cart.rom[prgSrcBank * KB_16], prgBankSize );
-
 		return 0;
 	}
 

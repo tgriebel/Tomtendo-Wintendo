@@ -8,8 +8,6 @@ class MMC1 : public wtMapper
 private:
 	
 	uint8_t prgRamBank[KB_8];
-	uint8_t prgRomBank0[KB_16];
-	uint8_t prgRomBank1[KB_16];
 	uint8_t chrRomBank0[KB_4];
 	uint8_t chrRomBank1[KB_4];
 
@@ -119,8 +117,6 @@ public:
 
 		memset( chrRomBank0, 0, KB_4 );
 		memset( chrRomBank1, 0, KB_4 );
-		memset( prgRomBank0, 0, KB_16 );
-		memset( prgRomBank1, 0, KB_16 );
 		memset( prgRamBank, 0, KB_8 );
 	}
 
@@ -205,6 +201,8 @@ public:
 		serializer.Next8b( ctrlReg, mode );
 		serializer.Next8b( chrBank0Reg, mode );
 		serializer.Next8b( chrBank1Reg, mode );
+		serializer.Next8b( bank0, mode );
+		serializer.Next8b( bank1, mode );
 
 		if( mode == serializeMode_t::STORE ) {
 			uint8_t shift = shiftRegister.GetValue();
@@ -217,8 +215,6 @@ public:
 
 		serializer.NextArray( reinterpret_cast<uint8_t*>( &chrRomBank0[ 0 ] ), KB_4, mode );
 		serializer.NextArray( reinterpret_cast<uint8_t*>( &chrRomBank1[ 0 ] ), KB_4, mode );
-		serializer.NextArray( reinterpret_cast<uint8_t*>( &prgRomBank0[ 0 ] ), KB_16, mode );
-		serializer.NextArray( reinterpret_cast<uint8_t*>( &prgRomBank1[ 0 ] ), KB_16, mode );
 		serializer.NextArray( reinterpret_cast<uint8_t*>( &prgRamBank[ 0 ] ), KB_8, mode );
 	}
 };
