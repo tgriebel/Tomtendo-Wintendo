@@ -25,6 +25,9 @@ struct PSInput
 Texture2D g_texture : register(t0);
 SamplerState g_sampler : register(s0);
 
+static const float VirtualSize = 24.0f;
+static const float ScanlineWidth = 0.31f;
+
 cbuffer DisplayConstantBuffer : register(b0)
 {
 	float	hardScan;
@@ -67,7 +70,8 @@ float3 ToSrgb( float3 c )
 // Also zero's off screen.
 float3 Fetch( float2 pos, float2 off )
 {
-	pos = floor( pos * imageDim.zw + off ) / imageDim.zw;
+	const float2 virtualDim = VirtualSize * imageDim.zw;
+	pos = floor( pos * virtualDim + off ) / virtualDim;
  
 	if( max( abs( pos.x - 0.5f ), abs( pos.y - 0.5f ) ) > 0.5f )
 		return float3( 0.0f, 0.0f, 0.0f );
@@ -78,7 +82,8 @@ float3 Fetch( float2 pos, float2 off )
 // Distance in emulated pixels to nearest texel.
 float2 Dist( float2 pos )
 {
-	pos = pos * imageDim.zw;
+	const float2 virtualDim = imageDim.zw * ( ScanlineWidth * VirtualSize );
+	pos = pos * virtualDim;
 	return -( ( pos - floor( pos ) ) - float2( 0.5f, 0.5f ) );
 }
 
@@ -91,16 +96,16 @@ float Gaus( float pos, float scale )
 // 3-tap Gaussian filter along horz line.
 float3 Horz3( float2 pos,float off )
 {
-	float3 b = Fetch( pos, float2( -1.0f, off ) );
-	float3 c = Fetch( pos, float2( 0.0f, off ) );
-	float3 d = Fetch( pos, float2( 1.0f, off ) );
-	float dst = Dist( pos ).x;
+	const float3 b = Fetch( pos, float2( -1.0f, off ) );
+	const float3 c = Fetch( pos, float2( 0.0f, off ) );
+	const float3 d = Fetch( pos, float2( 1.0f, off ) );
+	const float dst = Dist( pos ).x;
 
 	// Convert distance to weight.
-	float scale = hardPix;
-	float wb = Gaus( dst - 1.0f, scale );
-	float wc = Gaus( dst + 0.0f, scale );
-	float wd = Gaus( dst + 1.0f, scale );
+	const float scale = hardPix;
+	const float wb = Gaus( dst - 1.0f, scale );
+	const float wc = Gaus( dst + 0.0f, scale );
+	const float wd = Gaus( dst + 1.0f, scale );
 
 	// Return filtered sample.
 	return ( b * wb + c * wc + d * wd ) / ( wb + wc + wd );
@@ -109,23 +114,23 @@ float3 Horz3( float2 pos,float off )
 // 5-tap Gaussian filter along horz line.
 float3 Horz5( float2 pos, float off )
 {
-  float3 a = Fetch( pos, float2( -2.0f, off ) );
-  float3 b = Fetch( pos, float2( -1.0f, off ) );
-  float3 c = Fetch( pos, float2( 0.0f, off ) );
-  float3 d = Fetch( pos, float2( 1.0f, off ) );
-  float3 e = Fetch( pos, float2( 2.0f, off ) );
-  float dst = Dist( pos ).x;
+	const float3 a = Fetch( pos, float2( -2.0f, off ) );
+	const float3 b = Fetch( pos, float2( -1.0f, off ) );
+	const float3 c = Fetch( pos, float2( 0.0f, off ) );
+	const float3 d = Fetch( pos, float2( 1.0f, off ) );
+	const float3 e = Fetch( pos, float2( 2.0f, off ) );
+	const float dst = Dist( pos ).x;
+
+	// Convert distance to weight.
+	const float scale = hardPix;
+	const float wa = Gaus( dst - 2.0f, scale );
+	const float wb = Gaus( dst - 1.0f, scale );
+	const float wc = Gaus( dst + 0.0f, scale );
+	const float wd = Gaus( dst + 1.0f, scale );
+	const float we = Gaus( dst + 2.0f, scale );
   
-  // Convert distance to weight.
-  float scale = hardPix;
-  float wa = Gaus( dst - 2.0f, scale );
-  float wb = Gaus( dst - 1.0f, scale );
-  float wc = Gaus( dst + 0.0f, scale );
-  float wd = Gaus( dst + 1.0f, scale );
-  float we = Gaus( dst + 2.0f, scale );
-  
-  // Return filtered sample.
-  return ( a * wa + b * wb + c * wc + d * wd + e * we ) / ( wa + wb + wc + wd + we );
+	// Return filtered sample.
+	return ( a * wa + b * wb + c * wc + d * wd + e * we ) / ( wa + wb + wc + wd + we );
 }
 
 // Return scanline weight.
@@ -138,39 +143,39 @@ float Scan( float2 pos, float off )
 // Allow nearest three lines to effect pixel.
 float3 Tri( float2 pos )
 {
-  float3 a = Horz3( pos, -1.0f );
-  float3 b = Horz5( pos, 0.0f );
-  float3 c = Horz3( pos, 1.0f );
-  float wa = Scan( pos, -1.0f );
-  float wb = Scan( pos, 0.0f );
-  float wc = Scan( pos, 1.0f );
+	const float3 a = Horz3( pos, -1.0f );
+	const float3 b = Horz5( pos, 0.0f );
+	const float3 c = Horz3( pos, 1.0f );
+	const float wa = Scan( pos, -1.0f );
+	const float wb = Scan( pos, 0.0f );
+	const float wc = Scan( pos, 1.0f );
   
-  return a * wa + b * wb + c * wc;
+	return ( a * wa ) + ( b * wb ) + ( c * wc );
 }
 
 // Distortion of scanlines, and end of screen alpha.
 float2 Warp( float2 pos )
 {
-  pos = pos * 2.0f - 1.0f;    
-  pos *= float2( 1.0f + ( pos.y * pos.y ) * warp.x, 1.0f + ( pos.x * pos.x ) * warp.y );
-  return pos * 0.5f + 0.5f;
+	float2 distorted = pos * 2.0f - 1.0f;
+	distorted *= float2( 1.0f + ( distorted.y * distorted.y ) * warp.x, 1.0f + ( distorted.x * distorted.x ) * warp.y );
+	return ( distorted * 0.5f + 0.5f );
 }
 
 // Shadow mask.
 float3 Mask( float2 pos )
 {
-  float3 mask = float3( maskDark, maskDark, maskDark );
-  pos.x += pos.y * 3.0f;
-  pos.x = frac( pos.x / 6.0f );
+	float3 mask = float3( maskDark, maskDark, maskDark );
+	pos.x += pos.y * 3.0f;
+	pos.x = frac( pos.x / 6.0f );
   
-  if( pos.x < 0.333f ) 
-	  mask.r = maskLight;
-  else if( pos.x < 0.666f )
-	  mask.g = maskLight;
-  else
-	  mask.b = maskLight;
+	if( pos.x < 0.333f ) 
+		mask.r = maskLight;
+	else if( pos.x < 0.666f )
+		mask.g = maskLight;
+	else
+		mask.b = maskLight;
 
-  return mask;
+	return mask;
 }
 
 // Entry.
@@ -180,7 +185,7 @@ PSInput VSMain( float4 position : POSITION, float4 color : COLOR, float4 uv : TE
 
     result.position = position;
 	result.color = color;
-    result.uv = uv;
+    result.uv = uv.xy;
 
     return result;
 }
@@ -201,7 +206,7 @@ float4 PSMain( PSInput input ) : SV_TARGET
 	  
 		pixel.a = 1.0f;  
 		pixel.rgb = ToSrgb( pixel.rgb );
-		
+
 		return pixel;
 	}
 }
