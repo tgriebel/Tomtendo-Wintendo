@@ -25,8 +25,7 @@ struct PSInput
 Texture2D g_texture : register(t0);
 SamplerState g_sampler : register(s0);
 
-static const float VirtualSize = 24.0f;
-static const float ScanlineWidth = 0.31f;
+static const float VirtualSize = 2.0f;
 
 cbuffer DisplayConstantBuffer : register(b0)
 {
@@ -82,7 +81,7 @@ float3 Fetch( float2 pos, float2 off )
 // Distance in emulated pixels to nearest texel.
 float2 Dist( float2 pos )
 {
-	const float2 virtualDim = imageDim.zw * ( ScanlineWidth * VirtualSize );
+	const float2 virtualDim = imageDim.zw;
 	pos = pos * virtualDim;
 	return -( ( pos - floor( pos ) ) - float2( 0.5f, 0.5f ) );
 }
@@ -94,7 +93,7 @@ float Gaus( float pos, float scale )
 }
 
 // 3-tap Gaussian filter along horz line.
-float3 Horz3( float2 pos,float off )
+float3 Horz3( float2 pos, float off )
 {
 	const float3 b = Fetch( pos, float2( -1.0f, off ) );
 	const float3 c = Fetch( pos, float2( 0.0f, off ) );
@@ -200,9 +199,9 @@ float4 PSMain( PSInput input ) : SV_TARGET
 	{
 		float4 pixel;
 		
-		float2 pos = Warp( input.position.xy / destImageDim.zw );
+		float2 pos = Warp( input.uv );
 		pixel.rgb = Tri( pos );
-		pixel.rgb *= Mask( input.position.xy );
+		//pixel.rgb *= Mask( input.position.xy );
 	  
 		pixel.a = 1.0f;  
 		pixel.rgb = ToSrgb( pixel.rgb );
