@@ -159,7 +159,7 @@ public:
 	bool InWriteWindow( const uint16_t addr, const uint16_t offset ) override
 	{
 		const uint16_t address = ( addr + offset );
-		return ( system->cart.GetMapperId() == 1 ) && InRange( address, wtSystem::SramBase, wtSystem::Bank1End );
+		return ( system->cart.GetMapperId() == mapperId ) && InRange( address, wtSystem::SramBase, wtSystem::Bank1End );
 	}
 
 	uint8_t Write( const uint16_t addr, const uint16_t offset, const uint8_t value ) override

@@ -75,9 +75,7 @@ public:
 	wtPatternTableImage	patternTable0;
 	wtPatternTableImage	patternTable1;
 
-	// TODO: Need to abstract memory access for mappers
-	// TODO: make physical size
-	uint8_t				memory[VirtualMemorySize];
+	uint8_t				memory[PhysicalMemorySize];
 
 	bool				headless;
 

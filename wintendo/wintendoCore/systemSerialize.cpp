@@ -72,7 +72,7 @@ void wtSystem::Serialize( Serializer& serializer, const serializeMode_t mode )
 	serializer.Next32b( finishedFrame.first,								mode );
 	serializer.Next8b( *reinterpret_cast<uint8_t*>( &finishedFrame.second ),mode );
 
-	serializer.NextArray( memory, VirtualMemorySize, mode );
+	serializer.NextArray( memory, PhysicalMemorySize, mode );
 
 	cpu.Serialize( serializer, mode );
 	ppu.Serialize( serializer, mode );

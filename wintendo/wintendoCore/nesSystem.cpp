@@ -86,7 +86,7 @@ void wtSystem::Shutdown()
 
 void wtSystem::LoadProgram( wtCart& loadCart, const uint32_t resetVectorManual )
 {
-	memset( memory, 0, VirtualMemorySize );
+	memset( memory, 0, PhysicalMemorySize );
 
 	loadCart.mapper = AssignMapper( loadCart.GetMapperId() );
 	loadCart.mapper->system = this;
@@ -506,9 +506,9 @@ string wtSystem::GetPrgBankDissambly( const uint8_t bankNum )
 }
 
 
-void wtSystem::GenerateRomDissambly( string prgRomAsm[16] )
+void wtSystem::GenerateRomDissambly( string prgRomAsm[32] )
 {
-	assert( cart.header.prgRomBanks <= 16 );
+	assert( cart.header.prgRomBanks <= 32 );
 	for( uint32_t bankNum = 0; bankNum < cart.header.prgRomBanks; ++bankNum )
 	{
 		prgRomAsm[bankNum] = GetPrgBankDissambly( bankNum );

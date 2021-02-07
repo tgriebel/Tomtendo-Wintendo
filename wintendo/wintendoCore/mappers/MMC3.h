@@ -22,7 +22,8 @@ private:
 	};
 
 	BankSelect	bankSelect;
-	uint16_t	R[8];
+	uint8_t		R[8];
+	uint8_t		prgRamBank[ KB_8 ];
 	uint8_t		irqLatch;
 	uint8_t		irqCounter;
 	bool		irqEnable;
@@ -65,9 +66,10 @@ public:
 
 	uint8_t OnLoadCpu() override
 	{
-		const size_t lastBank = ( system->cart.header.prgRomBanks - 1 );
-		memcpy( &system->memory[wtSystem::Bank0], system->cart.rom, wtSystem::BankSize );
-		memcpy( &system->memory[wtSystem::Bank1], &system->cart.rom[lastBank * wtSystem::BankSize], wtSystem::BankSize );
+		bank0 = 0,
+		bank1 = 1,
+		bank2 = ( 2 * system->cart.header.prgRomBanks ) - 2;
+		bank3 = ( 2 * system->cart.header.prgRomBanks ) - 1;
 
 		return 0;
 	}
@@ -79,7 +81,8 @@ public:
 
 	bool InWriteWindow( const uint16_t addr, const uint16_t offset ) override
 	{
-		return ( system->cart.GetMapperId() == mapperId ) && ( addr >= 0x8000 ) && ( addr <= 0xFFFF );
+		const uint16_t address = ( addr + offset );
+		return ( system->cart.GetMapperId() == mapperId ) && InRange( address, 0x6000, 0xFFFF );
 	}
 
 	void Clock() override
@@ -97,7 +100,34 @@ public:
 
 	uint8_t	ReadRom( const uint16_t addr ) override
 	{
-		return system->memory[ addr ];
+		
+		if ( InRange( addr, 0x8000, 0x9FFF ) )
+		{
+			const uint16_t bankAddr = ( addr - 0x8000 );
+			return system->cart.GetPrgRomBank( bank0, KB_8 )[ bankAddr ];
+		}
+		else if ( InRange( addr, 0xA000, 0xBFFF ) )
+		{
+			const uint16_t bankAddr = ( addr - 0xA000 );
+			return system->cart.GetPrgRomBank( bank1, KB_8 )[ bankAddr ];
+		}
+		else if ( InRange( addr, 0xC000, 0xDFFF ) )
+		{
+			const uint16_t bankAddr = ( addr - 0xC000 );
+			return system->cart.GetPrgRomBank( bank2, KB_8 )[ bankAddr ];
+		}
+		else if ( InRange( addr, 0xE000, 0xFFFF ) )
+		{
+			const uint16_t bankAddr = ( addr - 0xE000 );
+			return system->cart.GetPrgRomBank( bank3, KB_8 )[ bankAddr ];
+		}
+		else if ( InRange( addr, wtSystem::SramBase, wtSystem::SramEnd ) )
+		{
+			const uint16_t sramAddr = ( addr - wtSystem::SramBase );
+			return prgRamBank[ sramAddr ];
+		}		
+
+		return 0;
 	}
 
 	uint8_t Write( const uint16_t addr, const uint16_t offset, const uint8_t value ) override
@@ -105,6 +135,12 @@ public:
 		const uint16_t address = ( addr + offset );
 		bool swapPrgBanks = false;
 		bool swapChrBanks = false;
+
+		if ( InRange( address, wtSystem::SramBase, wtSystem::SramEnd ) ) {
+			const uint16_t sramAddr = ( address - wtSystem::SramBase );
+			prgRamBank[ sramAddr ] = value;
+			return 0;
+		}
 
 		if ( InRange( address, 0x8000, 0x9FFF ) )
 		{
@@ -182,22 +218,24 @@ public:
 
 		if( swapPrgBanks )
 		{
-			const size_t lastBank = 0x1F;
-			const size_t secondLastBank = 0x1E;
+			const uint8_t lastBank = ( 2 * system->cart.header.prgRomBanks ) - 1;
+			const uint8_t secondLastBank = ( 2 * system->cart.header.prgRomBanks ) - 2;
+
 			if ( bankSelect.sem.prgRomBankMode )
 			{
-				memcpy( &system->memory[0x8000], &system->cart.rom[secondLastBank * KB_8], KB_8 );
-				memcpy( &system->memory[0xA000], &system->cart.rom[R[7] * KB_8], KB_8 );
-				memcpy( &system->memory[0xC000], &system->cart.rom[R[6] * KB_8], KB_8 );
-				memcpy( &system->memory[0xE000], &system->cart.rom[lastBank * KB_8], KB_8 );
+				bank0 = secondLastBank;
+				bank1 = R[ 7 ];
+				bank2 = R[ 6 ];
+				bank3 = lastBank;
 			}
 			else
 			{
-				memcpy( &system->memory[0x8000], &system->cart.rom[R[6] * KB_8], KB_8 );
-				memcpy( &system->memory[0xA000], &system->cart.rom[R[7] * KB_8], KB_8 );
-				memcpy( &system->memory[0xC000], &system->cart.rom[secondLastBank * KB_8], KB_8 );
-				memcpy( &system->memory[0xE000], &system->cart.rom[lastBank * KB_8], KB_8 );
+				bank0 = R[ 6 ];
+				bank1 = R[ 7 ];
+				bank2 = secondLastBank;
+				bank3 = lastBank;
 			}
+
 		}
 
 		if( swapChrBanks )
@@ -231,10 +269,15 @@ public:
 		serializer.Next8b( irqLatch, mode );
 		serializer.Next8b( irqCounter, mode );
 		serializer.Next8b( bankSelect.byte, mode );
+		serializer.Next8b( bank0, mode );
+		serializer.Next8b( bank1, mode );
+		serializer.Next8b( bank2, mode );
+		serializer.Next8b( bank3, mode );
 		serializer.NextBool( irqEnable, mode );
 		serializer.NextBool( bankDataInit, mode );
 		serializer.NextChar( oldPrgBankMode, mode );
 		serializer.NextChar( oldChrBankMode, mode );
 		serializer.NextArray( reinterpret_cast<uint8_t*>( &R[ 0 ] ), 8 * sizeof( R[ 0 ] ), mode );
+		serializer.NextArray( reinterpret_cast<uint8_t*>( &prgRamBank[ 0 ] ), KB_8, mode );
 	}
 };

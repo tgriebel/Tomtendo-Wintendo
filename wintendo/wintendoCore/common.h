@@ -37,11 +37,16 @@ static constexpr uint64_t APU_HZ = chrono::duration_cast<apuCycle_t>( chrono::se
 static constexpr uint64_t PPU_HZ = chrono::duration_cast<ppuCycle_t>( chrono::seconds( 1 ) ).count();
 
 const uint32_t KB_1		= 1024;
-const uint32_t KB_2		= ( 2 * KB_1 );
-const uint32_t KB_4		= ( 2 * KB_2 );
-const uint32_t KB_8		= ( 2 * KB_4 );
-const uint32_t KB_16	= ( 2 * KB_8 );
-const uint32_t KB_32	= ( 2 * KB_16 );
+const uint32_t KB_2		= ( KB_1 << 1 );
+const uint32_t KB_4		= ( KB_2 << 1 );
+const uint32_t KB_8		= ( KB_4 << 1 );
+const uint32_t KB_16	= ( KB_8 << 1 );
+const uint32_t KB_32	= ( KB_16 << 1 );
+const uint32_t KB_64	= ( KB_32 << 1 );
+const uint32_t KB_128	= ( KB_64 << 1 );
+const uint32_t KB_256	= ( KB_128 << 1 );
+const uint32_t KB_512	= ( KB_256 << 1 );
+const uint32_t MB_1		= 1024 * KB_1;
 
 const uint16_t BIT_0	= 0;
 const uint16_t BIT_1	= 1;
@@ -153,13 +158,13 @@ struct wtCart
 {
 	// WARNING: This data is directly copied into right
 	wtRomHeader				header;
-	uint8_t					rom[524288];
+	uint8_t					rom[ 2 * MB_1 ];
 	// Fine to add data after here
 	size_t					size;
 	unique_ptr<wtMapper>	mapper;
 
-	uint8_t* GetPrgRomBank( const uint8_t bankNum ) {
-		return &rom[bankNum * KB_16];
+	uint8_t* GetPrgRomBank( const uint8_t bankNum, const uint16_t bankSize = KB_16 ) {
+		return &rom[ bankNum * bankSize ];
 	}
 
 	uint8_t* GetChrRomBank( const uint8_t bankNum, const bool sizeIs8KB )
