@@ -18,6 +18,10 @@ private:
 
 	uint8_t bank0;
 	uint8_t bank1;
+	uint8_t chrBank0;
+	uint8_t chrBank1;
+
+	uint8_t	chrRam[ PPU::PatternTableMemorySize ];
 
 	wtShiftReg<5> shiftRegister;
 
@@ -61,21 +65,22 @@ private:
 			{
 				chrRomBankSize = KB_4;
 				chrBank0Reg = regValue;
+				chrBank0 = chrBank0Reg;
 			}
 			else
 			{
 				chrRomBankSize = KB_8;
 				chrBank0Reg = regValue & 0x0E;
+				chrBank0 = chrBank0Reg;
+				chrBank1 = chrBank0Reg + 1;
 			}
-
-			memcpy( &system->ppu.vram[PPU::PatternTable0BaseAddr], &system->cart->rom[chrRomStart + chrBank0Reg * chrRomBankSize], chrRomBankSize );
 		}
 		else if ( hasChrRom && InRange( address, 0xC000, 0xDFFF ) )
 		{
 			if ( ( ctrlReg & 0x10 ) != 0 )
 			{
 				chrBank1Reg = regValue;
-				memcpy( &system->ppu.vram[PPU::PatternTable1BaseAddr], &system->cart->rom[chrRomStart + chrBank1Reg * KB_4], KB_4 );
+				chrBank1 = chrBank1Reg;
 			}
 		}
 		else if ( InRange( address, 0xE000, 0xFFFF ) )
@@ -129,8 +134,7 @@ public:
 
 	uint8_t OnLoadPpu() override
 	{
-		const uint16_t chrRomStart = system->cart->h.prgRomBanks * KB_16;
-		memcpy( system->ppu.vram, &system->cart->rom[chrRomStart], PPU::PatternTableMemorySize );
+		memset( chrRam, 0, sizeof( PPU::PatternTableMemorySize ) );
 		return 0;
 	}
 
@@ -153,6 +157,29 @@ public:
 		}
 		
 		assert( 0 );
+		return 0;
+	}
+
+	uint8_t	ReadChrRom( const uint16_t addr ) override
+	{
+		if( InRange( addr, 0x0000, 0x1FFF ) && system->cart->HasChrRam() )	{
+			return chrRam[ addr ];
+		} else if ( InRange( addr, 0x0000, 0x0FFF ) ) {
+			return system->cart->GetChrRomBank( chrBank0, KB_4 )[ addr ];
+		} else if ( InRange( addr, 0x1000, 0x1FFF ) ) {
+			return system->cart->GetChrRomBank( chrBank1, KB_4 )[ addr ];
+		}
+		assert( 0 );
+		return 0;
+	}
+
+	uint8_t	 WriteChrRam( const uint16_t addr, const uint8_t value ) override
+	{
+		if ( InRange( addr, 0x0000, 0x1FFF ) && system->cart->HasChrRam() ) {
+			chrRam[ addr ] = value;
+			return 1;
+		}
+		assert( system->cart->HasChrRam() );
 		return 0;
 	}
 
@@ -216,5 +243,6 @@ public:
 		serializer.NextArray( reinterpret_cast<uint8_t*>( &chrRomBank0[ 0 ] ), KB_4, mode );
 		serializer.NextArray( reinterpret_cast<uint8_t*>( &chrRomBank1[ 0 ] ), KB_4, mode );
 		serializer.NextArray( reinterpret_cast<uint8_t*>( &prgRamBank[ 0 ] ), KB_8, mode );
+		serializer.NextArray( reinterpret_cast<uint8_t*>( &chrRam[ 0 ] ), PPU::PatternTableMemorySize, mode );
 	}
 };

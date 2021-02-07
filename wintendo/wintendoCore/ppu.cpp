@@ -512,9 +512,9 @@ uint8_t PPU::GetChrRomBank8x8( const uint32_t tileId, const uint8_t plane, const
 	const uint8_t tileBytes = 16;
 	const uint16_t baseAddr = bankId * wtSystem::ChrRomSize;
 	const uint16_t chrRomBase = baseAddr + tileId * tileBytes;
-	uint8_t* bank = system->cart->GetChrRomBank( bankId, KB_4 );
+	const uint16_t bankAddr = bankId * 0x1000;
 
-	return bank[chrRomBase + row + 8 * ( plane & 0x01 )];
+	return ReadVram( bankAddr + chrRomBase + row + 8 * ( plane & 0x01 ) );
 }
 
 
