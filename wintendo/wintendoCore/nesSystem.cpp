@@ -257,11 +257,7 @@ void wtSystem::WriteMemory( const uint16_t address, const uint16_t offset, const
 		ppu.IssueDMA( value );
 		apu.WriteReg( address, value );
 	}
-	else if ( wtSystem::IsApuRegister( address ) )
-	{
-		apu.WriteReg( address, value );
-	}
-	else if ( IsInputRegister( address ) ) // FIXME: the APU will always eat 4017
+	else if ( IsInputRegister( address ) )
 	{
 		const bool prevStrobeOn = strobeOn;
 		strobeOn = ( value & 0x01 );
@@ -271,6 +267,10 @@ void wtSystem::WriteMemory( const uint16_t address, const uint16_t offset, const
 			btnShift[0] = 0;
 			btnShift[1] = 0;
 		}
+	}
+	else if ( wtSystem::IsApuRegister( address ) ) // FIXME: the input will always eat 4017
+	{
+		apu.WriteReg( address, value );
 	}
 	else if ( cart->mapper->InWriteWindow( address, offset ) )
 	{
