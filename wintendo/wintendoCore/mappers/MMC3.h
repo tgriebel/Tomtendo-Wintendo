@@ -68,8 +68,8 @@ public:
 	{
 		bank0 = 0,
 		bank1 = 1,
-		bank2 = ( 2 * system->cart.header.prgRomBanks ) - 2;
-		bank3 = ( 2 * system->cart.header.prgRomBanks ) - 1;
+		bank2 = ( 2 * system->cart->h.prgRomBanks ) - 2;
+		bank3 = ( 2 * system->cart->h.prgRomBanks ) - 1;
 
 		return 0;
 	}
@@ -82,7 +82,7 @@ public:
 	bool InWriteWindow( const uint16_t addr, const uint16_t offset ) override
 	{
 		const uint16_t address = ( addr + offset );
-		return ( system->cart.GetMapperId() == mapperId ) && InRange( address, 0x6000, 0xFFFF );
+		return ( system->cart->GetMapperId() == mapperId ) && InRange( address, 0x6000, 0xFFFF );
 	}
 
 	void Clock() override
@@ -99,33 +99,32 @@ public:
 	}
 
 	uint8_t	ReadRom( const uint16_t addr ) override
-	{
-		
+	{	
 		if ( InRange( addr, 0x8000, 0x9FFF ) )
 		{
 			const uint16_t bankAddr = ( addr - 0x8000 );
-			return system->cart.GetPrgRomBank( bank0, KB_8 )[ bankAddr ];
+			return system->cart->GetPrgRomBank( bank0, KB_8 )[ bankAddr ];
 		}
 		else if ( InRange( addr, 0xA000, 0xBFFF ) )
 		{
 			const uint16_t bankAddr = ( addr - 0xA000 );
-			return system->cart.GetPrgRomBank( bank1, KB_8 )[ bankAddr ];
+			return system->cart->GetPrgRomBank( bank1, KB_8 )[ bankAddr ];
 		}
 		else if ( InRange( addr, 0xC000, 0xDFFF ) )
 		{
 			const uint16_t bankAddr = ( addr - 0xC000 );
-			return system->cart.GetPrgRomBank( bank2, KB_8 )[ bankAddr ];
+			return system->cart->GetPrgRomBank( bank2, KB_8 )[ bankAddr ];
 		}
 		else if ( InRange( addr, 0xE000, 0xFFFF ) )
 		{
 			const uint16_t bankAddr = ( addr - 0xE000 );
-			return system->cart.GetPrgRomBank( bank3, KB_8 )[ bankAddr ];
+			return system->cart->GetPrgRomBank( bank3, KB_8 )[ bankAddr ];
 		}
 		else if ( InRange( addr, wtSystem::SramBase, wtSystem::SramEnd ) )
 		{
 			const uint16_t sramAddr = ( addr - wtSystem::SramBase );
 			return prgRamBank[ sramAddr ];
-		}		
+		}
 
 		return 0;
 	}
@@ -186,7 +185,7 @@ public:
 		{
 			if ( ( address % 2 ) == 0 )
 			{
-				if( !system->cart.header.controlBits0.fourScreenMirror )
+				if( !system->cart->h.controlBits0.fourScreenMirror )
 				{
 					system->mirrorMode = ( value & 0x01 ) ? MIRROR_MODE_HORIZONTAL : MIRROR_MODE_VERTICAL;
 				}
@@ -218,8 +217,8 @@ public:
 
 		if( swapPrgBanks )
 		{
-			const uint8_t lastBank = ( 2 * system->cart.header.prgRomBanks ) - 1;
-			const uint8_t secondLastBank = ( 2 * system->cart.header.prgRomBanks ) - 2;
+			const uint8_t lastBank = ( 2 * system->cart->h.prgRomBanks ) - 1;
+			const uint8_t secondLastBank = ( 2 * system->cart->h.prgRomBanks ) - 2;
 
 			if ( bankSelect.sem.prgRomBankMode )
 			{
@@ -240,24 +239,24 @@ public:
 
 		if( swapChrBanks )
 		{
-			const uint32_t chrRomStart = system->cart.header.prgRomBanks * KB_16;
+			const uint32_t chrRomStart = system->cart->h.prgRomBanks * KB_16;
 			if ( bankSelect.sem.chrA12Inversion )
 			{
-				memcpy( &system->ppu.vram[0x0000], &system->cart.rom[chrRomStart + R[2] * KB_1], KB_1 );
-				memcpy( &system->ppu.vram[0x0400], &system->cart.rom[chrRomStart + R[3] * KB_1], KB_1 );
-				memcpy( &system->ppu.vram[0x0800], &system->cart.rom[chrRomStart + R[4] * KB_1], KB_1 );
-				memcpy( &system->ppu.vram[0x0C00], &system->cart.rom[chrRomStart + R[5] * KB_1], KB_1 );
-				memcpy( &system->ppu.vram[0x1000], &system->cart.rom[chrRomStart + R[0] * KB_1], KB_2 );
-				memcpy( &system->ppu.vram[0x1800], &system->cart.rom[chrRomStart + R[1] * KB_1], KB_2 );
+				memcpy( &system->ppu.vram[0x0000], &system->cart->rom[chrRomStart + R[2] * KB_1], KB_1 );
+				memcpy( &system->ppu.vram[0x0400], &system->cart->rom[chrRomStart + R[3] * KB_1], KB_1 );
+				memcpy( &system->ppu.vram[0x0800], &system->cart->rom[chrRomStart + R[4] * KB_1], KB_1 );
+				memcpy( &system->ppu.vram[0x0C00], &system->cart->rom[chrRomStart + R[5] * KB_1], KB_1 );
+				memcpy( &system->ppu.vram[0x1000], &system->cart->rom[chrRomStart + R[0] * KB_1], KB_2 );
+				memcpy( &system->ppu.vram[0x1800], &system->cart->rom[chrRomStart + R[1] * KB_1], KB_2 );
 			}
 			else
 			{
-				memcpy( &system->ppu.vram[0x0000], &system->cart.rom[chrRomStart + R[0] * KB_1], KB_2 );
-				memcpy( &system->ppu.vram[0x0800], &system->cart.rom[chrRomStart + R[1] * KB_1], KB_2 );
-				memcpy( &system->ppu.vram[0x1000], &system->cart.rom[chrRomStart + R[2] * KB_1], KB_1 );
-				memcpy( &system->ppu.vram[0x1400], &system->cart.rom[chrRomStart + R[3] * KB_1], KB_1 );
-				memcpy( &system->ppu.vram[0x1800], &system->cart.rom[chrRomStart + R[4] * KB_1], KB_1 );
-				memcpy( &system->ppu.vram[0x1C00], &system->cart.rom[chrRomStart + R[5] * KB_1], KB_1 );
+				memcpy( &system->ppu.vram[0x0000], &system->cart->rom[chrRomStart + R[0] * KB_1], KB_2 );
+				memcpy( &system->ppu.vram[0x0800], &system->cart->rom[chrRomStart + R[1] * KB_1], KB_2 );
+				memcpy( &system->ppu.vram[0x1000], &system->cart->rom[chrRomStart + R[2] * KB_1], KB_1 );
+				memcpy( &system->ppu.vram[0x1400], &system->cart->rom[chrRomStart + R[3] * KB_1], KB_1 );
+				memcpy( &system->ppu.vram[0x1800], &system->cart->rom[chrRomStart + R[4] * KB_1], KB_1 );
+				memcpy( &system->ppu.vram[0x1C00], &system->cart->rom[chrRomStart + R[5] * KB_1], KB_1 );
 			}
 		}
 		

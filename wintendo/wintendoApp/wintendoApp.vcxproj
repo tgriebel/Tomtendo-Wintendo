@@ -111,8 +111,7 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <StackReserveSize>
-      </StackReserveSize>
+      <StackReserveSize>1048576</StackReserveSize>
       <StackCommitSize>
       </StackCommitSize>
       <LinkTimeCodeGeneration>Default</LinkTimeCodeGeneration>

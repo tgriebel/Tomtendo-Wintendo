@@ -20,26 +20,29 @@ ButtonFlags keyBuffer[2] = { ButtonFlags::BUTTON_NONE, ButtonFlags::BUTTON_NONE 
 wtPoint mousePoint;
 bool lockFps = true;
 
-static void LoadNesFile( const std::wstring& fileName, wtCart& outCart )
+static void LoadNesFile( const std::wstring& fileName, unique_ptr<wtCart>& outCart )
 {
+	// TODO: use serializer here
 	std::ifstream nesFile;
 	nesFile.open( fileName, std::ios::binary );
 
 	assert( nesFile.good() );
 
 	nesFile.seekg( 0, std::ios::end );
-	size_t len = static_cast<size_t>( nesFile.tellg() );
+	uint32_t len = static_cast<uint32_t>( nesFile.tellg() );
+
+	wtRomHeader header;
+	uint32_t size = len - static_cast<uint32_t>( sizeof( header ) ); // TODO: trainer needs to be checked
+	uint8_t* romData = new uint8_t[ size ];
 
 	nesFile.seekg( 0, std::ios::beg );
-	nesFile.read( reinterpret_cast<char*>( &outCart ), len );
+	nesFile.read( reinterpret_cast<char*>( &header ), sizeof( header ) );
+	nesFile.read( reinterpret_cast<char*>( romData ), size );
 	nesFile.close();
 
-	assert( outCart.header.type[0] == 'N' );
-	assert( outCart.header.type[1] == 'E' );
-	assert( outCart.header.type[2] == 'S' );
-	assert( outCart.header.magic == 0x1A );
+	outCart = make_unique<wtCart>( header, romData, size );
 
-	outCart.size = len - sizeof( outCart.header ); // TODO: trainer needs to be checked
+	delete[] romData;
 }
 
 
@@ -69,7 +72,7 @@ int wtSystem::Init( const wstring& filePath )
 	apu.Reset();
 	apu.RegisterSystem( this );
 
-	LoadProgram( cart );
+	LoadProgram();
 	fileName = filePath;
 
 	return 0;
@@ -84,14 +87,14 @@ void wtSystem::Shutdown()
 }
 
 
-void wtSystem::LoadProgram( wtCart& loadCart, const uint32_t resetVectorManual )
+void wtSystem::LoadProgram( const uint32_t resetVectorManual )
 {
 	memset( memory, 0, PhysicalMemorySize );
 
-	loadCart.mapper = AssignMapper( loadCart.GetMapperId() );
-	loadCart.mapper->system = this;
-	loadCart.mapper->OnLoadCpu();
-	loadCart.mapper->OnLoadPpu();
+	cart->mapper = AssignMapper( cart->GetMapperId() );
+	cart->mapper->system = this;
+	cart->mapper->OnLoadCpu();
+	cart->mapper->OnLoadPpu();
 
 	if ( resetVectorManual == 0x10000 )	{	
 		cpu.resetVector = Combine( ReadMemory( ResetVectorAddr ), ReadMemory( ResetVectorAddr + 1 ) );
@@ -106,9 +109,9 @@ void wtSystem::LoadProgram( wtCart& loadCart, const uint32_t resetVectorManual )
 	cpu.Reset(); // TODO: move this
 	cpu.system = this;
 
-	if ( loadCart.header.controlBits0.fourScreenMirror ) {
+	if ( cart->h.controlBits0.fourScreenMirror ) {
 		mirrorMode = MIRROR_MODE_FOURSCREEN;
-	} else if ( loadCart.header.controlBits0.mirror ) {
+	} else if ( cart->h.controlBits0.mirror ) {
 		mirrorMode = MIRROR_MODE_VERTICAL;
 	} else {
 		mirrorMode = MIRROR_MODE_HORIZONTAL;
@@ -130,7 +133,7 @@ bool wtSystem::IsPpuRegister( const uint16_t address )
 
 bool wtSystem::IsApuRegister( const uint16_t address )
 {
-	return ( ( address >= ApuRegisterBase ) && ( address <= ApuRegisterEnd ) && ( address != PpuOamDma ) );
+	return ( ( address >= ApuRegisterBase ) && ( address <= ApuRegisterEnd ) || ( address == ApuRegisterCounter ) );
 }
 
 
@@ -176,13 +179,14 @@ uint16_t wtSystem::MirrorAddress( const uint16_t address ) const
 
 uint8_t& wtSystem::GetStack()
 {
+	assert( ( StackBase + cpu.SP ) < PhysicalMemorySize );
 	return memory[StackBase + cpu.SP];
 }
 
 
 uint8_t wtSystem::GetMapperId() const
 {
-	return ( cart.header.controlBits1.mappedNumberUpper << 4 ) | cart.header.controlBits0.mapperNumberLower;
+	return ( cart->h.controlBits1.mappedNumberUpper << 4 ) | cart->h.controlBits0.mapperNumberLower;
 }
 
 
@@ -202,13 +206,17 @@ uint8_t wtSystem::ReadMemory( const uint16_t address )
 {
 	if( IsCartMemory( address ) )
 	{
-		return cart.mapper->ReadRom( address );
+		return cart->mapper->ReadRom( address );
 	}
 	else if ( IsPpuRegister( address ) )
 	{
 		return ppu.ReadReg( address );
 	}
-	else if ( IsInputRegister( address ) )
+	else if ( IsApuRegister( address ) )
+	{
+		return apu.ReadReg( address );
+	}
+	else if ( IsInputRegister( address ) ) // FIXME: APU will eat 0x4017
 	{
 		assert( InputRegister0 <= address );
 		const uint32_t controllerIndex = ( address - InputRegister0 );
@@ -230,12 +238,9 @@ uint8_t wtSystem::ReadMemory( const uint16_t address )
 
 		return keyBuffer;
 	}
-	else if ( IsApuRegister( address ) )
-	{
-		return apu.ReadReg( address );
-	}
 	else
 	{
+		assert( MirrorAddress( address ) < PhysicalMemorySize );
 		return memory[MirrorAddress( address )];
 	}
 }
@@ -247,15 +252,16 @@ void wtSystem::WriteMemory( const uint16_t address, const uint16_t offset, const
 	{
 		ppu.WriteReg( address, value );
 	}
+	else if ( wtSystem::IsDMA( address ) )
+	{
+		ppu.IssueDMA( value );
+		apu.WriteReg( address, value );
+	}
 	else if ( wtSystem::IsApuRegister( address ) )
 	{
 		apu.WriteReg( address, value );
 	}
-	else if ( wtSystem::IsDMA( address ) )
-	{
-		ppu.IssueDMA( value );
-	}
-	else if ( address == wtSystem::InputRegister0 )
+	else if ( IsInputRegister( address ) ) // FIXME: the APU will always eat 4017
 	{
 		const bool prevStrobeOn = strobeOn;
 		strobeOn = ( value & 0x01 );
@@ -266,9 +272,9 @@ void wtSystem::WriteMemory( const uint16_t address, const uint16_t offset, const
 			btnShift[1] = 0;
 		}
 	}
-	else if ( cart.mapper->InWriteWindow( address, offset ) )
+	else if ( cart->mapper->InWriteWindow( address, offset ) )
 	{
-		cart.mapper->Write( address, offset, value );
+		cart->mapper->Write( address, offset, value );
 	}
 	else
 	{
@@ -280,6 +286,7 @@ void wtSystem::WriteMemory( const uint16_t address, const uint16_t offset, const
 
 void wtSystem::WritePhysicalMemory( const uint16_t address, const uint8_t value )
 {
+	assert( MirrorAddress( address ) < PhysicalMemorySize );
 	memory[MirrorAddress(address)] = value;
 }
 
@@ -314,7 +321,7 @@ void wtSystem::GetFrameResult( wtFrameResult& outFrameResult )
 	outFrameResult.dbgMetrics = &cpu.dbgMetrics;
 #endif
 	outFrameResult.dbgInfo = dbgInfo;
-	outFrameResult.romHeader = cart.header;
+	outFrameResult.romHeader = cart->h;
 	outFrameResult.mirrorMode = static_cast<wtMirrorMode>( GetMirrorMode() );
 	outFrameResult.mapperId = GetMapperId();
 
@@ -467,7 +474,7 @@ bool wtSystem::Run( const masterCycles_t& nextCycle )
 string wtSystem::GetPrgBankDissambly( const uint8_t bankNum )
 {
 	std::stringstream debugStream;
-	uint8_t* bankMem = cart.GetPrgRomBank( bankNum );
+	uint8_t* bankMem = cart->GetPrgRomBank( bankNum );
 	uint16_t curByte = 0;
 
 	while( curByte < KB_16 )
@@ -506,18 +513,19 @@ string wtSystem::GetPrgBankDissambly( const uint8_t bankNum )
 }
 
 
-void wtSystem::GenerateRomDissambly( string prgRomAsm[32] )
+void wtSystem::GenerateRomDissambly( string prgRomAsm[128] )
 {
-	assert( cart.header.prgRomBanks <= 32 );
-	for( uint32_t bankNum = 0; bankNum < cart.header.prgRomBanks; ++bankNum )
+	assert( cart->h.prgRomBanks <= 128 );
+	for( uint32_t bankNum = 0; bankNum < cart->h.prgRomBanks; ++bankNum )
 	{
 		prgRomAsm[bankNum] = GetPrgBankDissambly( bankNum );
 	}
 }
 
 
-void wtSystem::GenerateChrRomTables( wtPatternTableImage chrRom[16] )
+void wtSystem::GenerateChrRomTables( wtPatternTableImage chrRom[32] )
 {
+	assert( cart->GetChrBankCount() <= 32 );
 	const uint16_t baseAddr = ( config.ppu.chrPalette > 3 ) ? PPU::SpritePaletteAddr: PPU::PaletteBaseAddr;
 	const uint16_t baseOffset = 4 * ( config.ppu.chrPalette % 4 );
 	const uint8_t p0 = ppu.ReadVram( baseAddr + baseOffset + 0 );
@@ -531,8 +539,8 @@ void wtSystem::GenerateChrRomTables( wtPatternTableImage chrRom[16] )
 	palette[2] = ppu.palette[p2];
 	palette[3] = ppu.palette[p3];
 
-	assert( cart.header.chrRomBanks <= 16 );
-	for ( uint32_t bankNum = 0; bankNum < cart.header.chrRomBanks; ++bankNum )
+	assert( cart->h.chrRomBanks <= 16 );
+	for ( uint32_t bankNum = 0; bankNum < cart->h.chrRomBanks; ++bankNum )
 	{
 		ppu.DrawDebugPatternTables( chrRom[bankNum], palette, bankNum );
 	}

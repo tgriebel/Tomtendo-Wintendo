@@ -36,7 +36,7 @@ void PPU::WriteReg( const uint16_t addr, const uint8_t value )
 
 uint8_t PPU::ReadReg( uint16_t addr )
 {
-	const uint16_t regNum = ( addr % 8 ); // Mirror: 2008-4000
+	const uint16_t regNum = ( addr % 8 ); // Mirror: 0x2008-0x4000
 	switch ( regNum )
 	{
 		case 0: return PPUCTRL();
@@ -512,7 +512,7 @@ uint8_t PPU::GetChrRomBank8x8( const uint32_t tileId, const uint8_t plane, const
 	const uint8_t tileBytes = 16;
 	const uint16_t baseAddr = bankId * wtSystem::ChrRomSize;
 	const uint16_t chrRomBase = baseAddr + tileId * tileBytes;
-	uint8_t* bank = system->cart.GetChrRomBank( bankId, KB_16 );
+	uint8_t* bank = system->cart->GetChrRomBank( bankId, KB_4 );
 
 	return bank[chrRomBase + row + 8 * ( plane & 0x01 )];
 }
@@ -538,7 +538,12 @@ uint8_t PPU::ReadVram( const uint16_t addr )
 {
 	const uint16_t adjustedAddr = MirrorVram( addr );
 	assert( adjustedAddr < VirtualMemorySize );
-	return vram[ adjustedAddr ];
+
+	if( InRange( adjustedAddr, 0x0000, 0x1FFF ) ) {
+		return system->cart->mapper->ReadChrRom( adjustedAddr );
+	} else {
+		return vram[ adjustedAddr ];
+	}
 }
 
 
@@ -549,11 +554,12 @@ void PPU::WriteVram()
 		if ( DataportEnabled() )
 		{
 			const uint16_t adjustedAddr = MirrorVram( regV.byte2x );
+			assert( adjustedAddr < PhysicalMemorySize );
 
-			vram[adjustedAddr] = registers[PPUREG_DATA];
+			if( !system->cart->mapper->WriteChrRam( adjustedAddr, registers[ PPUREG_DATA ] ) ) {
+				vram[ adjustedAddr ] = registers[ PPUREG_DATA ];
+			}
 			debugVramWriteCounter[adjustedAddr]++;
-
-		//	assert( system->GetMapperNumber() > 0 || adjustedAddr >= 0x2000 ); // TODO: fixed bank check
 		}
 
 		vramWritePending = false;
@@ -1160,7 +1166,7 @@ ppuCycle_t PPU::Exec()
 		scanelineCycle += ppuCycle_t( 1 );
 
 		if( ( currentScanline >= 0 ) && ( currentScanline <= POSTRENDER_SCANLINE ) && RenderEnabled() ) {
-			system->cart.mapper->Clock(); // TODO: How big of a hack is this?
+			system->cart->mapper->Clock(); // TODO: How big of a hack is this?
 		}
 	}
 	else if ( cycleCount <= 320 ) // [261 - 320]

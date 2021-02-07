@@ -64,7 +64,7 @@ public:
 	masterCycles_t		sysCycles;
 
 	wstring				fileName;
-	wtCart				cart;
+	unique_ptr<wtCart>	cart;
 
 	pair<uint32_t,bool>	finishedFrame;
 	uint32_t			currentFrame;
@@ -112,7 +112,7 @@ public:
 
 		sysCycles = masterCycles_t( 0 );
 
-		memset( memory, 0, sizeof( memory ) );
+		memset( memory, 0, PhysicalMemorySize );
 
 		strobeOn = false;
 		btnShift[0] = 0;
@@ -148,11 +148,11 @@ public:
 
 	int			Init( const wstring& filePath );
 	void		Shutdown();
-	void		LoadProgram( wtCart& cart, const uint32_t resetVectorManual = 0x10000 );
+	void		LoadProgram( const uint32_t resetVectorManual = 0x10000 );
 	void		Serialize( Serializer& serializer, const serializeMode_t mode );
 	string		GetPrgBankDissambly( const uint8_t bankNum );
-	void		GenerateRomDissambly( string prgRomAsm[16] );
-	void		GenerateChrRomTables( wtPatternTableImage chrRom[16] );
+	void		GenerateRomDissambly( string prgRomAsm[128] );
+	void		GenerateChrRomTables( wtPatternTableImage chrRom[32] );
 	bool		Run( const masterCycles_t& nextCycle );
 	int			RunFrame();
 	void		CaptureInput( const Controller keys );

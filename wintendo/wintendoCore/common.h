@@ -142,12 +142,13 @@ protected:
 public:
 	wtSystem* system;
 
-	virtual uint8_t	OnLoadCpu() = 0;
-	virtual uint8_t	OnLoadPpu() = 0;
+	virtual uint8_t	OnLoadCpu() { return 0; };
+	virtual uint8_t	OnLoadPpu() { return 0; };
 	virtual uint8_t	ReadRom( const uint16_t addr ) = 0;
-	virtual uint8_t	ReadVram( const uint16_t addr ) { return 0; };
-	virtual uint8_t	Write( const uint16_t addr, const uint16_t offset, const uint8_t value ) = 0;
-	virtual bool	InWriteWindow( const uint16_t addr, const uint16_t offset ) = 0;
+	virtual uint8_t	ReadChrRom( const uint16_t addr ) { return 0; };
+	virtual uint8_t	WriteChrRam( const uint16_t addr, const uint8_t value ) { return 0; };
+	virtual uint8_t	Write( const uint16_t addr, const uint16_t offset, const uint8_t value ) { return 0; };
+	virtual bool	InWriteWindow( const uint16_t addr, const uint16_t offset ) { return false; };
 	
 	virtual void	Serialize( Serializer& serializer, const serializeMode_t mode ) {};
 	virtual void	Clock() {};
@@ -156,25 +157,76 @@ public:
 
 struct wtCart
 {
+public:
 	// WARNING: This data is directly copied into right
-	wtRomHeader				header;
-	uint8_t					rom[ 2 * MB_1 ];
+	wtRomHeader				h;
+	uint8_t*				rom;
 	// Fine to add data after here
 	size_t					size;
 	unique_ptr<wtMapper>	mapper;
 
-	uint8_t* GetPrgRomBank( const uint8_t bankNum, const uint16_t bankSize = KB_16 ) {
+	wtCart()
+	{
+		memset( &h, 0, sizeof( wtRomHeader ) );
+		rom = nullptr;
+		size = 0;
+	}
+
+	wtCart( wtRomHeader& header, uint8_t* romData, uint32_t romSize )
+	{
+		rom = new uint8_t[ romSize ];
+
+		assert( romSize <= 1 * MB_1 );
+		memcpy( &h, &header, sizeof( wtRomHeader ) );
+		memcpy( rom, romData, romSize );
+		size = romSize;
+
+		assert( h.type[ 0 ] == 'N' );
+		assert( h.type[ 1 ] == 'E' );
+		assert( h.type[ 2 ] == 'S' );
+		assert( h.magic == 0x1A );
+	}
+
+	~wtCart()
+	{
+		memset( &h, 0, sizeof( wtRomHeader ) );
+		if( rom == nullptr )
+		{
+			delete[] rom ;
+			rom = nullptr;
+		}
+		size = 0;
+	}
+
+	uint8_t* GetPrgRomBank( const uint32_t bankNum, const uint32_t bankSize = KB_16 ) {
+		assert( bankNum <= GetPrgBankCount() );
 		return &rom[ bankNum * bankSize ];
 	}
 
-	uint8_t* GetChrRomBank( const uint8_t bankNum, const bool sizeIs8KB )
+	uint8_t* GetChrRomBank( const uint32_t bankNum, const uint32_t bankSize = KB_4 )
 	{
-		const uint32_t chrRomStart = header.prgRomBanks * KB_16;
-		return &rom[chrRomStart + bankNum * ( sizeIs8KB ? KB_8 : KB_4 )];
+		assert( bankNum <= GetChrBankCount() );
+		const uint32_t chrRomStart = h.prgRomBanks * KB_16;		
+		return &rom[ chrRomStart + bankNum * bankSize ];
+	}
+
+	uint8_t GetPrgBankCount() const
+	{
+		return h.prgRomBanks;
+	}
+
+	uint8_t GetChrBankCount() const
+	{
+		return h.chrRomBanks;
+	}
+
+	uint8_t HasChrRam() const
+	{
+		return ( h.chrRomBanks == 0 );
 	}
 
 	uint32_t GetMapperId() const {
-		return ( header.controlBits1.mappedNumberUpper << 4 ) | header.controlBits0.mapperNumberLower;
+		return ( h.controlBits1.mappedNumberUpper << 4 ) | h.controlBits0.mapperNumberLower;
 	}
 };
 

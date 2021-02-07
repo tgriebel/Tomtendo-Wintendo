@@ -77,7 +77,7 @@ void wtSystem::Serialize( Serializer& serializer, const serializeMode_t mode )
 	cpu.Serialize( serializer, mode );
 	ppu.Serialize( serializer, mode );
 	apu.Serialize( serializer, mode );
-	cart.mapper->Serialize( serializer, mode );
+	cart->mapper->Serialize( serializer, mode );
 }
 
 

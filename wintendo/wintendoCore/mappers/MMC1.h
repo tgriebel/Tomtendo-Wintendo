@@ -46,8 +46,8 @@ private:
 	{
 		const uint16_t maskedAddr = address;//( addr & 0x6000 ); // Only bits 13-14 decoded
 
-		const bool hasChrRom = system->cart.header.chrRomBanks > 0;
-		const uint32_t chrRomStart = system->cart.header.prgRomBanks * KB_16;
+		const bool hasChrRom = system->cart->h.chrRomBanks > 0;
+		const uint32_t chrRomStart = system->cart->h.prgRomBanks * KB_16;
 		uint16_t chrRomBankSize = KB_8;
 
 		if ( InRange( address, 0x8000, 0x9FFF ) )
@@ -68,19 +68,19 @@ private:
 				chrBank0Reg = regValue & 0x0E;
 			}
 
-			memcpy( &system->ppu.vram[PPU::PatternTable0BaseAddr], &system->cart.rom[chrRomStart + chrBank0Reg * chrRomBankSize], chrRomBankSize );
+			memcpy( &system->ppu.vram[PPU::PatternTable0BaseAddr], &system->cart->rom[chrRomStart + chrBank0Reg * chrRomBankSize], chrRomBankSize );
 		}
 		else if ( hasChrRom && InRange( address, 0xC000, 0xDFFF ) )
 		{
 			if ( ( ctrlReg & 0x10 ) != 0 )
 			{
 				chrBank1Reg = regValue;
-				memcpy( &system->ppu.vram[PPU::PatternTable1BaseAddr], &system->cart.rom[chrRomStart + chrBank1Reg * KB_4], KB_4 );
+				memcpy( &system->ppu.vram[PPU::PatternTable1BaseAddr], &system->cart->rom[chrRomStart + chrBank1Reg * KB_4], KB_4 );
 			}
 		}
 		else if ( InRange( address, 0xE000, 0xFFFF ) )
 		{
-			assert( system->cart.header.prgRomBanks > 0 );
+			assert( system->cart->h.prgRomBanks > 0 );
 
 			if ( ctrlReg & 0x08 )  // 16 KB mode
 			{
@@ -123,14 +123,14 @@ public:
 	uint8_t OnLoadCpu() override
 	{
 		bank0 = 0;
-		bank1 = ( system->cart.header.prgRomBanks - 1 );
+		bank1 = ( system->cart->h.prgRomBanks - 1 );
 		return 0;
 	}
 
 	uint8_t OnLoadPpu() override
 	{
-		const uint16_t chrRomStart = system->cart.header.prgRomBanks * KB_16;
-		memcpy( system->ppu.vram, &system->cart.rom[chrRomStart], PPU::PatternTableMemorySize );
+		const uint16_t chrRomStart = system->cart->h.prgRomBanks * KB_16;
+		memcpy( system->ppu.vram, &system->cart->rom[chrRomStart], PPU::PatternTableMemorySize );
 		return 0;
 	}
 
@@ -139,12 +139,12 @@ public:
 		if ( InRange( addr, wtSystem::Bank0, wtSystem::Bank0End ) )
 		{
 			const uint16_t bankAddr = ( addr - wtSystem::Bank0 );
-			return system->cart.GetPrgRomBank( bank0 )[ bankAddr ];
+			return system->cart->GetPrgRomBank( bank0 )[ bankAddr ];
 		}
 		else if ( InRange( addr, wtSystem::Bank1, wtSystem::Bank1End ) )
 		{
 			const uint16_t bankAddr = ( addr - wtSystem::Bank1 );
-			return system->cart.GetPrgRomBank( bank1 )[ bankAddr ];
+			return system->cart->GetPrgRomBank( bank1 )[ bankAddr ];
 		}
 		else if ( InRange( addr, wtSystem::SramBase, wtSystem::SramEnd ) )
 		{
@@ -159,7 +159,7 @@ public:
 	bool InWriteWindow( const uint16_t addr, const uint16_t offset ) override
 	{
 		const uint16_t address = ( addr + offset );
-		return ( system->cart.GetMapperId() == mapperId ) && InRange( address, wtSystem::SramBase, wtSystem::Bank1End );
+		return ( system->cart->GetMapperId() == mapperId ) && InRange( address, wtSystem::SramBase, wtSystem::Bank1End );
 	}
 
 	uint8_t Write( const uint16_t addr, const uint16_t offset, const uint8_t value ) override
