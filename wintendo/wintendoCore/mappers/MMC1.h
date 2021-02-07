@@ -8,8 +8,6 @@ class MMC1 : public wtMapper
 private:
 	
 	uint8_t prgRamBank[KB_8];
-	uint8_t chrRomBank0[KB_4];
-	uint8_t chrRomBank1[KB_4];
 
 	uint8_t ctrlReg;
 	uint8_t chrBank0Reg;
@@ -119,9 +117,6 @@ public:
 	{
 		mapperId = _mapperId;
 		shiftRegister.Clear();
-
-		memset( chrRomBank0, 0, KB_4 );
-		memset( chrRomBank1, 0, KB_4 );
 		memset( prgRamBank, 0, KB_8 );
 	}
 
@@ -167,7 +162,7 @@ public:
 		} else if ( InRange( addr, 0x0000, 0x0FFF ) ) {
 			return system->cart->GetChrRomBank( chrBank0, KB_4 )[ addr ];
 		} else if ( InRange( addr, 0x1000, 0x1FFF ) ) {
-			return system->cart->GetChrRomBank( chrBank1, KB_4 )[ addr ];
+			return system->cart->GetChrRomBank( chrBank1, KB_4 )[ addr - 0x1000 ];
 		}
 		assert( 0 );
 		return 0;
@@ -179,7 +174,6 @@ public:
 			chrRam[ addr ] = value;
 			return 1;
 		}
-		assert( system->cart->HasChrRam() );
 		return 0;
 	}
 
@@ -230,6 +224,8 @@ public:
 		serializer.Next8b( chrBank1Reg, mode );
 		serializer.Next8b( bank0, mode );
 		serializer.Next8b( bank1, mode );
+		serializer.Next8b( chrBank0, mode );
+		serializer.Next8b( chrBank1, mode );
 
 		if( mode == serializeMode_t::STORE ) {
 			uint8_t shift = shiftRegister.GetValue();
@@ -240,8 +236,6 @@ public:
 			shiftRegister.Set( shift );
 		}
 
-		serializer.NextArray( reinterpret_cast<uint8_t*>( &chrRomBank0[ 0 ] ), KB_4, mode );
-		serializer.NextArray( reinterpret_cast<uint8_t*>( &chrRomBank1[ 0 ] ), KB_4, mode );
 		serializer.NextArray( reinterpret_cast<uint8_t*>( &prgRamBank[ 0 ] ), KB_8, mode );
 		serializer.NextArray( reinterpret_cast<uint8_t*>( &chrRam[ 0 ] ), PPU::PatternTableMemorySize, mode );
 	}

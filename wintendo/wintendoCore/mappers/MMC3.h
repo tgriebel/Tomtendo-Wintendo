@@ -24,6 +24,7 @@ private:
 	BankSelect	bankSelect;
 	uint8_t		R[8];
 	uint8_t		prgRamBank[ KB_8 ];
+	uint8_t		chrRam[ PPU::PatternTableMemorySize ];
 	uint8_t		irqLatch;
 	uint8_t		irqCounter;
 	bool		irqEnable;
@@ -35,6 +36,14 @@ private:
 	uint8_t		bank1;
 	uint8_t		bank2;
 	uint8_t		bank3;
+	uint8_t		chrBank0;
+	uint8_t		chrBank1;
+	uint8_t		chrBank2;
+	uint8_t		chrBank3;
+	uint8_t		chrBank4;
+	uint8_t		chrBank5;
+	uint8_t		chrBank6;
+	uint8_t		chrBank7;
 
 	uint8_t GetMirrorMode()
 	{
@@ -76,6 +85,7 @@ public:
 
 	uint8_t OnLoadPpu() override
 	{
+		memset( chrRam, 0, sizeof( PPU::PatternTableMemorySize ) );
 		return 0;
 	}
 
@@ -126,6 +136,48 @@ public:
 			return prgRamBank[ sramAddr ];
 		}
 
+		return 0;
+	}
+
+	uint8_t	ReadChrRom( const uint16_t addr ) override
+	{
+		if ( InRange( addr, 0x0000, 0x03FF ) && system->cart->HasChrRam() ) {
+			return chrRam[ addr ];
+		}
+		else if ( InRange( addr, 0x0000, 0x03FF ) ) {
+			return system->cart->GetChrRomBank( chrBank0, KB_1 )[ addr ];
+		}
+		else if ( InRange( addr, 0x0400, 0x07FF ) ) {
+			return system->cart->GetChrRomBank( chrBank1, KB_1 )[ addr - 0x0400 ];
+		}
+		else if ( InRange( addr, 0x0800, 0x0BFF ) ) {
+			return system->cart->GetChrRomBank( chrBank2, KB_1 )[ addr - 0x0800 ];
+		}
+		else if ( InRange( addr, 0x0C00, 0x0FFF ) ) {
+			return system->cart->GetChrRomBank( chrBank3, KB_1 )[ addr - 0x0C00 ];
+		}
+		else if ( InRange( addr, 0x1000, 0x13FF ) ) {
+			return system->cart->GetChrRomBank( chrBank4, KB_1 )[ addr - 0x1000 ];
+		}
+		else if ( InRange( addr, 0x1400, 0x17FF ) ) {
+			return system->cart->GetChrRomBank( chrBank5, KB_1 )[ addr - 0x1400 ];
+		}
+		else if ( InRange( addr, 0x1800, 0x1BFF ) ) {
+			return system->cart->GetChrRomBank( chrBank6, KB_1 )[ addr - 0x1800 ];
+		}
+		else if ( InRange( addr, 0x1C00, 0x1FFF ) ) {
+			return system->cart->GetChrRomBank( chrBank7, KB_1 )[ addr - 0x1C00 ];
+		}
+		assert( 0 );
+		return 0;
+	}
+
+	uint8_t	 WriteChrRam( const uint16_t addr, const uint8_t value ) override
+	{
+		if ( InRange( addr, 0x0000, 0x1FFF ) && system->cart->HasChrRam() ) {
+			chrRam[ addr ] = value;
+			return 1;
+		}
 		return 0;
 	}
 
@@ -242,21 +294,25 @@ public:
 			const uint32_t chrRomStart = system->cart->h.prgRomBanks * KB_16;
 			if ( bankSelect.sem.chrA12Inversion )
 			{
-				memcpy( &system->ppu.vram[0x0000], &system->cart->rom[chrRomStart + R[2] * KB_1], KB_1 );
-				memcpy( &system->ppu.vram[0x0400], &system->cart->rom[chrRomStart + R[3] * KB_1], KB_1 );
-				memcpy( &system->ppu.vram[0x0800], &system->cart->rom[chrRomStart + R[4] * KB_1], KB_1 );
-				memcpy( &system->ppu.vram[0x0C00], &system->cart->rom[chrRomStart + R[5] * KB_1], KB_1 );
-				memcpy( &system->ppu.vram[0x1000], &system->cart->rom[chrRomStart + R[0] * KB_1], KB_2 );
-				memcpy( &system->ppu.vram[0x1800], &system->cart->rom[chrRomStart + R[1] * KB_1], KB_2 );
+				chrBank0 = R[ 2 ];
+				chrBank1 = R[ 3 ];
+				chrBank2 = R[ 4 ];
+				chrBank3 = R[ 5 ];
+				chrBank4 = R[ 0 ];
+				chrBank5 = R[ 0 ] + 1;
+				chrBank6 = R[ 1 ];
+				chrBank7 = R[ 1 ] + 1;
 			}
 			else
 			{
-				memcpy( &system->ppu.vram[0x0000], &system->cart->rom[chrRomStart + R[0] * KB_1], KB_2 );
-				memcpy( &system->ppu.vram[0x0800], &system->cart->rom[chrRomStart + R[1] * KB_1], KB_2 );
-				memcpy( &system->ppu.vram[0x1000], &system->cart->rom[chrRomStart + R[2] * KB_1], KB_1 );
-				memcpy( &system->ppu.vram[0x1400], &system->cart->rom[chrRomStart + R[3] * KB_1], KB_1 );
-				memcpy( &system->ppu.vram[0x1800], &system->cart->rom[chrRomStart + R[4] * KB_1], KB_1 );
-				memcpy( &system->ppu.vram[0x1C00], &system->cart->rom[chrRomStart + R[5] * KB_1], KB_1 );
+				chrBank0 = R[ 0 ];
+				chrBank1 = R[ 0 ] + 1;
+				chrBank2 = R[ 1 ];
+				chrBank3 = R[ 1 ] + 1;
+				chrBank4 = R[ 2 ];
+				chrBank5 = R[ 3 ];
+				chrBank6 = R[ 4 ];
+				chrBank7 = R[ 5 ];
 			}
 		}
 		
@@ -272,11 +328,20 @@ public:
 		serializer.Next8b( bank1, mode );
 		serializer.Next8b( bank2, mode );
 		serializer.Next8b( bank3, mode );
+		serializer.Next8b( chrBank0, mode );
+		serializer.Next8b( chrBank1, mode );
+		serializer.Next8b( chrBank2, mode );
+		serializer.Next8b( chrBank3, mode );
+		serializer.Next8b( chrBank4, mode );
+		serializer.Next8b( chrBank5, mode );
+		serializer.Next8b( chrBank6, mode );
+		serializer.Next8b( chrBank7, mode );
 		serializer.NextBool( irqEnable, mode );
 		serializer.NextBool( bankDataInit, mode );
 		serializer.NextChar( oldPrgBankMode, mode );
 		serializer.NextChar( oldChrBankMode, mode );
 		serializer.NextArray( reinterpret_cast<uint8_t*>( &R[ 0 ] ), 8 * sizeof( R[ 0 ] ), mode );
 		serializer.NextArray( reinterpret_cast<uint8_t*>( &prgRamBank[ 0 ] ), KB_8, mode );
+		serializer.NextArray( reinterpret_cast<uint8_t*>( &chrRam[ 0 ] ), PPU::PatternTableMemorySize, mode );
 	}
 };

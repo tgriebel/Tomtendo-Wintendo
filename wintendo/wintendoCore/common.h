@@ -199,13 +199,15 @@ public:
 	}
 
 	uint8_t* GetPrgRomBank( const uint32_t bankNum, const uint32_t bankSize = KB_16 ) {
-		assert( bankNum <= GetPrgBankCount() );
+		//const uint32_t bankRatio = KB_16 / bankSize;
+		//assert( bankNum <= bankRatio * GetPrgBankCount() );
 		return &rom[ bankNum * bankSize ];
 	}
 
 	uint8_t* GetChrRomBank( const uint32_t bankNum, const uint32_t bankSize = KB_4 )
 	{
-		assert( bankNum <= GetChrBankCount() );
+		//const uint32_t bankRatio = KB_4 / bankSize;
+		//assert( bankNum <= bankRatio * GetChrBankCount() );
 		const uint32_t chrRomStart = h.prgRomBanks * KB_16;		
 		return &rom[ chrRomStart + bankNum * bankSize ];
 	}

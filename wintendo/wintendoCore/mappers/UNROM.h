@@ -65,7 +65,6 @@ public:
 			chrRam[ addr ] = value;
 			return 1;
 		}
-		assert( system->cart->HasChrRam() );
 		return 0;
 	}
 

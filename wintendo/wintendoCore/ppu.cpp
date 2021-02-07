@@ -554,7 +554,7 @@ void PPU::WriteVram()
 		if ( DataportEnabled() )
 		{
 			const uint16_t adjustedAddr = MirrorVram( regV.byte2x );
-			assert( adjustedAddr < PhysicalMemorySize );
+			// assert( adjustedAddr < PhysicalMemorySize );
 
 			if( !system->cart->mapper->WriteChrRam( adjustedAddr, registers[ PPUREG_DATA ] ) ) {
 				vram[ adjustedAddr ] = registers[ PPUREG_DATA ];
