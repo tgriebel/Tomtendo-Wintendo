@@ -64,6 +64,7 @@ public:
 	masterCycles_t		sysCycles;
 
 	wstring				fileName;
+	wstring				baseFileName;
 	unique_ptr<wtCart>	cart;
 
 	pair<uint32_t,bool>	finishedFrame;
@@ -165,6 +166,8 @@ public:
 	void		RequestNMI() const;
 	void		RequestIRQ() const;
 	void		RequestDMA() const;
+	void		SaveSRam() const;
+	void		LoadSRam();
 
 	// Implemented in "mapper.h"
 	unique_ptr<wtMapper> AssignMapper( const uint32_t mapperId );

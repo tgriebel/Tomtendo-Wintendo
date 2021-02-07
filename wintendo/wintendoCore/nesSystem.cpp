@@ -6,8 +6,9 @@
 #include <iomanip>
 #include <chrono>
 #include <atomic>
-#include "common.h"
+#include <wchar.h>
 #include <memory>
+#include "common.h"
 #include "NesSystem.h"
 #include "mos6502.h"
 #include "input.h"
@@ -64,6 +65,8 @@ void wtSystem::DebugPrintFlushLog()
 
 int wtSystem::Init( const wstring& filePath )
 {
+	SaveSRam();
+
 	LoadNesFile( filePath, cart );
 
 	ppu.Reset();
@@ -74,6 +77,11 @@ int wtSystem::Init( const wstring& filePath )
 
 	LoadProgram();
 	fileName = filePath;
+
+	const size_t offset = fileName.find( L".nes", 0 );
+	baseFileName = fileName.substr( 0, offset );
+
+	LoadSRam();
 
 	return 0;
 }
@@ -410,6 +418,46 @@ void wtSystem::RequestDMA() const
 }
 
 
+void wtSystem::SaveSRam() const
+{
+	if( ( cart.get() != nullptr ) && cart->HasSave() )
+	{
+		uint8_t saveBuffer[ KB_2 ];
+		for( int32_t i = 0; i < KB_2; ++i ) {
+			saveBuffer[ i ] = cart->mapper->ReadRom( 0x6000 + i );
+		}
+
+		std::ofstream saveFile;
+		saveFile.open( baseFileName + L".sav", ios::binary );
+		saveFile.write( reinterpret_cast<char*>( saveBuffer ), KB_2 );
+		saveFile.close();
+	}
+}
+
+
+void wtSystem::LoadSRam()
+{
+	if ( ( cart.get() != nullptr ) && cart->HasSave() )
+	{
+		uint8_t saveBuffer[ KB_2 ];
+
+		std::ifstream saveFile;
+		saveFile.open( baseFileName + L".sav", ios::binary );
+
+		if( !saveFile.good() ) {
+			return;
+		}
+
+		saveFile.read( reinterpret_cast<char*>( saveBuffer ), KB_2 );
+		saveFile.close();
+
+		for ( int32_t i = 0; i < KB_2; ++i ) {
+			cart->mapper->Write( 0x6000, i, saveBuffer[ i ] );
+		}
+	}
+}
+
+
 bool wtSystem::Run( const masterCycles_t& nextCycle )
 {
 	bool isRunning = true;
@@ -582,6 +630,7 @@ int wtSystem::RunFrame()
 
 	if ( !isRunning )
 	{
+		SaveSRam();
 		return false;
 	}
 

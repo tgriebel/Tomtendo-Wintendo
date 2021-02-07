@@ -227,6 +227,11 @@ public:
 		return ( h.chrRomBanks == 0 );
 	}
 
+	uint8_t HasSave() const
+	{
+		return h.controlBits0.usesBattery;
+	}
+
 	uint32_t GetMapperId() const {
 		return ( h.controlBits1.mappedNumberUpper << 4 ) | h.controlBits0.mapperNumberLower;
 	}
