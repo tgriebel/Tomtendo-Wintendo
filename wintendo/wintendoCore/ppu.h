@@ -211,7 +211,9 @@ public:
 
 	ppuDebug_t		dbgInfo;
 	const RGBA*		palette;
-	uint8_t			vram[VirtualMemorySize];
+	uint8_t			nt[ KB_2 ];
+	uint8_t			imgPal[ PPU::PaletteColorNumber ];
+	uint8_t			sprPal[ PPU::PaletteColorNumber ];
 
 	ppuCycle_t		scanelineCycle;
 	int32_t			currentScanline = 0;
@@ -332,7 +334,9 @@ public:
 		regStatus.hasLatch		= false;
 
 		memset( secondaryOAM, 0, sizeof( secondaryOAM ) );
-		memset( vram, 0, PPU::VirtualMemorySize );
+		memset( nt, 0, KB_2 );
+		memset( imgPal, 0, PPU::VirtualMemorySize );
+		memset( sprPal, 0, PPU::VirtualMemorySize );
 		memset( debugVramWriteCounter, 0, VirtualMemorySize );
 	}
 

@@ -348,7 +348,7 @@ void wtSystem::GetFrameResult( wtFrameResult& outFrameResult )
 
 void wtSystem::GetState( wtState& state )
 {
-	static_assert( sizeof( wtState ) == 67592, "Update wtSystem::GetState()" );
+	static_assert( sizeof( wtState ) == 4104, "Update wtSystem::GetState()" );
 
 	state.A = cpu.A;
 	state.X = cpu.X;
@@ -357,7 +357,7 @@ void wtSystem::GetState( wtState& state )
 	state.PC = cpu.PC;
 	state.SP = cpu.SP;
 	memcpy( state.cpuMemory, memory, wtState::CpuMemorySize );
-	memcpy( state.ppuMemory, ppu.vram, wtState::PpuMemorySize );
+	memcpy( state.ppuMemory, ppu.nt, KB_2 );
 }
 
 
@@ -639,7 +639,7 @@ int wtSystem::RunFrame()
 	savedState = false;
 	if ( config.cpu.requestSaveState )
 	{
-		Serializer serializer( 1000 * KB_1 );
+		Serializer serializer( MB_1 );
 		serializer.Clear();
 		Serialize( serializer, serializeMode_t::STORE );
 		savedState = true;
@@ -648,11 +648,12 @@ int wtSystem::RunFrame()
 		saveFile.open( "state.st", ios::binary );
 		saveFile.write( reinterpret_cast<char*>( serializer.GetPtr() ), serializer.CurrentSize() );
 		saveFile.close();
-
+		/*
 		std::ofstream txt;
 		txt.open( "saveState.txt", ios::trunc );
 		txt.write( serializer.dbgText.str().c_str(), serializer.dbgText.str().size() );
 		txt.close();
+		*/
 	}
 
 	if ( config.cpu.requestLoadState )
@@ -673,11 +674,12 @@ int wtSystem::RunFrame()
 		loadedState = true;
 
 		Serialize( serializer, serializeMode_t::LOAD );
-
+		/*
 		std::ofstream txt;
 		txt.open( "loadState.txt", ios::trunc );
 		txt.write( serializer.dbgText.str().c_str(), serializer.dbgText.str().size() );
 		txt.close();
+		*/
 	}
 	// END
 

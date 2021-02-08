@@ -4,7 +4,7 @@
 #include <sstream>
 #include <cstdint>
 
-#define DBG_SERIALIZER 1
+#define DBG_SERIALIZER 0
 
 enum class serializeMode_t
 {
@@ -45,7 +45,9 @@ public:
 
 	~Serializer()
 	{
-		delete[] bytes;
+		if( bytes != nullptr ) {
+			delete[] bytes;
+		}
 		byteCount = 0;
 		SetPosition( 0 );
 	}

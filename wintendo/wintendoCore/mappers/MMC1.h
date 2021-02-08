@@ -41,6 +41,7 @@ private:
 		else
 		{
 			assert( 0 ); // Unimplemented
+			return MIRROR_MODE_HORIZONTAL;
 		}
 	}
 

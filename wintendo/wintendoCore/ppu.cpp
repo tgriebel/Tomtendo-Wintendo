@@ -541,8 +541,15 @@ uint8_t PPU::ReadVram( const uint16_t addr )
 
 	if( InRange( adjustedAddr, 0x0000, 0x1FFF ) ) {
 		return system->cart->mapper->ReadChrRom( adjustedAddr );
+	} else if ( InRange( adjustedAddr, 0x2000, 0x3EFF ) ) {
+		return nt[ adjustedAddr - 0x2000 ];
+	} else if ( InRange( adjustedAddr, 0x3F00, 0x3F0F ) ) {
+		return imgPal[ adjustedAddr - 0x3F00 ];
+	} else if ( InRange( adjustedAddr, 0x3F10, 0x3F1F ) ) {
+		return sprPal[ adjustedAddr - 0x3F10 ];
 	} else {
-		return vram[ adjustedAddr ];
+		assert( 0 );
+		return 0;
 	}
 }
 
@@ -556,9 +563,18 @@ void PPU::WriteVram()
 			const uint16_t adjustedAddr = MirrorVram( regV.byte2x );
 			// assert( adjustedAddr < PhysicalMemorySize );
 
-			if( !system->cart->mapper->WriteChrRam( adjustedAddr, registers[ PPUREG_DATA ] ) ) {
-				vram[ adjustedAddr ] = registers[ PPUREG_DATA ];
+			if ( InRange( adjustedAddr, 0x0000, 0x1FFF ) ) {
+				system->cart->mapper->WriteChrRam( adjustedAddr, registers[ PPUREG_DATA ] );
+			} else if ( InRange( adjustedAddr, 0x2000, 0x3EFF ) ) {
+				nt[ adjustedAddr - 0x2000 ] = registers[ PPUREG_DATA ];
+			} else if ( InRange( adjustedAddr, 0x3F00, 0x3F0F ) ) {
+				imgPal[ adjustedAddr - 0x3F00 ] = registers[ PPUREG_DATA ];
+			} else if ( InRange( adjustedAddr, 0x3F10, 0x3F1F ) ) {
+				sprPal[ adjustedAddr - 0x3F10 ] = registers[ PPUREG_DATA ];
+			} else {
+				assert( 0 );
 			}
+
 			debugVramWriteCounter[adjustedAddr]++;
 		}
 
