@@ -150,6 +150,7 @@ void PPU::Serialize( Serializer& serializer, const serializeMode_t mode )
 
 void APU::Serialize( Serializer& serializer, const serializeMode_t mode )
 {
+/*
 	serializer.Next32b( currentBuffer,		mode);
 	if( mode == serializeMode_t::LOAD ) {
 		soundOutput = &soundOutputBuffers[ currentBuffer ];
@@ -172,6 +173,7 @@ void APU::Serialize( Serializer& serializer, const serializeMode_t mode )
 	serializer.Next32b( frameSeqTick,		mode );
 	serializer.Next8b( frameSeqStep,		mode );
 	serializer.Next32b( apuTicks,			mode );
+*/
 }
 
 

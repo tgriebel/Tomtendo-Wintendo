@@ -17,7 +17,8 @@ public:
 		{
 			const uint16_t bankAddr = ( addr - wtSystem::Bank0 );
 			return system->cart->rom[ bankAddr ];
-		} else if ( InRange( addr, wtSystem::Bank1, wtSystem::Bank1End ) )
+		}
+		else if ( InRange( addr, wtSystem::Bank1, wtSystem::Bank1End ) )
 		{
 			const uint16_t bankAddr = ( addr - wtSystem::Bank1 );
 			return system->cart->rom[ bankAddr ];
