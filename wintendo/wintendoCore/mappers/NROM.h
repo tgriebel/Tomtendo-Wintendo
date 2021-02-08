@@ -13,9 +13,13 @@ public:
 
 	uint8_t	ReadRom( const uint16_t addr ) override
 	{
-		if( InRange( addr, wtSystem::Bank0, 0xFFFF ) )
+		if( InRange( addr, wtSystem::Bank0, wtSystem::Bank0End ) )
 		{
 			const uint16_t bankAddr = ( addr - wtSystem::Bank0 );
+			return system->cart->rom[ bankAddr ];
+		} else if ( InRange( addr, wtSystem::Bank1, wtSystem::Bank1End ) )
+		{
+			const uint16_t bankAddr = ( addr - wtSystem::Bank1 );
 			return system->cart->rom[ bankAddr ];
 		}
 		assert( 0 );

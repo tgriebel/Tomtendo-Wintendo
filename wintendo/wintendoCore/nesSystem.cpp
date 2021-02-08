@@ -645,22 +645,24 @@ int wtSystem::RunFrame()
 		savedState = true;
 
 		std::ofstream saveFile;
-		saveFile.open( "state.st", ios::binary );
+		saveFile.open( baseFileName + L".st", ios::binary );
 		saveFile.write( reinterpret_cast<char*>( serializer.GetPtr() ), serializer.CurrentSize() );
 		saveFile.close();
-		/*
+
 		std::ofstream txt;
 		txt.open( "saveState.txt", ios::trunc );
 		txt.write( serializer.dbgText.str().c_str(), serializer.dbgText.str().size() );
 		txt.close();
-		*/
+		
 	}
 
 	if ( config.cpu.requestLoadState )
 	{
 		std::ifstream loadFile;
-		loadFile.open( "state.st", ios::binary );	
+		loadFile.open( baseFileName + L".st", ios::binary| ios::in );
 		
+		assert( loadFile.good() );
+
 		loadFile.seekg( 0, std::ios::end );
 		const uint32_t len = static_cast<uint32_t>( loadFile.tellg() );
 			
@@ -674,12 +676,12 @@ int wtSystem::RunFrame()
 		loadedState = true;
 
 		Serialize( serializer, serializeMode_t::LOAD );
-		/*
+		
 		std::ofstream txt;
 		txt.open( "loadState.txt", ios::trunc );
 		txt.write( serializer.dbgText.str().c_str(), serializer.dbgText.str().size() );
 		txt.close();
-		*/
+		
 	}
 	// END
 
