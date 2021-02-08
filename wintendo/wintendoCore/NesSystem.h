@@ -60,23 +60,12 @@ public:
 	static const uint16_t InputRegister1		= 0x4017;
 
 	// TODO: Need to abstract memory access for mappers
-	PPU					ppu;
-	masterCycles_t		sysCycles;
-
-	wstring				fileName;
-	wstring				baseFileName;
 	unique_ptr<wtCart>	cart;
 
 	pair<uint32_t,bool>	finishedFrame;
 	uint32_t			currentFrame;
 	uint64_t			frameNumber;
 	wtDisplayImage		frameBuffer[2];
-	wtNameTableImage	nameTableSheet;
-	wtPaletteImage		paletteDebug;
-	wtPatternTableImage	patternTable0;
-	wtPatternTableImage	patternTable1;
-
-	uint8_t				memory[PhysicalMemorySize];
 
 	bool				headless;
 
@@ -89,8 +78,13 @@ public:
 	wtConfig			config;
 
 private:
+	wstring				fileName;
+	wstring				baseFileName;
 	Cpu6502				cpu;
+	PPU					ppu;
 	APU					apu;
+	uint8_t				memory[ PhysicalMemorySize ];
+	masterCycles_t		sysCycles;
 	bool				savedState;
 	bool				loadedState;
 	bool				debugNTEnable;
@@ -100,6 +94,10 @@ private:
 #if DEBUG_ADDR == 1
 	std::map<uint16_t, uint8_t> memoryDebug;
 #endif // #if DEBUG_ADDR == 1
+	wtNameTableImage	nameTableSheet;
+	wtPaletteImage		paletteDebug;
+	wtPatternTableImage	patternTable0;
+	wtPatternTableImage	patternTable1;
 
 public:
 	wtSystem()
