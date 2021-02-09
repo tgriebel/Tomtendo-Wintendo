@@ -511,19 +511,16 @@ template < uint16_t B >
 class BitCounter
 {
 public:
-	BitCounter()
-	{
+	BitCounter() {
 		Reload();
 	}
 
-	void Inc()
-	{
-		count.bits++;
+	void Inc() {
+		bits++;
 	}
 
-	void Dec()
-	{
-		count.bits--;
+	void Dec() {
+		bits--;
 	}
 
 	void Reload( uint16_t value = 0 )
@@ -532,23 +529,16 @@ public:
 		count.unused = 0;
 	}
 
-	uint16_t Value()
-	{
-		return count.bits;
+	uint16_t Value() {
+		return bits;
 	}
 
-	bool IsZero()
-	{
+	bool IsZero() {
 		return ( Value() == 0 );
 	}
 private:
-	struct counter_t
-	{
-		uint16_t bits	: B;
-		uint16_t unused	: ( 16 - B );
-	};
-
-	counter_t count;
+	uint16_t bits	: B;
+	uint16_t unused	: ( 16 - B );
 };
 
 
