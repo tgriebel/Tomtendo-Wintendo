@@ -315,9 +315,7 @@ union frameCounter_t
 struct envelope_t
 {
 	bool	startFlag;
-	uint8_t	divider;
 	uint8_t	decayLevel;
-	uint8_t	divPeriod;
 	uint8_t	divCounter;
 	uint8_t	output;
 };
@@ -328,6 +326,7 @@ struct sweep_t
 	bool			mute;
 	bool			reloadFlag;
 	BitCounter<11>	divider;
+	uint16_t		period;
 };
 
 

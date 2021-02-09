@@ -191,14 +191,14 @@ void APU::EnvelopeGenerater( envelope_t& envelope, const uint8_t volume, const b
 	if( envelope.startFlag )
 	{
 		envelope.decayLevel = 0x0F;
-		envelope.divCounter = envelope.divPeriod + 1;
+		envelope.divCounter = volume + 1;
 		envelope.startFlag = false;
 	}
 	else
 	{
 		if( ( envelope.divCounter-- ) == 0 )
 		{
-			envelope.divCounter = envelope.divPeriod + 1;
+			envelope.divCounter = volume + 1;
 
 			if( ( envelope.decayLevel > 0 ) || loop ) {
 				--envelope.decayLevel;

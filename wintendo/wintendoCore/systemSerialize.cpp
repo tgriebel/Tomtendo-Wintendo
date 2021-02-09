@@ -38,9 +38,7 @@ static inline void SerializeBitCounter( Serializer& serializer, const serializeM
 static inline void SerializeEnvelope( Serializer& serializer, const serializeMode_t mode, envelope_t& e )
 {
 	serializer.NextBool( e.startFlag,	mode );
-	serializer.Next8b( e.divider,		mode );
 	serializer.Next8b( e.decayLevel,	mode );
-	serializer.Next8b( e.divPeriod,		mode );
 	serializer.Next8b( e.divCounter,	mode );
 	serializer.Next8b( e.output,		mode );
 }
@@ -50,6 +48,7 @@ static inline void SerializeSweep( Serializer& serializer, const serializeMode_t
 {
 	serializer.NextBool( s.mute, mode );
 	serializer.NextBool( s.reloadFlag, mode );
+	serializer.Next16b( s.period, mode );
 	SerializeBitCounter( serializer, mode, s.divider );
 }
 
