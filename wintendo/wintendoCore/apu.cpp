@@ -196,7 +196,7 @@ void APU::EnvelopeGenerater( envelope_t& envelope, const uint8_t volume, const b
 	}
 	else
 	{
-		if( ( envelope.divCounter-- ) == 0 )
+		if( ( --envelope.divCounter ) == 0 )
 		{
 			envelope.divCounter = volume + 1;
 
@@ -206,7 +206,8 @@ void APU::EnvelopeGenerater( envelope_t& envelope, const uint8_t volume, const b
 		}
 	}
 
-	assert( envelope.divCounter <= 0x0F );
+	assert( envelope.divCounter <= 0x10 );
+	assert( envelope.decayLevel <= 0x0F );
 
 	if ( constant ) {
 		envelope.output = volume;
@@ -219,16 +220,14 @@ void APU::EnvelopeGenerater( envelope_t& envelope, const uint8_t volume, const b
 
 void APU::PulseSweep( PulseChannel& pulse )
 {
-	// TODO: Whenever the current period changes for any reason, whether by $400x writes or by sweep, the target period also changes.
-	// https://wiki.nesdev.com/w/index.php/APU_Sweep
-	if( system->config.apu.disableSweep )
-	{
-		pulse.period.Reload( pulse.regTune.sem0.timer );
-		return;
-	}
-
 	if ( !halfClk )
 		return;
+
+	pulse.period.Reload( pulse.regTune.sem0.timer );
+
+	if ( system->config.apu.disableSweep ) {
+		return;
+	}
 
 	const bool		enabled	= pulse.regRamp.sem.enabled;
 	const bool		negate	= pulse.regRamp.sem.negate;
@@ -240,35 +239,31 @@ void APU::PulseSweep( PulseChannel& pulse )
 
 	sweep.divider.Dec();
 
-	if ( reload || pulse.sweep.divider.IsZero() )
-	{
+	const bool isZero = pulse.sweep.divider.IsZero();
+
+	if ( isZero ) {
 		sweep.divider.Reload( period + 1 );
-		reload = false;
 	}
 
 	uint16_t targetPeriod = pulse.period.Value();
 
-	if( pulse.sweep.divider.IsZero() && enabled && ( shift > 0 ) && ( pulse.period.Value() > 8 ) )
+	if ( isZero && enabled && ( shift > 0 ) && ( pulse.period.Value() > 8 ) )
 	{
-		int16_t change = pulse.regTune.sem0.timer;
-		change += change >> shift;
+		int16_t change = ( pulse.period.Value() >> shift );
 		if( negate ) {
 			change = ( pulse.channelNum == PULSE_1 ) ? ( -change - 1 ) : -change;
 		}
 		
 		targetPeriod += ( change <= 0 ) ? 0 : change;
 	}
-	else
-	{
-		targetPeriod = pulse.regTune.sem0.timer;
+
+	if ( reload ) {
+		sweep.divider.Reload( period + 1 );
+		reload = false;
 	}
 
 	// Check for carry-bit
-	if( targetPeriod > 0x07FF ) {
-	//	sweep.mute = true;
-	} else {
-		sweep.mute = false;
-	}
+	sweep.mute = ( targetPeriod > 0x07FF );
 
 	if( !sweep.mute ) {
 		pulse.period.Reload( targetPeriod );
