@@ -279,7 +279,8 @@ bool APU::IsDutyHigh( const PulseChannel& pulse )
 
 void APU::PulseSequencer( PulseChannel& pulse )
 {
-	const uint32_t sampleCnt = static_cast<uint32_t>( ( apuCycle - pulse.lastCycle ).count() );
+	const uint32_t sampleCnt = static_cast<uint32_t>( ( apuCycle - pulse.lastApuCycle ).count() );
+	const uint32_t cpuSampleCnt = static_cast<uint32_t>( ( cpuCycle - pulse.lastCycle ).count() );
 	float volume = pulse.envelope.output;
 
 	float pulseSample = pulse.envelope.output;
@@ -292,11 +293,12 @@ void APU::PulseSequencer( PulseChannel& pulse )
 		pulseSample = 0;
 	}
 
-	for ( uint32_t sample = 0; sample < sampleCnt; sample++ ) {
+	for ( uint32_t sample = 0; sample < cpuSampleCnt; sample++ ) {
 		pulse.samples.Enque( pulseSample );
 	}
 
-	pulse.lastCycle = apuCycle;
+	pulse.lastCycle = cpuCycle;
+	pulse.lastApuCycle = apuCycle;
 	pulse.sequenceStep = ( pulse.sequenceStep + 1 ) & 0x0F;
 }
 
@@ -390,12 +392,14 @@ void APU::NoiseGenerator()
 		volume = 0;
 	}
 
-	const uint32_t sampleCnt = static_cast<uint32_t>( ( apuCycle - noise.lastCycle ).count() );
-	for ( uint32_t sample = 0; sample < sampleCnt; sample++ ) {
+	const uint32_t sampleCnt = static_cast<uint32_t>( ( apuCycle - noise.lastApuCycle ).count() );
+	const uint32_t cpuSampleCnt = static_cast<uint32_t>( ( cpuCycle - noise.lastCycle ).count() );
+	for ( uint32_t sample = 0; sample < cpuSampleCnt; sample++ ) {
 		noise.samples.Enque( volume );
 	}
 
-	noise.lastCycle = apuCycle;
+	noise.lastApuCycle = apuCycle;
+	noise.lastCycle = cpuCycle;
 }
 
 
@@ -421,8 +425,9 @@ void APU::ExecChannelNoise()
 
 void APU::DmcGenerator()
 {
-	const uint32_t sampleCnt = static_cast<uint32_t>( ( apuCycle - dmc.lastCycle ).count() );
-	for ( uint32_t sample = 0; sample < sampleCnt; sample++ )
+	const uint32_t sampleCnt = static_cast<uint32_t>( ( apuCycle - dmc.lastApuCycle ).count() );
+	const uint32_t cpuSampleCnt = static_cast<uint32_t>( ( cpuCycle - dmc.lastCycle ).count() );
+	for ( uint32_t sample = 0; sample < cpuSampleCnt; sample++ )
 	{
 		if ( !dmc.silenceFlag ) {
 			dmc.samples.Enque( dmc.outputLevel.Value() );
@@ -431,7 +436,8 @@ void APU::DmcGenerator()
 		}
 	}
 
-	dmc.lastCycle = apuCycle;
+	dmc.lastApuCycle = apuCycle;
+	dmc.lastCycle = cpuCycle;
 }
 
 
@@ -634,37 +640,30 @@ void APU::End()
 {
 	while( AllChannelHaveSamples() )
 	{
-		// This doubles up samples from channels other than the triangle channel (which runs at 2x frequency)
 		float pulse1Sample			= pulse1.samples.Deque();
 		float pulse2Sample			= pulse2.samples.Deque();
-		float triSample1			= triangle.samples.Deque();
-		float triSample2			= triangle.samples.Deque();
+		float triSample				= triangle.samples.Deque();
 		float noiseSample			= noise.samples.Deque();
 		float dmcSample				= dmc.samples.Deque();
 
 		pulse1Sample				= ( system->config.apu.mutePulse1	)	? 0.0f : pulse1Sample;
 		pulse2Sample				= ( system->config.apu.mutePulse2	)	? 0.0f : pulse2Sample;
-		triSample1					= ( system->config.apu.muteTri		)	? 0.0f : triSample1;
-		triSample2					= ( system->config.apu.muteTri		)	? 0.0f : triSample2;
+		triSample					= ( system->config.apu.muteTri		)	? 0.0f : triSample;
 		noiseSample					= ( system->config.apu.muteNoise	)	? 0.0f : noiseSample;
 		dmcSample					= ( system->config.apu.muteDMC		)	? 0.0f : dmcSample;
 
 		const float pulseMixed		= PulseMixer( (uint32_t)pulse1Sample, (uint32_t)pulse2Sample );
-		const float tndMixed1		= TndMixer( (uint32_t)triSample1, (uint32_t)noiseSample, (uint32_t)dmcSample );
-		const float tndMixed2		= TndMixer( (uint32_t)triSample2, (uint32_t)noiseSample, (uint32_t)dmcSample );
-		const float mixedSample1	= pulseMixed + tndMixed1;
-		const float mixedSample2	= pulseMixed + tndMixed2;
+		const float tndMixed		= TndMixer( (uint32_t)triSample, (uint32_t)noiseSample, (uint32_t)dmcSample );
+		const float mixedSample	= pulseMixed + tndMixed;
 
 		assert( pulseMixed < 0.3f );
 
 		soundOutput->dbgPulse1.Write( pulse1Sample );
 		soundOutput->dbgPulse2.Write( pulse2Sample );
-		soundOutput->dbgTri.Write( triSample1 );
-		soundOutput->dbgTri.Write( triSample2 );
+		soundOutput->dbgTri.Write( triSample );
 		soundOutput->dbgNoise.Write( noiseSample );
 		soundOutput->dbgDmc.Write( dmcSample );
-		soundOutput->master.Enque( floor( 32767.0f * mixedSample1 ) );
-		soundOutput->master.Enque( floor( 32767.0f * mixedSample2 ) );
+		soundOutput->master.Enque( floor( 32767.0f * mixedSample ) );
 	}
 
 	soundOutput->master.SetHz( CPU_HZ );

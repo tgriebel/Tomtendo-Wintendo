@@ -348,7 +348,8 @@ public:
 	timerCtrl_t			regTune;
 	timerCtrl_t			timer;
 	BitCounter<11>		period;
-	apuCycle_t			lastCycle;
+	cpuCycle_t			lastCycle;
+	apuCycle_t			lastApuCycle;
 	uint8_t				sequenceStep;
 	envelope_t			envelope;
 	sweep_t				sweep;
@@ -358,7 +359,8 @@ public:
 
 	void Clear()
 	{
-		lastCycle				= apuCycle_t( 0 );
+		lastCycle				= cpuCycle_t( 0 );
+		lastApuCycle			= apuCycle_t( 0 );
 		regCtrl.byte			= 0;
 		regRamp.byte			= 0;
 		regTune.byte2x			= 0;
@@ -376,7 +378,8 @@ public:
 		samples.Reset();
 
 		memset( &envelope, 0, sizeof( envelope ) );
-		envelope.startFlag = true;
+		envelope.startFlag = false;
+		envelope.divCounter = 1;
 	}
 
 	void Serialize( Serializer& serializer, const serializeMode_t mode );
@@ -428,7 +431,8 @@ public:
 	BitCounter<12>		timer; // TODO: how many bits?
 	BitCounter<7>		lengthCounter; // TODO: how many bits?
 	wtSampleQueue		samples;
-	apuCycle_t			lastCycle;
+	apuCycle_t			lastApuCycle;
+	cpuCycle_t			lastCycle;
 	bool				mute;
 
 	void Clear()
@@ -439,10 +443,13 @@ public:
 
 		shift.Reload( 1 );
 		memset( &envelope, 0, sizeof( envelope ) );
+		envelope.divCounter = 1;
+		envelope.startFlag = false;
 		timer.Reload();
 		lengthCounter.Reload();
 		samples.Reset();
-		lastCycle = apuCycle_t( 0 );
+		lastApuCycle = apuCycle_t( 0 );
+		lastCycle = cpuCycle_t( 0 );
 
 		mute = true;
 	}
@@ -460,7 +467,8 @@ public:
 	uint8_t				regLength;
 
 	wtSampleQueue		samples;
-	apuCycle_t			lastCycle;
+	apuCycle_t			lastApuCycle;
+	cpuCycle_t			lastCycle;
 	bool				irq;
 	bool				silenceFlag;
 	bool				mute;
@@ -491,7 +499,8 @@ public:
 
 		outputLevel.Reload();
 		samples.Reset();
-		lastCycle = apuCycle_t( 0 );
+		lastApuCycle = apuCycle_t( 0 );
+		lastCycle = cpuCycle_t( 0 );
 	}
 
 	void Serialize( Serializer& serializer, const serializeMode_t mode );
