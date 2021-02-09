@@ -525,8 +525,8 @@ public:
 
 	void Reload( uint16_t value = 0 )
 	{
-		count.bits = value;
-		count.unused = 0;
+		bits = value;
+		unused = 0;
 	}
 
 	uint16_t Value() {
