@@ -282,22 +282,22 @@ void APU::PulseSequencer( PulseChannel& pulse )
 	const uint32_t sampleCnt = static_cast<uint32_t>( ( apuCycle - pulse.lastCycle ).count() );
 	float volume = pulse.envelope.output;
 
-	if( pulse.period.Value() < 8 ) {
-		volume = 0;
+	float pulseSample = pulse.envelope.output;
+
+	if ( ( pulse.timer.sem0.counter == 0 ) ||
+		( pulse.period.Value() < 8 ) ||
+		pulse.mute ||
+		!IsDutyHigh( pulse ) /*|| pulse.sweep.mute*/ )
+	{
+		pulseSample = 0;
 	}
 
-	for ( uint32_t sample = 0; sample < sampleCnt; sample++ )
-	{
-		const float pulseSample = IsDutyHigh( pulse ) ? volume : 0;
-		if ( ( pulse.timer.sem0.counter == 0 ) || pulse.mute /*|| pulse.sweep.mute*/ ) {
-			pulse.samples.Enque( 0 );
-		} else {
-			pulse.samples.Enque( pulseSample );
-		}
+	for ( uint32_t sample = 0; sample < sampleCnt; sample++ ) {
+		pulse.samples.Enque( pulseSample );
 	}
 
 	pulse.lastCycle = apuCycle;
-	pulse.sequenceStep = ( pulse.sequenceStep + 1 ) % 8;
+	pulse.sequenceStep = ( pulse.sequenceStep + 1 ) & 0x0F;
 }
 
 
@@ -327,13 +327,13 @@ void APU::TriSequencer()
 	isSeqHalted |= triangle.lengthCounter.IsZero();
 	isSeqHalted |= triangle.linearCounter.IsZero();
 
-	for ( uint32_t sample = 0; sample < sampleCnt; sample++ )
-	{
-		if( triangle.mute ) {
-			triangle.samples.Enque( 0.0f );
-		} else {
-			triangle.samples.Enque( TriLUT[ triangle.sequenceStep ] );
-		}
+	float volume = TriLUT[ triangle.sequenceStep ];
+	if ( triangle.mute ) {
+		volume = 0;
+	}
+
+	for ( uint32_t sample = 0; sample < sampleCnt; sample++ ) {
+		triangle.samples.Enque( volume );
 	}
 
 	triangle.lastCycle = cpuCycle;
@@ -379,23 +379,20 @@ void APU::ExecChannelTri()
 void APU::NoiseGenerator()
 {
 	const uint16_t shiftValue = noise.shift.Value();
-	const uint16_t bitMask	= noise.regFreq1.sem.mode ? BIT_MASK_6 : BIT_MASK_1;
 	const uint16_t bitShift	= noise.regFreq1.sem.mode ? BIT_6 : BIT_1;
-	const uint16_t feedback	= ( shiftValue & BIT_MASK_0 ) ^ ( ( shiftValue & bitMask ) >> bitShift );
+	const uint16_t feedback = ( shiftValue ^ ( shiftValue >> bitShift ) )& BIT_MASK_0;
 	const uint16_t newShift	= ( ( shiftValue >> 1 ) & ~BIT_MASK_14 ) | ( feedback << BIT_14 );
 
 	noise.shift.Reload( newShift );
 
-	const uint8_t volume = noise.envelope.output;
+	uint8_t volume = noise.envelope.output;
+	if ( noise.lengthCounter.IsZero() || ( noise.shift.Value() & BIT_MASK_0 ) || noise.mute ) {
+		volume = 0;
+	}
 
 	const uint32_t sampleCnt = static_cast<uint32_t>( ( apuCycle - noise.lastCycle ).count() );
-	for ( uint32_t sample = 0; sample < sampleCnt; sample++ )
-	{
-		if ( noise.lengthCounter.IsZero() || ( noise.shift.Value() & BIT_MASK_0 ) || noise.mute )	{
-			noise.samples.Enque( 0.0f );
-		} else {
-			noise.samples.Enque( volume );
-		}
+	for ( uint32_t sample = 0; sample < sampleCnt; sample++ ) {
+		noise.samples.Enque( volume );
 	}
 
 	noise.lastCycle = apuCycle;
