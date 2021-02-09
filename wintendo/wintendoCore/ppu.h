@@ -215,12 +215,11 @@ public:
 	uint8_t			imgPal[ PPU::PaletteColorNumber ];
 	uint8_t			sprPal[ PPU::PaletteColorNumber ];
 
-	ppuCycle_t		scanelineCycle;
-	int32_t			currentScanline = 0;
-
 private:
 	wtSystem*		system;
 	ppuCycle_t		cycle;
+	ppuCycle_t		scanelineCycle;
+	int32_t			currentScanline;
 
 	ppuCtrl			regCtrl;
 	ppuMask_t		regMask;
