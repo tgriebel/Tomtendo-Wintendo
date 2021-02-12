@@ -13,6 +13,7 @@
 #include "mos6502.h"
 #include "input.h"
 #include "mapper.h"
+#include "timer.h"
 
 using namespace std;
 
@@ -597,34 +598,22 @@ void wtSystem::GenerateChrRomTables( wtPatternTableImage chrRom[32] )
 
 int wtSystem::RunFrame()
 {
-	chrono::milliseconds frameTime = chrono::duration_cast<chrono::milliseconds>( frameRate_t( 1 ) );
+	const timePoint_t currentTime = chrono::steady_clock::now();
+	const std::chrono::nanoseconds elapsed = ( currentTime - previousTime );
+	previousTime = std::chrono::steady_clock::now();
 
-	auto targetTime = previousTime + frameTime;
-	auto currentTime = chrono::steady_clock::now();
+	const masterCycles_t cyclesPerFrame = std::chrono::duration_cast<masterCycles_t>( elapsed );
+	const masterCycles_t nextCycle = sysCycles + cyclesPerFrame;
 
-	auto elapsed = targetTime - currentTime;
-	auto dur = chrono::duration<double, nano>( elapsed ).count();
-
-	if ( lockFps && ( elapsed.count() > 0 ) )
-	{
-		std::this_thread::sleep_for( std::chrono::nanoseconds( elapsed ) );
-	}
-
-	previousTime = chrono::steady_clock::now();
-
-	masterCycles_t cyclesPerFrame = chrono::duration_cast<masterCycles_t>( frameTime );
-	masterCycles_t nextCycle = chrono::duration_cast<masterCycles_t>( ++frame );
-
-	auto startTime = chrono::steady_clock::now();
-
+	Timer emuTime;
+	emuTime.Start();
 	bool isRunning = Run( nextCycle );
+	emuTime.Stop();
 
-	auto endTime = chrono::steady_clock::now();
-	auto frameTimeUs = endTime - startTime;
-	dbgInfo.frameTimeUs = static_cast<uint32_t>( chrono::duration_cast<chrono::microseconds>( frameTimeUs ).count() );
+	const double frameTimeUs = emuTime.GetElapsedUs();
+	dbgInfo.frameTimeUs = static_cast<uint32_t>( frameTimeUs );
 
-	if ( headless )
-	{
+	if ( headless )	{
 		return isRunning;
 	}
 

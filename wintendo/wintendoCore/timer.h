@@ -1,7 +1,4 @@
 #pragma once
-
-#pragma once
-
 #include <chrono>
 
 class Timer
@@ -15,21 +12,31 @@ public:
 
 	void Start()
 	{
-		startTimeMs = std::chrono::duration_cast<std::chrono::milliseconds>( std::chrono::system_clock::now().time_since_epoch() );
-		endTimeMs = startTimeMs;
+		startTimeUs = std::chrono::system_clock::now().time_since_epoch();
+		endTimeUs = startTimeUs;
 	}
 
 	void Stop()
 	{
-		endTimeMs = std::chrono::duration_cast<std::chrono::milliseconds>( std::chrono::system_clock::now().time_since_epoch() );
+		endTimeUs = std::chrono::system_clock::now().time_since_epoch();
 	}
 
-	double GetElapsed()
+	double GetElapsedNs()
 	{
-		return static_cast<double>( ( endTimeMs - startTimeMs ).count() );
+		return static_cast<double>( ( endTimeUs - startTimeUs ).count() );
+	}
+
+	double GetElapsedUs()
+	{
+		return ( GetElapsedNs() / 1000.0f );
+	}
+
+	double GetElapsedMs()
+	{
+		return ( GetElapsedUs() / 1000.0f );
 	}
 
 private:
-	std::chrono::milliseconds startTimeMs;
-	std::chrono::milliseconds endTimeMs;
+	std::chrono::nanoseconds startTimeUs;
+	std::chrono::nanoseconds endTimeUs;
 };

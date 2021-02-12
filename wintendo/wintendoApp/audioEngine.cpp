@@ -110,7 +110,7 @@ bool wtAudioEngine::AudioSubmit()
 	pSourceVoice->GetState( &audioState, 0 );
 
 	static bool stopped = false;
-	if ( audioState.BuffersQueued <= 1 ) {
+	if ( audioState.BuffersQueued <= 2 ) {
 		pSourceVoice->Stop();
 		stopped = true;
 	}
