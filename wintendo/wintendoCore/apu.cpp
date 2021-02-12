@@ -305,8 +305,8 @@ void APU::PulseSequencer( PulseChannel& pulse )
 
 void APU::ExecPulseChannel( PulseChannel& pulse )
 {
-	PulseSweep( pulse );
-	EnvelopeGenerater( pulse.envelope, pulse.regCtrl.sem.volume, pulse.regCtrl.sem.counterHalt, pulse.regCtrl.sem.isConstant );
+//	PulseSweep( pulse );
+//	EnvelopeGenerater( pulse.envelope, pulse.regCtrl.sem.volume, pulse.regCtrl.sem.counterHalt, pulse.regCtrl.sem.isConstant );
 
 	pulse.timer.sem0.timer--;
 	if ( halfClk && !pulse.regCtrl.sem.counterHalt ) {
@@ -405,15 +405,6 @@ void APU::NoiseGenerator()
 
 void APU::ExecChannelNoise()
 {
-	const noiseCtrl_t& ctrl = noise.regCtrl;
-	EnvelopeGenerater( noise.envelope, ctrl.sem.volume, ctrl.sem.counterHalt, ctrl.sem.isConstant );
-
-	if ( quarterClk ) {
-		if ( !noise.lengthCounter.IsZero() && !ctrl.sem.counterHalt ) {
-			noise.lengthCounter.Dec();
-		}
-	}
-
 	noise.timer.Dec();
 	if ( noise.timer.IsZero() )
 	{
@@ -555,6 +546,20 @@ bool APU::Step( const cpuCycle_t& nextCpuCycle )
 	{
 		ExecFrameCounter();
 		ExecChannelTri();
+		// TODO: move
+		{
+			const noiseCtrl_t& ctrl = noise.regCtrl;
+			PulseSweep( pulse1 );
+			PulseSweep( pulse2 );
+			EnvelopeGenerater( pulse1.envelope, pulse1.regCtrl.sem.volume, pulse1.regCtrl.sem.counterHalt, pulse1.regCtrl.sem.isConstant );
+			EnvelopeGenerater( pulse2.envelope, pulse2.regCtrl.sem.volume, pulse2.regCtrl.sem.counterHalt, pulse2.regCtrl.sem.isConstant );		
+			EnvelopeGenerater( noise.envelope, ctrl.sem.volume, ctrl.sem.counterHalt, ctrl.sem.isConstant );
+			if ( quarterClk ) {
+				if ( !noise.lengthCounter.IsZero() && !ctrl.sem.counterHalt ) {
+					noise.lengthCounter.Dec();
+				}
+			}
+		}
 		++cpuCycle;
 		++frameSeqTick;
 	}
@@ -654,7 +659,7 @@ void APU::End()
 
 		const float pulseMixed		= PulseMixer( (uint32_t)pulse1Sample, (uint32_t)pulse2Sample );
 		const float tndMixed		= TndMixer( (uint32_t)triSample, (uint32_t)noiseSample, (uint32_t)dmcSample );
-		const float mixedSample	= pulseMixed + tndMixed;
+		const float mixedSample		= pulseMixed + tndMixed;
 
 		assert( pulseMixed < 0.3f );
 
