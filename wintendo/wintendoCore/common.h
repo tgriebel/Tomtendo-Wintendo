@@ -253,8 +253,9 @@ struct wtConfig
 	struct CPU
 	{
 		int32_t		traceFrameCount;
+		int32_t		restorePreviousFrame;
 		bool		requestSaveState;
-		bool		requestLoadState;
+		bool		requestLoadState;		
 	} cpu;
 
 	struct APU
@@ -432,6 +433,59 @@ enum class wtImageTag
 	PALETTE,
 	PATTERN_TABLE_0,
 	PATTERN_TABLE_1
+};
+
+
+class wtStateBlob
+{
+public:
+	wtStateBlob()
+	{
+		bytes = nullptr;
+		byteCount = 0;
+		cycle = masterCycles_t( 0 );
+	}
+
+	~wtStateBlob()
+	{
+		Reset();
+	}
+
+	bool IsValid() const {
+		return ( byteCount > 0 );
+	}
+
+	void Set( Serializer& s )
+	{
+		Reset();
+		byteCount = s.BufferSize();
+		bytes = new uint8_t[ byteCount ];
+		memcpy( bytes, s.GetPtr(), byteCount );
+	}
+
+	void WriteTo( Serializer& s ) const
+	{
+		assert( s.BufferSize() >= byteCount );
+		if( s.BufferSize() < byteCount ) {
+			return;
+		}
+		s.NextArray( bytes, byteCount, serializeMode_t::STORE );
+	}
+
+	void Reset()
+	{
+		if ( bytes == nullptr )
+		{
+			delete[] bytes;
+			byteCount = 0;
+		}
+		cycle = masterCycles_t( 0 );
+	}
+
+private:
+	uint8_t*		bytes;
+	uint32_t		byteCount;
+	masterCycles_t	cycle;
 };
 
 

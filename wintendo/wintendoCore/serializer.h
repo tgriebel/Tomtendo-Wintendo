@@ -2,7 +2,6 @@
 #include <stdio.h>
 #include <string>
 #include <sstream>
-#include <cstdint>
 
 #define DBG_SERIALIZER 0
 

@@ -78,6 +78,8 @@ public:
 	wtConfig			config;
 
 private:
+	static const uint32_t MaxStates = 5000;
+
 	wstring				fileName;
 	wstring				baseFileName;
 	Cpu6502				cpu;
@@ -98,6 +100,8 @@ private:
 	wtPaletteImage		paletteDebug;
 	wtPatternTableImage	patternTable0;
 	wtPatternTableImage	patternTable1;
+	wtStateBlob			states[ MaxStates ];
+	uint32_t			currentState;
 
 public:
 	wtSystem()
@@ -132,6 +136,7 @@ public:
 		patternTable0.SetDebugName( "PatternTable0" );
 		patternTable1.SetDebugName( "PatternTable1" );
 
+		currentState = 0;
 		finishedFrame.first = 0;
 		finishedFrame.second = false;
 		frameNumber = 0;
@@ -164,8 +169,8 @@ public:
 	void		RequestNMI() const;
 	void		RequestIRQ() const;
 	void		RequestDMA() const;
-	void		SaveSRam() const;
-	void		LoadSRam();
+	void		SaveSate();
+	void		LoadState();
 
 	// Implemented in "mapper.h"
 	unique_ptr<wtMapper> AssignMapper( const uint32_t mapperId );
@@ -176,6 +181,10 @@ private:
 	void		DebugPrintFlushLog();
 	void		WritePhysicalMemory( const uint16_t address, const uint8_t value );
 	uint16_t	MirrorAddress( const uint16_t address ) const;
+	void		RecordSate();
+	void		RestoreState( const uint32_t stateIx );
+	void		SaveSRam();
+	void		LoadSRam();
 
 	static bool	IsInputRegister( const uint16_t address );
 	static bool	IsPpuRegister( const uint16_t address );
@@ -183,7 +192,6 @@ private:
 	static bool IsCartMemory( const uint16_t address );
 	static bool IsPhysicalMemory( const uint16_t address );
 	static bool	IsDMA( const uint16_t address );
-
 };
 
 

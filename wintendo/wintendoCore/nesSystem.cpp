@@ -366,6 +366,7 @@ void wtSystem::InitConfig()
 {
 	// CPU
 	config.cpu.traceFrameCount	= 0;
+	config.cpu.restorePreviousFrame = 100;
 	config.cpu.requestLoadState = false;
 	config.cpu.requestSaveState = false;
 
@@ -419,7 +420,7 @@ void wtSystem::RequestDMA() const
 }
 
 
-void wtSystem::SaveSRam() const
+void wtSystem::SaveSRam()
 {
 	if( ( cart.get() != nullptr ) && cart->HasSave() )
 	{
@@ -456,6 +457,76 @@ void wtSystem::LoadSRam()
 			cart->mapper->Write( 0x6000, i, saveBuffer[ i ] );
 		}
 	}
+}
+
+
+void wtSystem::RecordSate()
+{
+	Serializer serializer( MB_1 );
+	serializer.Clear();
+	Serialize( serializer, serializeMode_t::STORE );
+	states[ currentState ].Set( serializer );
+	currentState = ( currentState + 1 ) % MaxStates;
+}
+
+
+void wtSystem::RestoreState( const uint32_t stateIx )
+{
+	if( !states[ stateIx ].IsValid() ) {
+		return;
+	}
+
+	Serializer serializer( MB_1 );
+	serializer.Clear();
+	states[ stateIx ].WriteTo( serializer );
+	Serialize( serializer, serializeMode_t::LOAD );
+}
+
+
+void wtSystem::SaveSate()
+{
+	Serializer serializer( MB_1 );
+	serializer.Clear();
+	Serialize( serializer, serializeMode_t::STORE );
+
+	std::ofstream saveFile;
+	saveFile.open( baseFileName + L".st", ios::binary );
+	saveFile.write( reinterpret_cast<char*>( serializer.GetPtr() ), serializer.CurrentSize() );
+	saveFile.close();
+
+	std::ofstream txt;
+	txt.open( "saveState.txt", ios::trunc );
+	txt.write( serializer.dbgText.str().c_str(), serializer.dbgText.str().size() );
+	txt.close();
+}
+
+void wtSystem::LoadState()
+{
+	std::ifstream loadFile;
+	loadFile.open( baseFileName + L".st", ios::binary | ios::in );
+
+	if( !loadFile.good() ) {
+		loadFile.close();
+		return;
+	}
+
+	loadFile.seekg( 0, std::ios::end );
+	const uint32_t len = static_cast<uint32_t>( loadFile.tellg() );
+
+	Serializer serializer( len );
+	serializer.Clear();
+
+	loadFile.seekg( 0, std::ios::beg );
+	loadFile.read( reinterpret_cast<char*>( serializer.GetPtr() ), len );
+
+	loadFile.close();
+
+	Serialize( serializer, serializeMode_t::LOAD );
+
+	std::ofstream txt;
+	txt.open( "loadState.txt", ios::trunc );
+	txt.write( serializer.dbgText.str().c_str(), serializer.dbgText.str().size() );
+	txt.close();
 }
 
 
@@ -626,51 +697,21 @@ int wtSystem::RunFrame()
 	// TEMP TEST CODE
 	loadedState = false;
 	savedState = false;
-	if ( config.cpu.requestSaveState )
-	{
-		Serializer serializer( MB_1 );
-		serializer.Clear();
-		Serialize( serializer, serializeMode_t::STORE );
+	if ( config.cpu.requestSaveState ) {
+		SaveSate();
 		savedState = true;
-
-		std::ofstream saveFile;
-		saveFile.open( baseFileName + L".st", ios::binary );
-		saveFile.write( reinterpret_cast<char*>( serializer.GetPtr() ), serializer.CurrentSize() );
-		saveFile.close();
-
-		std::ofstream txt;
-		txt.open( "saveState.txt", ios::trunc );
-		txt.write( serializer.dbgText.str().c_str(), serializer.dbgText.str().size() );
-		txt.close();
-		
 	}
 
-	if ( config.cpu.requestLoadState )
-	{
-		std::ifstream loadFile;
-		loadFile.open( baseFileName + L".st", ios::binary| ios::in );
-		
-		assert( loadFile.good() );
-
-		loadFile.seekg( 0, std::ios::end );
-		const uint32_t len = static_cast<uint32_t>( loadFile.tellg() );
-			
-		Serializer serializer( len );
-		serializer.Clear();
-
-		loadFile.seekg( 0, std::ios::beg );
-		loadFile.read( reinterpret_cast<char*>( serializer.GetPtr() ), len );
-
-		loadFile.close();				
+	if ( config.cpu.requestLoadState ) {
+		LoadState();
 		loadedState = true;
+	}
 
-		Serialize( serializer, serializeMode_t::LOAD );
-		
-		std::ofstream txt;
-		txt.open( "loadState.txt", ios::trunc );
-		txt.write( serializer.dbgText.str().c_str(), serializer.dbgText.str().size() );
-		txt.close();
-		
+	if ( config.cpu.restorePreviousFrame != 100 ) {
+		int32_t stateIx = ( config.cpu.restorePreviousFrame / 100.0f ) * currentState;
+		RestoreState( stateIx );
+	} else {
+		RecordSate();
 	}
 	// END
 
