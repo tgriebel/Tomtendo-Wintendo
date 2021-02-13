@@ -279,6 +279,8 @@ public:
 	ppuCycle_t	Exec();
 	bool		Step( const ppuCycle_t& nextCycle );
 
+
+
 	PPU()
 	{
 		palette = &DefaultPalette[0];
@@ -307,7 +309,7 @@ public:
 
 		system					= nullptr;
 
-		currentScanline			= 0;
+		currentScanline			= PRERENDER_SCANLINE;
 
 		vramWritePending		= false;
 
@@ -363,6 +365,7 @@ private:
 	void		AdvanceYScroll( const uint64_t cycleCount );
 	void		LoadSecondaryOAM();
 	void		DMA( const uint16_t address );
+	void		Render();
 	spriteAttrib_t	GetSpriteData( const uint8_t spriteId, const uint8_t oam[] );
 
 	uint8_t		GetBgPatternTableId();

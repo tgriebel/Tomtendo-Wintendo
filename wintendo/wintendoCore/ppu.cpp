@@ -894,6 +894,7 @@ void PPU::BgPipelineShiftRegisters()
 
 void PPU::BgPipelineDebugPrefetchFetchTiles()
 {
+#if 0
 	if ( !BgDataFetchEnabled() )
 		return;
 
@@ -912,6 +913,7 @@ void PPU::BgPipelineDebugPrefetchFetchTiles()
 		chrShifts[0] = ( plShifts[0].chrRom0 << 8 ) | plShifts[1].chrRom0;
 		chrShifts[1] = ( plShifts[0].chrRom1 << 8 ) | plShifts[1].chrRom1;
 	}
+#endif
 }
 
 
@@ -946,11 +948,64 @@ uint32_t PPU::GetScanline() const
 }
 
 
+void PPU::Render()
+{
+	wtRect imageRect = { beamPosition.x, beamPosition.y, ScreenWidth, ScreenHeight };
+
+	// TODO: don't use globals directly in this function
+	const uint32_t imageX = imageRect.x;
+	const uint32_t imageY = imageRect.y;
+	const uint32_t imageIx = imageX + imageY * imageRect.width;
+
+	uint8_t bgPixel = 0;
+
+	bool bgMask = ( !regMask.sem.bgLeft && ( beamPosition.x < 8 ) );
+	bgMask = bgMask || !regMask.sem.showBg;
+	bgMask = bgMask || !system->config.ppu.showBG;
+
+	if ( bgMask )
+	{
+		Pixel pixelColor;
+		const uint8_t colorIx = ReadVram( PPU::PaletteBaseAddr );
+
+		pixelColor.rgba = palette[ colorIx ];
+		system->frameBuffer[ system->currentFrame ].Set( imageIx, pixelColor );
+	}
+	else
+	{
+		bgPixel = BgPipelineDecodePalette();
+
+		uint16_t finalPalette = bgPixel + PPU::PaletteBaseAddr;
+
+		const uint8_t colorIx = ( ( bgPixel & 0x03 ) == 0 ) ? ReadVram( PPU::PaletteBaseAddr ) : ReadVram( finalPalette );
+
+		// Frame Buffer
+		Pixel pixelColor;
+		pixelColor.rgba = palette[ colorIx ];
+		system->frameBuffer[ system->currentFrame ].Set( imageIx, pixelColor );
+	}
+
+	uint8_t spriteCount = secondaryOamSpriteCnt;
+	if ( !regMask.sem.sprtLeft && ( beamPosition.x < 8 ) ) {
+		spriteCount = 0;
+	}
+
+	for ( uint8_t spriteIndex = 0; spriteIndex < spriteCount; ++spriteIndex )
+	{
+		spriteAttrib_t& attribs = secondaryOAM[ spriteIndex ];
+		if ( ( beamPosition.x >= ( attribs.x + 8 ) ) || ( beamPosition.x < attribs.x ) )
+			continue;
+
+		wtDisplayImage& fb = system->frameBuffer[ system->currentFrame ];
+		if ( DrawSpritePixel( fb, imageRect, attribs, beamPosition, bgPixel & 0x03 ) )
+			break;
+	}
+}
+
+
 ppuCycle_t PPU::Exec()
 {
 	// Function advances 1 - 8 cycles at a time. The logic is built on this constaint.
-	static wtRect imageRect = { 0, 0, ScreenWidth, ScreenHeight };
-
 	ppuCycle_t execCycles = ppuCycle_t( 0 );
 
 	// Cycle timing
@@ -1029,27 +1084,13 @@ ppuCycle_t PPU::Exec()
 				}
 			}
 		}
-
-		//execCycles += ppuCycle_t( 1 );
-		//scanelineCycle += ppuCycle_t( 1 );
-
-		//if ( cycleCount >= ScanlineCycles )
-		//{
-		//	++currentScanline;
-		//	scanelineCycle = ppuCycle_t( 0 );
-		//}
-
-		//return execCycles;
 	}
 	else if ( ( currentScanline >= POSTRENDER_SCANLINE ) && ( currentScanline < PRERENDER_SCANLINE ) )
 	{
 		//execCycles++;
-		//scanelineCycle++;
 
 		//if ( cycleCount >= ScanlineCycles ) {
 		//	++currentScanline;
-		//	execCycles++;
-		//	scanelineCycle = ppuCycle_t( 0 );
 		//}
 		//return execCycles;
 	}
@@ -1061,86 +1102,35 @@ ppuCycle_t PPU::Exec()
 	}
 	else if ( cycleCount < 256 )
 	{
-		if ( cycleCount == 1 )
+		if ( BgDataFetchEnabled() )
 		{
-			loadingSecondaryOAM = true;
-			LoadSecondaryOAM();
+			if ( cycleCount == 1 )
+			{
+				loadingSecondaryOAM = true;
+				LoadSecondaryOAM();
+			}
+
+			if( currentScanline < POSTRENDER_SCANLINE )
+			{
+				Render();
+			}
+	
+			BgPipelineShiftRegisters();
+			BgPipelineFetch( cycleCount );
+			beamPosition.x++;
 		}
 
-		if( currentScanline < POSTRENDER_SCANLINE )
-		{
-			// Scanline render
-			imageRect.x = beamPosition.x;
-			imageRect.y = beamPosition.y;
-
-			// TODO: don't use globals directly in this function
-			const uint32_t imageX = imageRect.x;
-			const uint32_t imageY = imageRect.y;
-			const uint32_t imageIx = imageX + imageY * imageRect.width;
-
-			uint8_t bgPixel = 0;
-
-			bool bgMask = ( !regMask.sem.bgLeft && ( beamPosition.x < 8 ) );
-			bgMask = bgMask || !regMask.sem.showBg;
-			bgMask = bgMask || !system->config.ppu.showBG;
-
-			if ( bgMask )
-			{
-				Pixel pixelColor;
-				const uint8_t colorIx = ReadVram( PPU::PaletteBaseAddr );
-
-				pixelColor.rgba = palette[colorIx];
-				system->frameBuffer[system->currentFrame].Set( imageIx, pixelColor );
-			}
-			else
-			{
-				bgPixel = BgPipelineDecodePalette();
-
-				uint16_t finalPalette = bgPixel + PPU::PaletteBaseAddr;
-
-				const uint8_t colorIx = ( ( bgPixel & 0x03 ) == 0 ) ? ReadVram( PPU::PaletteBaseAddr ) : ReadVram( finalPalette );
-
-				// Frame Buffer
-				Pixel pixelColor;
-				pixelColor.rgba = palette[colorIx];
-				system->frameBuffer[system->currentFrame].Set( imageIx, pixelColor );
-			}
-
-			uint8_t spriteCount = secondaryOamSpriteCnt;
-			if( !regMask.sem.sprtLeft && ( beamPosition.x < 8 ) ) {
-				spriteCount = 0;
-			}
-
-			for ( uint8_t spriteIndex = 0; spriteIndex < spriteCount; ++spriteIndex )
-			{
-				spriteAttrib_t& attribs = secondaryOAM[ spriteIndex ];			
-				if ( ( beamPosition.x >= ( attribs.x + 8 ) ) || ( beamPosition.x < attribs.x ) )
-					continue;
-				
-				wtDisplayImage& fb = system->frameBuffer[ system->currentFrame ];
-				if( DrawSpritePixel( fb, imageRect, attribs, beamPosition, bgPixel & 0x03 ) )
-					break;
-			}
-		}
-
-		execCycles += ppuCycle_t( 1 );
-
-		BgPipelineShiftRegisters();
-		BgPipelineFetch( cycleCount );
-
-		beamPosition.x++;
+		execCycles += ppuCycle_t( 1 );	
 	}
 	else if ( cycleCount == 256 )
 	{
-		execCycles += ppuCycle_t( 1 );
-
 		BgPipelineFetch( cycleCount );
 		AdvanceYScroll( cycleCount );
+
+		execCycles += ppuCycle_t( 1 );
 	}
 	else if ( cycleCount == 257 )
 	{
-		execCycles += ppuCycle_t( 1 );
-
 		BgPipelineFetch( cycleCount );
 
 		if ( RenderEnabled() )
@@ -1148,6 +1138,8 @@ ppuCycle_t PPU::Exec()
 			regV.sem.coarseX = regT.sem.coarseX;
 			regV.sem.ntId = ( regV.sem.ntId & 0x2 ) | ( regT.sem.ntId & 0x1 );
 		}
+
+		execCycles += ppuCycle_t( 1 );
 	}
 	else if ( cycleCount <= 259 ) // [258 - 259]
 	{
@@ -1157,7 +1149,7 @@ ppuCycle_t PPU::Exec()
 	{
 		execCycles += ppuCycle_t( 1 );
 
-		if( ( currentScanline >= 0 ) && ( currentScanline <= POSTRENDER_SCANLINE ) && RenderEnabled() ) {
+		if( BgDataFetchEnabled() && RenderEnabled() ) {
 			system->cart->mapper->Clock(); // TODO: How big of a hack is this?
 		}
 	}
@@ -1194,7 +1186,7 @@ ppuCycle_t PPU::Exec()
 			beamPosition.y = 0;
 		}
 		else
-		{			
+		{
 			currentScanline++;
 			
 			beamPosition.x = 0;
@@ -1202,7 +1194,7 @@ ppuCycle_t PPU::Exec()
 		}
 
 		execCycles++;
-		assert( currentScanline == GetScanline() );
+	//	assert( currentScanline == GetScanline() );
 	}
 
 	return execCycles;
