@@ -1059,15 +1059,14 @@ ppuCycle_t PPU::Exec()
 		// Idle cycle
 		execCycles++;
 	}
-	else if( cycleCount == 1 )
-	{
-		execCycles++;
-
-		loadingSecondaryOAM = true;
-		LoadSecondaryOAM();
-	}
 	else if ( cycleCount < 256 )
 	{
+		if ( cycleCount == 1 )
+		{
+			loadingSecondaryOAM = true;
+			LoadSecondaryOAM();
+		}
+
 		if( currentScanline < POSTRENDER_SCANLINE )
 		{
 			// Scanline render
