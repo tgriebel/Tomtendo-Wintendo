@@ -102,7 +102,6 @@ void Cpu6502::Serialize( Serializer& serializer, const serializeMode_t mode )
 void PPU::Serialize( Serializer& serializer, const serializeMode_t mode )
 {
 	SerializeCycle( serializer, mode, cycle );
-	SerializeCycle( serializer, mode, scanelineCycle );
 
 	serializer.Next8b( *reinterpret_cast<uint8_t*>( &genNMI ),				mode );
 	serializer.Next8b( *reinterpret_cast<uint8_t*>( &loadingSecondaryOAM ),	mode );
@@ -119,8 +118,7 @@ void PPU::Serialize( Serializer& serializer, const serializeMode_t mode )
 	serializer.Next8b( palLatch[ 1 ],										mode );
 	serializer.Next8b( palShifts[ 0 ],										mode );
 	serializer.Next8b( palShifts[ 1 ],										mode );
-	serializer.Next8b( ppuReadBuffer[ 0 ],									mode );
-	serializer.Next8b( ppuReadBuffer[ 1 ],									mode );
+	serializer.Next8b( ppuReadBuffer,										mode );
 	serializer.Next32b( *reinterpret_cast<uint32_t*>( &currentScanline ),	mode );
 	serializer.Next32b( *reinterpret_cast<uint32_t*>( &beamPosition.x ),	mode );
 	serializer.Next32b( *reinterpret_cast<uint32_t*>( &beamPosition.y ),	mode );

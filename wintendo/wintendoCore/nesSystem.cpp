@@ -465,8 +465,8 @@ void wtSystem::RecordSate()
 	Serializer serializer( MB_1 );
 	serializer.Clear();
 	Serialize( serializer, serializeMode_t::STORE );
-	states[ currentState ].Set( serializer );
 	currentState = ( currentState + 1 ) % MaxStates;
+	states[ currentState ].Set( serializer );
 }
 
 
@@ -476,7 +476,7 @@ void wtSystem::RestoreState( const uint32_t stateIx )
 		return;
 	}
 
-	Serializer serializer( MB_1 );
+	Serializer serializer( states[ stateIx ].GetBufferSize() );
 	serializer.Clear();
 	states[ stateIx ].WriteTo( serializer );
 	Serialize( serializer, serializeMode_t::LOAD );
@@ -485,20 +485,16 @@ void wtSystem::RestoreState( const uint32_t stateIx )
 
 void wtSystem::SaveSate()
 {
-	Serializer serializer( MB_1 );
-	serializer.Clear();
-	Serialize( serializer, serializeMode_t::STORE );
+	if( !states[ currentState ].IsValid() ) {
+		return;
+	}
 
 	std::ofstream saveFile;
 	saveFile.open( baseFileName + L".st", ios::binary );
-	saveFile.write( reinterpret_cast<char*>( serializer.GetPtr() ), serializer.CurrentSize() );
+	saveFile.write( reinterpret_cast<char*>( states[ currentState ].GetPtr() ), states[ currentState ].GetBufferSize() );
 	saveFile.close();
-
-	std::ofstream txt;
-	txt.open( "saveState.txt", ios::trunc );
-	txt.write( serializer.dbgText.str().c_str(), serializer.dbgText.str().size() );
-	txt.close();
 }
+
 
 void wtSystem::LoadState()
 {
@@ -518,15 +514,9 @@ void wtSystem::LoadState()
 
 	loadFile.seekg( 0, std::ios::beg );
 	loadFile.read( reinterpret_cast<char*>( serializer.GetPtr() ), len );
-
 	loadFile.close();
 
 	Serialize( serializer, serializeMode_t::LOAD );
-
-	std::ofstream txt;
-	txt.open( "loadState.txt", ios::trunc );
-	txt.write( serializer.dbgText.str().c_str(), serializer.dbgText.str().size() );
-	txt.close();
 }
 
 
@@ -626,7 +616,7 @@ string wtSystem::GetPrgBankDissambly( const uint8_t bankNum )
 		debugStream << "0x" << right << uppercase << setfill( '0' ) << setw( 4 ) << hex << instrAddr << setfill( ' ' ) << "  " << setw( 10 ) << left << hexString.str() << mnemonic << std::endl;
 
 		curByte += 1 + operandCnt;
-		assert( curByte <= ( KB_16 + 1 ) );
+		assert( curByte <= ( KB_16 + operandCnt + 1 ) );
 	}
 
 	return debugStream.str();
@@ -673,7 +663,17 @@ int wtSystem::RunFrame()
 	const std::chrono::nanoseconds elapsed = ( currentTime - previousTime );
 	previousTime = std::chrono::steady_clock::now();
 
-	const masterCycles_t cyclesPerFrame = std::chrono::duration_cast<masterCycles_t>( elapsed );
+	masterCycles_t cyclesPerFrame;
+
+#if defined( _DEBUG ) // hack for slow fps
+	if( elapsed > std::chrono::duration_cast<chrono::nanoseconds>( chrono::microseconds( 17 ) ) ) {
+		cyclesPerFrame = std::chrono::duration_cast<masterCycles_t>( frameRate_t(1) );
+	} else
+#endif
+	{
+		cyclesPerFrame = std::chrono::duration_cast<masterCycles_t>( elapsed );
+	}
+
 	const masterCycles_t nextCycle = sysCycles + cyclesPerFrame;
 
 	Timer emuTime;
@@ -681,8 +681,11 @@ int wtSystem::RunFrame()
 	bool isRunning = Run( nextCycle );
 	emuTime.Stop();
 
+	++frameNumber;
+
 	const double frameTimeUs = emuTime.GetElapsedUs();
 	dbgInfo.frameTimeUs = static_cast<uint32_t>( frameTimeUs );
+	dbgInfo.frameNumber = frameNumber;
 
 	if ( headless )	{
 		return isRunning;
@@ -708,14 +711,12 @@ int wtSystem::RunFrame()
 	}
 
 	if ( config.cpu.restorePreviousFrame != 100 ) {
-		int32_t stateIx = ( config.cpu.restorePreviousFrame / 100.0f ) * currentState;
+		int32_t stateIx = static_cast<int32_t>( ( config.cpu.restorePreviousFrame / 100.0f ) * currentState );
 		RestoreState( stateIx );
 	} else {
 		RecordSate();
 	}
 	// END
-
-	++frameNumber;
 
 	RGBA palette[4];
 	for( uint32_t i = 0; i < 4; ++i )

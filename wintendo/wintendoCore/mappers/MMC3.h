@@ -92,7 +92,7 @@ public:
 	bool InWriteWindow( const uint16_t addr, const uint16_t offset ) override
 	{
 		const uint16_t address = ( addr + offset );
-		return ( system->cart->GetMapperId() == mapperId ) && InRange( address, 0x6000, 0xFFFF );
+		return ( system->cart->GetMapperId() == mapperId ) && InRange( address, wtSystem::ExpansionRomBase, 0xFFFF );
 	}
 
 	void Clock() override

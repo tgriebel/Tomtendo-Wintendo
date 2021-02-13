@@ -18,12 +18,11 @@
 
 void PPU::WriteReg( const uint16_t addr, const uint8_t value )
 {
-	const uint16_t regNum = ( addr % 8 ); // Mirror: 2008-4000
+	const uint16_t regNum = ( addr & 0x000F ); // Mirror: 2008-4000
 	switch ( regNum )
 	{
 		case 0: PPUCTRL( value );	break;
 		case 1: PPUMASK( value );	break;
-		case 2:	PPUSTATUS( value );	break;
 		case 3:	OAMADDR( value );	break;
 		case 4:	OAMDATA( value );	break;
 		case 5:	PPUSCROLL( value );	break;
@@ -36,16 +35,10 @@ void PPU::WriteReg( const uint16_t addr, const uint8_t value )
 
 uint8_t PPU::ReadReg( uint16_t addr )
 {
-	const uint16_t regNum = ( addr % 8 ); // Mirror: 0x2008-0x4000
+	const uint16_t regNum = ( addr & 0x000F ); // Mirror: 0x2008-0x4000
 	switch ( regNum )
 	{
-		case 0: return PPUCTRL();
-		case 1: return PPUMASK( );
 		case 2:	return PPUSTATUS();
-		case 3:	return OAMADDR();
-		case 4:	return OAMDATA();
-		case 5:	return PPUSCROLL();
-		case 6: return PPUADDR();
 		case 7:	return PPUDATA();
 		default: break;
 	}
@@ -71,36 +64,10 @@ void PPU::PPUCTRL( const uint8_t value )
 }
 
 
-uint8_t PPU::PPUCTRL()
-{
-	return regCtrl.byte;
-}
-
-
 void PPU::PPUMASK( const uint8_t value )
 {
 	regMask.byte = value;
 	regStatus.current.sem.lastReadLsb = ( value & 0x1F );
-}
-
-
-uint8_t PPU::PPUMASK()
-{
-	return regMask.byte;
-}
-
-
-void PPU::PPUSTATUS( const uint8_t value )
-{
-	// TODO: need to redesign to not return reference
-	assert( value == 0 );
-
-	regStatus.latched = regStatus.current;
-	regStatus.latched.sem.vBlank = 0;
-	regStatus.latched.sem.lastReadLsb = 0;
-	regStatus.hasLatch = true;
-	registers[PPUREG_ADDR] = 0;
-	registers[PPUREG_DATA] = 0;
 }
 
 
@@ -130,12 +97,6 @@ void PPU::OAMADDR( const uint8_t value )
 }
 
 
-uint8_t PPU::OAMADDR()
-{
-	return registers[PPUREG_OAMADDR];
-}
-
-
 void PPU::OAMDATA( const uint8_t value )
 {
 	assert( 0 );
@@ -143,12 +104,6 @@ void PPU::OAMDATA( const uint8_t value )
 	registers[PPUREG_OAMDATA] = value;
 
 	regStatus.current.sem.lastReadLsb = ( value & 0x1F );
-}
-
-
-uint8_t PPU::OAMDATA()
-{
-	return registers[PPUREG_OAMDATA];
 }
 
 
@@ -173,12 +128,6 @@ void PPU::PPUSCROLL( const uint8_t value )
 }
 
 
-uint8_t PPU::PPUSCROLL()
-{
-	return registers[PPUREG_SCROLL];
-}
-
-
 void PPU::PPUADDR( const uint8_t value )
 {
 	registers[PPUREG_ADDR] = value;
@@ -199,12 +148,6 @@ void PPU::PPUADDR( const uint8_t value )
 }
 
 
-uint8_t PPU::PPUADDR()
-{
-	return registers[PPUREG_ADDR];
-}
-
-
 void PPU::PPUDATA( const uint8_t value )
 {
 	if( DataportEnabled() )
@@ -221,23 +164,19 @@ void PPU::PPUDATA( const uint8_t value )
 
 uint8_t PPU::PPUDATA()
 {
-	// ppuReadBuffer[1] is the internal read buffer but ppuReadBuffer[0] is used to return a 'safe' writable byte
-	// This is due to the current (wonky) memory design
-	ppuReadBuffer[0] = ppuReadBuffer[1];
-
-	if ( DataportEnabled() )
-	{
-		ppuReadBuffer[1] = ReadVram( regV.byte2x );
-
-		if( regV.byte2x >= PaletteBaseAddr )
-		{
-			ppuReadBuffer[0] = ppuReadBuffer[1];
-		}
-
-		vramAccessed = true;
+	uint8_t value = 0;
+	if ( regV.byte2x < 0x3EFF ) {
+		value = ppuReadBuffer;
+	} else if ( regV.byte2x >= 0x3F00 ) {
+		value = ReadVram( regV.byte2x );
 	}
 
-	return ppuReadBuffer[0];
+	// TODO: when reading palettes, store mirrored NT data
+	// https://wiki.nesdev.com/w/index.php/PPU_programmer_reference#The_PPUDATA_read_buffer_.28post-fetch.29
+	ppuReadBuffer = ReadVram( regV.byte2x );
+	vramAccessed = true;
+
+	return value;
 }
 
 
@@ -270,6 +209,7 @@ void PPU::IncRenderAddr()
 {
 	if( DataportEnabled() )
 	{
+		// This is synonymous with a coarseX or coarseY increment
 		const bool isLargeIncrement = static_cast<bool>( regCtrl.sem.vramInc );
 		regV.byte2x += isLargeIncrement ? 0x20 : 0x01;
 	}
@@ -295,7 +235,9 @@ void PPU::BgPipelineFetch( const uint64_t scanlineCycle )
 	uint32_t cycleCountAdjust = ( scanlineCycle - 1 ) % 8;
 	if ( cycleCountAdjust == 1 )
 	{
-		plLatches.tileId = ReadVram( NameTable0BaseAddr | ( regV.byte2x & 0x0FFF ) );
+		const uint16_t address = NameTable0BaseAddr | ( regV.byte2x & 0x0FFF );
+		plLatches.tileId = ReadVram( address );
+	//	assert( regV.sem.coarseY <= 30 );
 	}
 	else if ( cycleCountAdjust == 3 )
 	{
@@ -303,7 +245,10 @@ void PPU::BgPipelineFetch( const uint64_t scanlineCycle )
 		coarsePt.x = regV.sem.coarseX;
 		coarsePt.y = regV.sem.coarseY;
 
-		const uint32_t attribute = ReadVram( AttribTable0BaseAddr | ( regV.sem.ntId << 10 ) | ( ( regV.sem.coarseY << 1 ) & 0xF8 ) | ( ( regV.sem.coarseX >> 2 ) & 0x07 ) );		
+		const uint16_t address = AttribTable0BaseAddr | ( regV.sem.ntId << 10 ) | ( ( regV.sem.coarseY << 1 ) & 0xF8 ) | ( ( regV.sem.coarseX >> 2 ) & 0x07 );
+		const uint32_t attribute = ReadVram( address );
+
+		assert( address >= 0x2000 );
 
 		plLatches.attribId = GetTilePaletteId( attribute, coarsePt );
 	}
@@ -911,12 +856,11 @@ void PPU::AdvanceYScroll( const uint64_t cycleCount )
 	
 	if ( regV.sem.fineY < 7 )
 	{
-		regV.sem.fineY++;
+		regV.byte2x += 0x1000; // regV.sem.fineY + 1 with overflow
 	}
 	else
 	{
 		regV.sem.fineY = 0;
-
 		if ( regV.sem.coarseY == 29 ) // > 240 vertical pixel
 		{
 			regV.sem.coarseY = 0;
@@ -985,13 +929,20 @@ bool PPU::RenderEnabled()
 
 bool PPU::InVBlank()
 {
-	return inVBlank;
+	return regStatus.current.sem.vBlank;
 }
 
 
 bool PPU::DataportEnabled()
 {
 	return ( InVBlank() || !RenderEnabled() );
+}
+
+
+uint32_t PPU::GetScanline() const
+{
+	// assert( ( static_cast<uint32_t>( cycle.count() ) / ScanlineCycles ) == currentScanline );
+	return ( static_cast<uint32_t>( cycle.count() ) / 340 ) % 262;
 }
 
 
@@ -1004,6 +955,7 @@ ppuCycle_t PPU::Exec()
 
 	// Cycle timing
 	const uint64_t cycleCount = cycle.count() % ScanlineCycles;
+	//currentScanline = cycle.count() / ScanlineCycles;
 
 	if ( regStatus.hasLatch )
 	{
@@ -1024,10 +976,9 @@ ppuCycle_t PPU::Exec()
 	// Scanlines take multiple cycles
 	if ( currentScanline == POSTRENDER_SCANLINE )
 	{
-		execCycles		+= ppuCycle_t( 1 );
-		scanelineCycle	+= ppuCycle_t( 1 );
+		execCycles += ppuCycle_t( 1 );
 
-		if ( scanelineCycle.count() >= ScanlineCycles )
+		if ( ( cycleCount + 1 ) >= ScanlineCycles )
 		{
 			++currentScanline;
 		}
@@ -1078,23 +1029,45 @@ ppuCycle_t PPU::Exec()
 				}
 			}
 		}
+
+		//execCycles += ppuCycle_t( 1 );
+		//scanelineCycle += ppuCycle_t( 1 );
+
+		//if ( cycleCount >= ScanlineCycles )
+		//{
+		//	++currentScanline;
+		//	scanelineCycle = ppuCycle_t( 0 );
+		//}
+
+		//return execCycles;
+	}
+	else if ( ( currentScanline >= POSTRENDER_SCANLINE ) && ( currentScanline < PRERENDER_SCANLINE ) )
+	{
+		//execCycles++;
+		//scanelineCycle++;
+
+		//if ( cycleCount >= ScanlineCycles ) {
+		//	++currentScanline;
+		//	execCycles++;
+		//	scanelineCycle = ppuCycle_t( 0 );
+		//}
+		//return execCycles;
 	}
 
 	if ( cycleCount == 0 )
 	{
 		// Idle cycle
 		execCycles++;
-		scanelineCycle++;
+	}
+	else if( cycleCount == 1 )
+	{
+		execCycles++;
 
 		loadingSecondaryOAM = true;
 		LoadSecondaryOAM();
-//		OAMDATA( 0xFF );
 	}
-	else if ( cycleCount <= 256 )
+	else if ( cycleCount < 256 )
 	{
-		execCycles += ppuCycle_t( 1 );
-		scanelineCycle += ppuCycle_t( 1 );
-
 		if( currentScanline < POSTRENDER_SCANLINE )
 		{
 			// Scanline render
@@ -1151,19 +1124,25 @@ ppuCycle_t PPU::Exec()
 			}
 		}
 
+		execCycles += ppuCycle_t( 1 );
+
 		BgPipelineShiftRegisters();
 		BgPipelineFetch( cycleCount );
 
 		beamPosition.x++;
 	}
+	else if ( cycleCount == 256 )
+	{
+		execCycles += ppuCycle_t( 1 );
+
+		BgPipelineFetch( cycleCount );
+		AdvanceYScroll( cycleCount );
+	}
 	else if ( cycleCount == 257 )
 	{
 		execCycles += ppuCycle_t( 1 );
-		scanelineCycle += ppuCycle_t( 1 );
 
 		BgPipelineFetch( cycleCount );
-
-		AdvanceYScroll( cycleCount );
 
 		if ( RenderEnabled() )
 		{
@@ -1174,12 +1153,10 @@ ppuCycle_t PPU::Exec()
 	else if ( cycleCount <= 259 ) // [258 - 259]
 	{
 		execCycles += ppuCycle_t( 1 );
-		scanelineCycle += ppuCycle_t( 1 );
 	}
 	else if ( cycleCount == 260 )
 	{
 		execCycles += ppuCycle_t( 1 );
-		scanelineCycle += ppuCycle_t( 1 );
 
 		if( ( currentScanline >= 0 ) && ( currentScanline <= POSTRENDER_SCANLINE ) && RenderEnabled() ) {
 			system->cart->mapper->Clock(); // TODO: How big of a hack is this?
@@ -1189,14 +1166,12 @@ ppuCycle_t PPU::Exec()
 	{
 		// Prefetch the 8 sprites on next scanline
 		execCycles += ppuCycle_t( 1 );
-		scanelineCycle += ppuCycle_t( 1 );
 
 	//	BgPipelineFetch( cycleCount ); // Garbage fetches, 8 fetches
 	}
 	else if ( cycleCount <= 336 ) // [321 - 336]
 	{
 		execCycles++;
-		scanelineCycle++;
 
 		BgPipelineShiftRegisters();
 
@@ -1209,9 +1184,8 @@ ppuCycle_t PPU::Exec()
 
 		// 2 unused fetches
 		execCycles++;
-		scanelineCycle++;
 	}
-	else
+	else if ( cycleCount <= 341 )
 	{
 		if( currentScanline == PRERENDER_SCANLINE )
 		{
@@ -1221,14 +1195,15 @@ ppuCycle_t PPU::Exec()
 			beamPosition.y = 0;
 		}
 		else
-		{
+		{			
 			currentScanline++;
+			
 			beamPosition.x = 0;
 			beamPosition.y++;
 		}
 
 		execCycles++;
-		scanelineCycle = ppuCycle_t( 0 );
+		assert( currentScanline == GetScanline() );
 	}
 
 	return execCycles;

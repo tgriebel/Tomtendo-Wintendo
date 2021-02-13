@@ -47,18 +47,18 @@ private:
 
 	uint8_t MapMemory( const uint16_t address, const uint8_t regValue )
 	{
-		const uint16_t maskedAddr = address;//( addr & 0x6000 ); // Only bits 13-14 decoded
+		const uint16_t mode = ( address >> 13 ) & 3; // Only bits 13-14 decoded
 
 		const bool hasChrRom = system->cart->h.chrRomBanks > 0;
 		const uint32_t chrRomStart = system->cart->h.prgRomBanks * KB_16;
 		uint16_t chrRomBankSize = KB_8;
 
-		if ( InRange( address, 0x8000, 0x9FFF ) )
+		if ( mode == 0 )
 		{
-			ctrlReg = regValue;		
+			ctrlReg = regValue;
 			system->mirrorMode = GetMirrorMode();
 		}
-		else if ( hasChrRom && InRange( address, 0xA000, 0xBFFF ) )
+		else if ( hasChrRom && ( mode == 1 ) )
 		{			
 			if ( ctrlReg & 0x10 )
 			{
@@ -74,7 +74,7 @@ private:
 				chrBank1 = chrBank0Reg + 1;
 			}
 		}
-		else if ( hasChrRom && InRange( address, 0xC000, 0xDFFF ) )
+		else if ( hasChrRom && ( mode == 2 ) )
 		{
 			if ( ( ctrlReg & 0x10 ) != 0 )
 			{
@@ -82,7 +82,7 @@ private:
 				chrBank1 = chrBank1Reg;
 			}
 		}
-		else if ( InRange( address, 0xE000, 0xFFFF ) )
+		else if ( mode == 3 )
 		{
 			assert( system->cart->h.prgRomBanks > 0 );
 
@@ -91,7 +91,9 @@ private:
 				const uint8_t prgSrcBank = regValue & 0x0F;
 				if ( ctrlReg & 0x04 ) {
 					bank0 = prgSrcBank;
+					bank1 = ( system->cart->h.prgRomBanks ) - 1;
 				} else {
+					bank0 = 0;
 					bank1 = prgSrcBank;
 				}
 			}
@@ -125,6 +127,8 @@ public:
 	{
 		bank0 = 0;
 		bank1 = ( system->cart->h.prgRomBanks - 1 );
+		chrBank0Reg = 0;
+		chrBank1Reg = 1;
 		return 0;
 	}
 
@@ -181,7 +185,7 @@ public:
 	bool InWriteWindow( const uint16_t addr, const uint16_t offset ) override
 	{
 		const uint16_t address = ( addr + offset );
-		return ( system->cart->GetMapperId() == mapperId ) && InRange( address, wtSystem::SramBase, wtSystem::Bank1End );
+		return ( system->cart->GetMapperId() == mapperId ) && InRange( address, wtSystem::ExpansionRomBase, wtSystem::Bank1End );
 	}
 
 	uint8_t Write( const uint16_t addr, const uint16_t offset, const uint8_t value ) override
@@ -202,7 +206,6 @@ public:
 		{
 			shiftRegister.Clear();
 			ctrlReg |= 0x0C;
-
 			return 0;
 		}
 

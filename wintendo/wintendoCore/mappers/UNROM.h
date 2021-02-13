@@ -42,7 +42,7 @@ public:
 			const uint16_t bankAddr = ( addr - wtSystem::Bank1 );
 			return system->cart->GetPrgRomBank( lastBank )[ bankAddr ];
 		}
-		assert( 0 );
+		// assert( 0 );
 		return 0;
 	}
 
@@ -77,7 +77,7 @@ public:
 	bool InWriteWindow( const uint16_t addr, const uint16_t offset ) override
 	{
 		const uint16_t address = ( addr + offset );
-		return ( system->cart->GetMapperId() == 2 ) && InRange( address, 0x8000, 0xFFFF );
+		return ( system->cart->GetMapperId() == 2 ) && InRange( address, wtSystem::ExpansionRomBase, wtSystem::Bank1End );
 	}
 
 	void Serialize( Serializer& serializer, const serializeMode_t mode ) override

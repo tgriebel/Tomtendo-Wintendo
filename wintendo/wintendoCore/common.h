@@ -241,6 +241,7 @@ public:
 struct wtDebugInfo
 {
 	uint32_t		frameTimeUs;
+	uint64_t		frameNumber;
 	masterCycles_t	masterCpu;
 	masterCycles_t	masterPpu;
 	masterCycles_t	masterApu;
@@ -455,10 +456,18 @@ public:
 		return ( byteCount > 0 );
 	}
 
+	uint32_t GetBufferSize() const {
+		return byteCount;
+	}
+
+	uint8_t* GetPtr() {
+		return bytes;
+	}
+
 	void Set( Serializer& s )
 	{
 		Reset();
-		byteCount = s.BufferSize();
+		byteCount = s.CurrentSize();
 		bytes = new uint8_t[ byteCount ];
 		memcpy( bytes, s.GetPtr(), byteCount );
 	}

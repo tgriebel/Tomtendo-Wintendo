@@ -218,7 +218,6 @@ public:
 private:
 	wtSystem*		system;
 	ppuCycle_t		cycle;
-	ppuCycle_t		scanelineCycle;
 	int32_t			currentScanline;
 
 	ppuCtrl			regCtrl;
@@ -246,7 +245,7 @@ private:
 	spriteAttrib_t	secondaryOAM[OamSize];
 	uint8_t			secondaryOamSpriteCnt;
 
-	uint8_t			ppuReadBuffer[2];
+	uint8_t			ppuReadBuffer;
 
 	bool			inVBlank; // This is for internal state tracking not for reporting to the CPU
 
@@ -304,13 +303,11 @@ public:
 		palLatch[1]				= 0;
 		palShifts[0]			= 0;
 		palShifts[1]			= 0;
-		ppuReadBuffer[0]		= 0;
-		ppuReadBuffer[1]		= 0;
+		ppuReadBuffer			= 0;
 
 		system					= nullptr;
 
-		currentScanline			= PRERENDER_SCANLINE;
-		scanelineCycle			= ppuCycle_t( 0 );
+		currentScanline			= 0;
 
 		vramWritePending		= false;
 
@@ -334,8 +331,8 @@ public:
 
 		memset( secondaryOAM, 0, sizeof( secondaryOAM ) );
 		memset( nt, 0, KB_2 );
-		memset( imgPal, 0, PPU::VirtualMemorySize );
-		memset( sprPal, 0, PPU::VirtualMemorySize );
+		memset( imgPal, 0, 16 );
+		memset( sprPal, 0, 16 );
 		memset( debugVramWriteCounter, 0, VirtualMemorySize );
 	}
 
@@ -383,28 +380,18 @@ private:
 	bool		DataportEnabled();
 	bool		InVBlank();
 	void		IncRenderAddr();
+	uint32_t	GetScanline() const;
 
+	// Write Registers
 	void		PPUCTRL( const uint8_t value );
-	uint8_t		PPUCTRL();
-
 	void		PPUMASK( const uint8_t value );
-	uint8_t		PPUMASK();
-
-	void		PPUSTATUS( const uint8_t value );
-	uint8_t		PPUSTATUS();
-
 	void		OAMADDR( const uint8_t value );
-	uint8_t		OAMADDR();
-
 	void		OAMDATA( const uint8_t value );
-	uint8_t		OAMDATA();
-
 	void		PPUSCROLL( const uint8_t value );
-	uint8_t		PPUSCROLL();
-
 	void		PPUADDR( const uint8_t value );
-	uint8_t		PPUADDR();
-
 	void		PPUDATA( const uint8_t value );
+
+	// Read Registers
+	uint8_t		PPUSTATUS();
 	uint8_t		PPUDATA();
 };

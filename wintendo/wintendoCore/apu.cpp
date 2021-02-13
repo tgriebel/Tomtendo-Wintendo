@@ -207,7 +207,7 @@ void APU::EnvelopeGenerater( envelope_t& envelope, const uint8_t volume, const b
 	}
 
 	assert( envelope.divCounter <= 0x10 );
-	assert( envelope.decayLevel <= 0x0F );
+	//assert( envelope.decayLevel <= 0x0F );
 
 	if ( constant ) {
 		envelope.output = volume;
