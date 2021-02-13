@@ -333,8 +333,8 @@ public:
 
 		memset( secondaryOAM, 0, sizeof( secondaryOAM ) );
 		memset( nt, 0, KB_2 );
-		memset( imgPal, 0, 16 );
-		memset( sprPal, 0, 16 );
+		memset( imgPal, 0, PPU::PaletteColorNumber );
+		memset( sprPal, 0, PPU::PaletteColorNumber );
 		memset( debugVramWriteCounter, 0, VirtualMemorySize );
 	}
 

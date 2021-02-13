@@ -66,6 +66,8 @@ void wtSystem::DebugPrintFlushLog()
 
 int wtSystem::Init( const wstring& filePath )
 {
+	Reset();
+
 	SaveSRam();
 
 	LoadNesFile( filePath, cart );

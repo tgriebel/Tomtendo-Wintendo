@@ -814,7 +814,7 @@ void PPU::LoadSecondaryOAM()
 		if ( ( beamPosition.y >= static_cast<int32_t>( y + spriteHeight ) ) || ( beamPosition.y < static_cast<int32_t>( y ) ) )
 			continue;
 
-		if ( ( y < 8 ) || (y > 232 ) )
+		if ( ( y < 1 ) || (y > 232 ) )
 			continue;
 
 		secondaryOAM[destSpriteNum] = GetSpriteData( spriteNum, primaryOAM );
@@ -925,7 +925,7 @@ bool PPU::BgDataFetchEnabled()
 
 bool PPU::RenderEnabled()
 {
-	return ( regMask.sem.showBg || regMask.sem.showSprt ) && BgDataFetchEnabled();
+	return ( regMask.sem.showBg || regMask.sem.showSprt );
 }
 
 

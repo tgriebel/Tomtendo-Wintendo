@@ -114,6 +114,7 @@ public:
 		InitConfig();
 
 		sysCycles = masterCycles_t( 0 );
+		previousTime = std::chrono::steady_clock::now();
 
 		memset( memory, 0, PhysicalMemorySize );
 
