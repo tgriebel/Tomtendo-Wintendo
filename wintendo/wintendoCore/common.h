@@ -479,6 +479,7 @@ public:
 			return;
 		}
 		s.NextArray( bytes, byteCount, serializeMode_t::STORE );
+		s.SetPosition( 0 );
 	}
 
 	void Reset()

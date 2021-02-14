@@ -465,7 +465,6 @@ void wtSystem::LoadSRam()
 void wtSystem::RecordSate()
 {
 	Serializer serializer( MB_1 );
-	serializer.Clear();
 	Serialize( serializer, serializeMode_t::STORE );
 	currentState = ( currentState + 1 ) % MaxStates;
 	states[ currentState ].Set( serializer );
@@ -479,7 +478,6 @@ void wtSystem::RestoreState( const uint32_t stateIx )
 	}
 
 	Serializer serializer( states[ stateIx ].GetBufferSize() );
-	serializer.Clear();
 	states[ stateIx ].WriteTo( serializer );
 	Serialize( serializer, serializeMode_t::LOAD );
 }
@@ -512,7 +510,6 @@ void wtSystem::LoadState()
 	const uint32_t len = static_cast<uint32_t>( loadFile.tellg() );
 
 	Serializer serializer( len );
-	serializer.Clear();
 
 	loadFile.seekg( 0, std::ios::beg );
 	loadFile.read( reinterpret_cast<char*>( serializer.GetPtr() ), len );
