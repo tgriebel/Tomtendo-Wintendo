@@ -130,6 +130,7 @@ public:
 
 		loadedState = false;
 		savedState = false;
+		replayFinished = true;
 
 		frameBuffer[0].SetDebugName( "FrameBuffer1" );
 		frameBuffer[1].SetDebugName( "FrameBuffer2" );

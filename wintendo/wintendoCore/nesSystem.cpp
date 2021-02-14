@@ -715,13 +715,18 @@ int wtSystem::RunFrame()
 		loadedState = true;
 	}
 
-	if ( config.sys.replay && !replayFinished ) {
+	static uint32_t nextState = 0;
+	if( replayFinished ) {
+		nextState = 0;
+	}
+
+	if ( config.sys.replay && !replayFinished ) {	
 	//	int32_t stateIx = static_cast<int32_t>( ( config.cpu.restoreFrame / 100.0f ) * currentState );	
-		RestoreState( config.sys.restoreFrame );
-		replayFinished = ( config.sys.restoreFrame >= currentState );
+		RestoreState( nextState );
 	} else if( config.sys.record ) {
 		RecordSate();
 	}
+	replayFinished = ( nextState++ >= currentState );
 	// END
 
 	RGBA palette[4];
