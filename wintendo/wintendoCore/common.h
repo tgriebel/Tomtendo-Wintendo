@@ -251,12 +251,19 @@ struct wtDebugInfo
 
 struct wtConfig
 {
+	struct System
+	{
+		int32_t		restoreFrame;
+		bool		replay;
+		bool		record;
+		bool		requestSaveState;
+		bool		requestLoadState;
+	} sys;
+
+
 	struct CPU
 	{
-		int32_t		traceFrameCount;
-		int32_t		restorePreviousFrame;
-		bool		requestSaveState;
-		bool		requestLoadState;		
+		int32_t		traceFrameCount;	
 	} cpu;
 
 	struct APU

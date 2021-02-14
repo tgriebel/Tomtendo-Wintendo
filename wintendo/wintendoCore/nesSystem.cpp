@@ -346,6 +346,7 @@ void wtSystem::GetFrameResult( wtFrameResult& outFrameResult )
 	outFrameResult.currentFrame = frameNumber;
 	outFrameResult.savedState = savedState;
 	outFrameResult.loadedState = loadedState;
+	outFrameResult.replayFinished = replayFinished;
 }
 
 
@@ -366,11 +367,15 @@ void wtSystem::GetState( wtState& state )
 
 void wtSystem::InitConfig()
 {
+	// System
+	config.sys.restoreFrame		= 100;
+	config.sys.replay			= false;
+	config.sys.record			= false;
+	config.sys.requestLoadState = false;
+	config.sys.requestSaveState = false;
+
 	// CPU
 	config.cpu.traceFrameCount	= 0;
-	config.cpu.restorePreviousFrame = 100;
-	config.cpu.requestLoadState = false;
-	config.cpu.requestSaveState = false;
 
 	// PPU
 	config.ppu.chrPalette		= 0;
@@ -699,20 +704,22 @@ int wtSystem::RunFrame()
 	// TEMP TEST CODE
 	loadedState = false;
 	savedState = false;
-	if ( config.cpu.requestSaveState ) {
+	if ( config.sys.requestSaveState ) {
+		RecordSate();
 		SaveSate();
 		savedState = true;
 	}
 
-	if ( config.cpu.requestLoadState ) {
+	if ( config.sys.requestLoadState ) {
 		LoadState();
 		loadedState = true;
 	}
 
-	if ( config.cpu.restorePreviousFrame != 100 ) {
-		int32_t stateIx = static_cast<int32_t>( ( config.cpu.restorePreviousFrame / 100.0f ) * currentState );
-		RestoreState( stateIx );
-	} else {
+	if ( config.sys.replay && !replayFinished ) {
+	//	int32_t stateIx = static_cast<int32_t>( ( config.cpu.restoreFrame / 100.0f ) * currentState );	
+		RestoreState( config.sys.restoreFrame );
+		replayFinished = ( config.sys.restoreFrame >= currentState );
+	} else if( config.sys.record ) {
 		RecordSate();
 	}
 	// END

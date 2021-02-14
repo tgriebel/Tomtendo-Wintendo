@@ -89,6 +89,7 @@ private:
 	masterCycles_t		sysCycles;
 	bool				savedState;
 	bool				loadedState;
+	bool				replayFinished;
 	bool				debugNTEnable;
 	frameRate_t			frame;
 	timePoint_t			previousTime;
@@ -220,6 +221,7 @@ struct wtFrameResult
 	bool				sndReady;
 	bool				savedState;
 	bool				loadedState;
+	bool				replayFinished;
 
 	// Debug
 	wtDebugInfo			dbgInfo;
