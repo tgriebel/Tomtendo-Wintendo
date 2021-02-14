@@ -242,10 +242,8 @@ struct wtDebugInfo
 {
 	uint32_t		frameTimeUs;
 	uint64_t		frameNumber;
-	masterCycles_t	masterCpu;
-	masterCycles_t	masterPpu;
-	masterCycles_t	masterApu;
-
+	masterCycles_t	cycleBegin;
+	masterCycles_t	cycleEnd;
 };
 
 
@@ -254,6 +252,7 @@ struct wtConfig
 	struct System
 	{
 		int32_t		restoreFrame;
+		int32_t		nextScaline;
 		bool		replay;
 		bool		record;
 		bool		requestSaveState;
@@ -330,14 +329,12 @@ public:
 	wtRawImage()
 	{
 		Clear();
-		locked = true;
 		name = "";
 	}
 
 	wtRawImage( const char* name_ )
 	{
 		Clear();
-		locked = true;
 		name = name_;
 	}
 
@@ -385,8 +382,6 @@ public:
 		{
 			buffer[i].rawABGR = 0;
 		}
-
-		locked = false;
 	}
 
 	inline const uint32_t *const GetRawBuffer() const
@@ -418,8 +413,6 @@ public:
 	{
 		return { 0, 0, width, height };
 	}
-
-	bool locked;
 
 private:
 	static const uint32_t width = N;

@@ -39,7 +39,11 @@ struct wtAudioEngine
 	int32_t								totalAudioBuffers	= 0;
 
 	float								audioDuration		= 0.0f;
+#if defined(_DEBUG)
+	bool								enableSound			= false;
+#else
 	bool								enableSound			= true;
+#endif
 	bool								audioStopped		= false;
 	float								Q1					= 1.2f;		// [0, 1.5]
 	float								Q2					= 1.2f;		// [0, 1.5]

@@ -325,7 +325,6 @@ void wtSystem::GetFrameResult( wtFrameResult& outFrameResult )
 	outFrameResult.ppuDebug			= ppu.dbgInfo;
 
 	finishedFrame.second = false;
-	frameBuffer[lastFrameNumber].locked = false;
 
 	GetState( outFrameResult.state );
 #if DEBUG_ADDR
@@ -368,7 +367,8 @@ void wtSystem::GetState( wtState& state )
 void wtSystem::InitConfig()
 {
 	// System
-	config.sys.restoreFrame		= 100;
+	config.sys.restoreFrame		= 0;
+	config.sys.nextScaline		= 0;
 	config.sys.replay			= false;
 	config.sys.record			= false;
 	config.sys.requestLoadState = false;
@@ -521,6 +521,13 @@ void wtSystem::LoadState()
 	loadFile.close();
 
 	Serialize( serializer, serializeMode_t::LOAD );
+}
+
+
+void wtSystem::SetLastVBlankCycle()
+{
+	lastVBlankCycle[1] = lastVBlankCycle[0];
+	lastVBlankCycle[0] = sysCycles;
 }
 
 
@@ -678,12 +685,44 @@ int wtSystem::RunFrame()
 		cyclesPerFrame = std::chrono::duration_cast<masterCycles_t>( elapsed );
 	}
 
-	const masterCycles_t nextCycle = sysCycles + cyclesPerFrame;
+	nextCycle = sysCycles + cyclesPerFrame;
+
+	// TEMP TEST CODE
+	loadedState = false;
+	savedState = false;
+	if ( config.sys.requestSaveState ) {
+		RecordSate();
+		SaveSate();
+		savedState = true;
+	}
+
+	if ( config.sys.requestLoadState ) {
+		LoadState();
+		loadedState = true;
+	}
+
+	if ( config.sys.replay && !replayFinished ) {
+		//	int32_t stateIx = static_cast<int32_t>( ( config.cpu.restoreFrame / 100.0f ) * currentState );	
+		RestoreState( config.sys.restoreFrame );
+		frameBuffer[ currentFrame ].Clear();
+	//	sysCycles = lastVBlankCycle[1];
+	//	nextCycle = lastVBlankCycle[0];
+	//	nextCycle += masterCycles_t( ppuCycle_t( PPU::ScanlineCycles * config.sys.nextScaline ) );
+	}
+	else if ( config.sys.record ) {
+		RecordSate();
+	}
+	replayFinished = ( config.sys.restoreFrame++ >= currentState );
+	// END
+
+	dbgInfo.cycleBegin = sysCycles;
 
 	Timer emuTime;
 	emuTime.Start();
 	bool isRunning = Run( nextCycle );
 	emuTime.Stop();
+
+	dbgInfo.cycleEnd = sysCycles;
 
 	++frameNumber;
 
@@ -700,34 +739,6 @@ int wtSystem::RunFrame()
 		SaveSRam();
 		return false;
 	}
-
-	// TEMP TEST CODE
-	loadedState = false;
-	savedState = false;
-	if ( config.sys.requestSaveState ) {
-		RecordSate();
-		SaveSate();
-		savedState = true;
-	}
-
-	if ( config.sys.requestLoadState ) {
-		LoadState();
-		loadedState = true;
-	}
-
-	static uint32_t nextState = 0;
-	if( replayFinished ) {
-		nextState = 0;
-	}
-
-	if ( config.sys.replay && !replayFinished ) {	
-	//	int32_t stateIx = static_cast<int32_t>( ( config.cpu.restoreFrame / 100.0f ) * currentState );	
-		RestoreState( nextState );
-	} else if( config.sys.record ) {
-		RecordSate();
-	}
-	replayFinished = ( nextState++ >= currentState );
-	// END
 
 	RGBA palette[4];
 	for( uint32_t i = 0; i < 4; ++i )

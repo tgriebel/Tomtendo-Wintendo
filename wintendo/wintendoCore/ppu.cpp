@@ -982,6 +982,14 @@ void PPU::Render()
 		// Frame Buffer
 		Pixel pixelColor;
 		pixelColor.rgba = palette[ colorIx ];
+		{
+			// Debugging features
+			const float scanlineValue = currentScanline / 341.0;
+			const float pixelValue = ( imageIx / 61440.0f );
+			//pixelColor.rgba.red = static_cast<uint8_t>( 255.0f * scanlineValue );
+			//pixelColor.rgba.blue = static_cast<uint8_t>( 255.0f * scanlineValue );
+			//pixelColor.rgba.green = static_cast<uint8_t>( 255.0f * scanlineValue );
+		}
 		system->frameBuffer[ system->currentFrame ].Set( imageIx, pixelColor );
 	}
 
@@ -1070,18 +1078,16 @@ ppuCycle_t PPU::Exec()
 			inVBlank = true;
 			regStatus.current.sem.vBlank = 1;
 
+			system->SetLastVBlankCycle();
+
 			const bool isVblank = static_cast<bool>( regCtrl.sem.nmiVblank );
 			if ( isVblank )
 			{
 				system->RequestNMI();
 
 				const uint32_t nextFrame = ( system->currentFrame + 1 ) % 2;
-				if ( system->finishedFrame.second == false ) // FIXME: skips frames
-				{
-					system->frameBuffer[system->currentFrame].locked = true;
-					system->finishedFrame = pair<uint32_t, bool>( system->currentFrame, true );	
-					system->currentFrame = nextFrame;
-				}
+				system->finishedFrame = pair<uint32_t, bool>( system->currentFrame, true );	
+				system->currentFrame = nextFrame;
 			}
 		}
 	}

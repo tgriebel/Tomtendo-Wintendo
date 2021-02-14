@@ -87,6 +87,8 @@ private:
 	APU					apu;
 	uint8_t				memory[ PhysicalMemorySize ];
 	masterCycles_t		sysCycles;
+	masterCycles_t		nextCycle;
+	masterCycles_t		lastVBlankCycle[2];
 	bool				savedState;
 	bool				loadedState;
 	bool				replayFinished;
@@ -115,6 +117,9 @@ public:
 		InitConfig();
 
 		sysCycles = masterCycles_t( 0 );
+		nextCycle = masterCycles_t( 0 );
+		lastVBlankCycle[0] = masterCycles_t( 0 );
+		lastVBlankCycle[1] = masterCycles_t( 0 );
 		previousTime = std::chrono::steady_clock::now();
 
 		memset( memory, 0, PhysicalMemorySize );
@@ -138,6 +143,13 @@ public:
 		paletteDebug.SetDebugName( "Palette" );
 		patternTable0.SetDebugName( "PatternTable0" );
 		patternTable1.SetDebugName( "PatternTable1" );
+
+		frameBuffer[0].Clear();
+		frameBuffer[1].Clear();
+		nameTableSheet.Clear();
+		paletteDebug.Clear();
+		patternTable0.Clear();
+		patternTable1.Clear();
 
 		currentState = 0;
 		finishedFrame.first = 0;
@@ -174,6 +186,7 @@ public:
 	void		RequestDMA() const;
 	void		SaveSate();
 	void		LoadState();
+	void		SetLastVBlankCycle();
 
 	// Implemented in "mapper.h"
 	unique_ptr<wtMapper> AssignMapper( const uint32_t mapperId );

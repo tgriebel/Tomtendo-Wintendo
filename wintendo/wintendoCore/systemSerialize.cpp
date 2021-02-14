@@ -56,20 +56,23 @@ static inline void SerializeSweep( Serializer& serializer, const serializeMode_t
 void wtSystem::Serialize( Serializer& serializer, const serializeMode_t mode )
 {
 	SerializeCycle( serializer, mode, sysCycles );
+	SerializeCycle( serializer, mode, nextCycle );
+	SerializeCycle( serializer, mode, lastVBlankCycle[0] );
+	SerializeCycle( serializer, mode, lastVBlankCycle[1] );
 	SerializeCycle( serializer, mode, frame );
 
 	if( mode == serializeMode_t::LOAD ) {
 		previousTime = chrono::steady_clock::now(); // This might not be needed
 	}
 
-	serializer.Next32b( currentFrame, mode );
+	//serializer.Next32b( currentFrame, mode );
 	serializer.Next64b( frameNumber, mode );
 	serializer.Next8b( *reinterpret_cast<uint8_t*>( &strobeOn ),			mode );
 	serializer.Next8b( btnShift[ 0 ],										mode );
 	serializer.Next8b( btnShift[ 1 ],										mode );
 	serializer.Next8b( mirrorMode,											mode );
-	serializer.Next32b( finishedFrame.first,								mode );
-	serializer.Next8b( *reinterpret_cast<uint8_t*>( &finishedFrame.second ),mode );
+	//serializer.Next32b( finishedFrame.first,								mode );
+	//serializer.Next8b( *reinterpret_cast<uint8_t*>( &finishedFrame.second ),mode );
 
 	serializer.NextArray( memory, PhysicalMemorySize, mode );
 
