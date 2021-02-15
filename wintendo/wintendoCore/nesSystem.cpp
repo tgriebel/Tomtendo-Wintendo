@@ -315,16 +315,12 @@ void wtSystem::CaptureInput( const Controller keys )
 
 void wtSystem::GetFrameResult( wtFrameResult& outFrameResult )
 {
-	const uint32_t lastFrameNumber = finishedFrame.first;
-
-	outFrameResult.frameBuffer		= frameBuffer[lastFrameNumber];
+	outFrameResult.frameBuffer		= frameBuffer[ finishedFrame ];
 	outFrameResult.nameTableSheet	= nameTableSheet;
 	outFrameResult.paletteDebug		= paletteDebug;
 	outFrameResult.patternTable0	= patternTable0;
 	outFrameResult.patternTable1	= patternTable1;
 	outFrameResult.ppuDebug			= ppu.dbgInfo;
-
-	finishedFrame.second = false;
 
 	GetState( outFrameResult.state );
 #if DEBUG_ADDR
@@ -524,13 +520,6 @@ void wtSystem::LoadState()
 }
 
 
-void wtSystem::SetLastVBlankCycle()
-{
-	lastVBlankCycle[1] = lastVBlankCycle[0];
-	lastVBlankCycle[0] = sysCycles;
-}
-
-
 bool wtSystem::Run( const masterCycles_t& nextCycle )
 {
 	bool isRunning = true;
@@ -668,6 +657,15 @@ void wtSystem::GenerateChrRomTables( wtPatternTableImage chrRom[32] )
 }
 
 
+void wtSystem::ToggleFrame()
+{
+	finishedFrame = currentFrame;
+	currentFrame = ( currentFrame + 1 ) % 2;
+	frameNumber++;
+	toggledFrame = true;
+}
+
+
 int wtSystem::RunFrame()
 {
 	const timePoint_t currentTime = chrono::steady_clock::now();
@@ -685,34 +683,43 @@ int wtSystem::RunFrame()
 		cyclesPerFrame = std::chrono::duration_cast<masterCycles_t>( elapsed );
 	}
 
-	nextCycle = sysCycles + cyclesPerFrame;
+	masterCycles_t nextCycle = sysCycles + cyclesPerFrame;
+
+	bool toggledLastFrame = false;
+	if( toggledFrame ) {
+		toggledLastFrame = true;
+		toggledFrame = false;
+	}
 
 	// TEMP TEST CODE
 	loadedState = false;
 	savedState = false;
-	if ( config.sys.requestSaveState ) {
+	if ( config.sys.requestSaveState )
+	{
 		RecordSate();
 		SaveSate();
 		savedState = true;
 	}
 
-	if ( config.sys.requestLoadState ) {
+	if ( config.sys.requestLoadState )
+	{
 		LoadState();
 		loadedState = true;
 	}
 
-	if ( config.sys.replay && !replayFinished ) {
-		//	int32_t stateIx = static_cast<int32_t>( ( config.cpu.restoreFrame / 100.0f ) * currentState );	
-		RestoreState( config.sys.restoreFrame );
-		frameBuffer[ currentFrame ].Clear();
-	//	sysCycles = lastVBlankCycle[1];
-	//	nextCycle = lastVBlankCycle[0];
-	//	nextCycle += masterCycles_t( ppuCycle_t( PPU::ScanlineCycles * config.sys.nextScaline ) );
-	}
-	else if ( config.sys.record ) {
+	if ( config.sys.replay && !replayFinished )
+	{
+		//	int32_t stateIx = static_cast<int32_t>( ( config.cpu.restoreFrame / 100.0f ) * currentState );
+		if( toggledLastFrame || ( config.sys.restoreFrame == 1 ) )
+		{
+			frameBuffer[ currentFrame ].Clear();
+			RestoreState( config.sys.restoreFrame );
+			nextCycle = sysCycles + std::chrono::duration_cast<masterCycles_t>( frameRate_t( 1 ) );
+		}
+	} else if ( config.sys.record && toggledLastFrame ) {
 		RecordSate();
 	}
-	replayFinished = ( config.sys.restoreFrame++ >= currentState );
+	replayFinished = ( config.sys.restoreFrame >= currentState );
 	// END
 
 	dbgInfo.cycleBegin = sysCycles;
@@ -723,8 +730,6 @@ int wtSystem::RunFrame()
 	emuTime.Stop();
 
 	dbgInfo.cycleEnd = sysCycles;
-
-	++frameNumber;
 
 	const double frameTimeUs = emuTime.GetElapsedUs();
 	dbgInfo.frameTimeUs = static_cast<uint32_t>( frameTimeUs );
@@ -749,7 +754,7 @@ int wtSystem::RunFrame()
 	ppu.DrawDebugPatternTables( patternTable0, palette, 0 );
 	ppu.DrawDebugPatternTables( patternTable1, palette, 1 );
 
-	bool debugNT = debugNTEnable && ( ( (int)frame.count() % 60 ) == 0 );
+	bool debugNT = debugNTEnable && ( ( frameNumber % 60 ) == 0 );
 	if( debugNT )
 		ppu.DrawDebugNametable( nameTableSheet );
 	ppu.DrawDebugPalette( paletteDebug );

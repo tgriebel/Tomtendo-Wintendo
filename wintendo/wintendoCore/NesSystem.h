@@ -62,9 +62,12 @@ public:
 	// TODO: Need to abstract memory access for mappers
 	unique_ptr<wtCart>	cart;
 
-	pair<uint32_t,bool>	finishedFrame;
+	uint32_t			finishedFrame;
 	uint32_t			currentFrame;
 	uint64_t			frameNumber;
+	bool				savedState;
+	bool				loadedState;
+	bool				toggledFrame;
 	wtDisplayImage		frameBuffer[2];
 
 	bool				headless;
@@ -87,13 +90,8 @@ private:
 	APU					apu;
 	uint8_t				memory[ PhysicalMemorySize ];
 	masterCycles_t		sysCycles;
-	masterCycles_t		nextCycle;
-	masterCycles_t		lastVBlankCycle[2];
-	bool				savedState;
-	bool				loadedState;
 	bool				replayFinished;
 	bool				debugNTEnable;
-	frameRate_t			frame;
 	timePoint_t			previousTime;
 	wtDebugInfo			dbgInfo;
 #if DEBUG_ADDR == 1
@@ -105,6 +103,7 @@ private:
 	wtPatternTableImage	patternTable1;
 	wtStateBlob			states[ MaxStates ];
 	uint32_t			currentState;
+	uint32_t			firstState;
 
 public:
 	wtSystem()
@@ -117,9 +116,6 @@ public:
 		InitConfig();
 
 		sysCycles = masterCycles_t( 0 );
-		nextCycle = masterCycles_t( 0 );
-		lastVBlankCycle[0] = masterCycles_t( 0 );
-		lastVBlankCycle[1] = masterCycles_t( 0 );
 		previousTime = std::chrono::steady_clock::now();
 
 		memset( memory, 0, PhysicalMemorySize );
@@ -136,6 +132,7 @@ public:
 		loadedState = false;
 		savedState = false;
 		replayFinished = true;
+		toggledFrame = false;
 
 		frameBuffer[0].SetDebugName( "FrameBuffer1" );
 		frameBuffer[1].SetDebugName( "FrameBuffer2" );
@@ -152,10 +149,10 @@ public:
 		patternTable1.Clear();
 
 		currentState = 0;
-		finishedFrame.first = 0;
-		finishedFrame.second = false;
+		firstState = 1;
+		currentFrame = 0;
+		finishedFrame = 1;
 		frameNumber = 0;
-		frame = frameRate_t( 0 );
 		previousTime = chrono::steady_clock::now();
 	}
 
@@ -186,7 +183,7 @@ public:
 	void		RequestDMA() const;
 	void		SaveSate();
 	void		LoadState();
-	void		SetLastVBlankCycle();
+	void		ToggleFrame();
 
 	// Implemented in "mapper.h"
 	unique_ptr<wtMapper> AssignMapper( const uint32_t mapperId );

@@ -1078,16 +1078,12 @@ ppuCycle_t PPU::Exec()
 			inVBlank = true;
 			regStatus.current.sem.vBlank = 1;
 
-			system->SetLastVBlankCycle();
+			system->ToggleFrame();
 
 			const bool isVblank = static_cast<bool>( regCtrl.sem.nmiVblank );
 			if ( isVblank )
 			{
 				system->RequestNMI();
-
-				const uint32_t nextFrame = ( system->currentFrame + 1 ) % 2;
-				system->finishedFrame = pair<uint32_t, bool>( system->currentFrame, true );	
-				system->currentFrame = nextFrame;
 			}
 		}
 	}
