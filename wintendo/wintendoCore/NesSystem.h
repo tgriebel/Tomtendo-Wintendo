@@ -9,6 +9,7 @@
 #include <map>
 #include <iomanip>
 #include <atomic>
+#include <deque>
 #include "common.h"
 #include "mos6502.h"
 #include "ppu.h"
@@ -101,7 +102,7 @@ private:
 	wtPaletteImage		paletteDebug;
 	wtPatternTableImage	patternTable0;
 	wtPatternTableImage	patternTable1;
-	wtStateBlob			states[ MaxStates ];
+	std::deque<wtStateBlob> states;
 	uint32_t			currentState;
 	uint32_t			firstState;
 
@@ -194,8 +195,9 @@ private:
 	void		DebugPrintFlushLog();
 	void		WritePhysicalMemory( const uint16_t address, const uint8_t value );
 	uint16_t	MirrorAddress( const uint16_t address ) const;
-	void		RecordSate();
-	void		RestoreState( const uint32_t stateIx );
+	void		RecordSate( wtStateBlob& state );
+	void		RestoreState( const wtStateBlob& state );
+	void		RunStateControl( const bool newFrame, masterCycles_t& nextCycle );
 	void		SaveSRam();
 	void		LoadSRam();
 

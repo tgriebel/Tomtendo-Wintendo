@@ -463,36 +463,34 @@ void wtSystem::LoadSRam()
 }
 
 
-void wtSystem::RecordSate()
+void wtSystem::RecordSate( wtStateBlob& state )
 {
 	Serializer serializer( MB_1 );
 	Serialize( serializer, serializeMode_t::STORE );
-	currentState = ( currentState + 1 ) % MaxStates;
-	states[ currentState ].Set( serializer );
+	state.Set( serializer );
 }
 
 
-void wtSystem::RestoreState( const uint32_t stateIx )
+void wtSystem::RestoreState( const wtStateBlob& state )
 {
-	if( !states[ stateIx ].IsValid() ) {
+	if( !state.IsValid() ) {
 		return;
 	}
 
-	Serializer serializer( states[ stateIx ].GetBufferSize() );
-	states[ stateIx ].WriteTo( serializer );
+	Serializer serializer( state.GetBufferSize() );
+	state.WriteTo( serializer );
 	Serialize( serializer, serializeMode_t::LOAD );
 }
 
 
 void wtSystem::SaveSate()
 {
-	if( !states[ currentState ].IsValid() ) {
-		return;
-	}
+	wtStateBlob state;
+	RecordSate( state );
 
 	std::ofstream saveFile;
 	saveFile.open( baseFileName + L".st", ios::binary );
-	saveFile.write( reinterpret_cast<char*>( states[ currentState ].GetPtr() ), states[ currentState ].GetBufferSize() );
+	saveFile.write( reinterpret_cast<char*>( state.GetPtr() ), state.GetBufferSize() );
 	saveFile.close();
 }
 
@@ -657,6 +655,52 @@ void wtSystem::GenerateChrRomTables( wtPatternTableImage chrRom[32] )
 }
 
 
+void wtSystem::RunStateControl( const bool newFrame, masterCycles_t& nextCycle )
+{
+	loadedState = false;
+	savedState = false;
+	if ( config.sys.requestSaveState )
+	{
+		wtStateBlob state;
+		RecordSate( state );
+		SaveSate();
+		savedState = true;
+	}
+
+	if ( config.sys.requestLoadState )
+	{
+		LoadState();
+		loadedState = true;
+	}
+
+	const uint32_t stateIx = static_cast<uint32_t>( ( config.sys.restoreFrame / 100.0f ) * states.size() ) - 1;
+	replayFinished = ( stateIx >= ( states.size() - 1 ) ) || ( states.size() == 0 );
+	if ( config.sys.replay && !replayFinished )
+	{		
+		if ( newFrame || ( config.sys.restoreFrame == 1 ) )
+		{
+			frameBuffer[ currentFrame ].Clear();
+			
+			RestoreState( states[ stateIx ] );
+			nextCycle = sysCycles + std::chrono::duration_cast<masterCycles_t>( frameRate_t( 1 ) );
+		}
+	}
+	else if ( config.sys.record && newFrame )
+	{
+		states.push_back( wtStateBlob() );
+		RecordSate( states.back() );
+
+		if ( states.size() >= MaxStates ) {
+			states.pop_front();
+		}
+	}
+
+	if ( config.sys.replay && replayFinished ) {
+		states.clear();
+	}
+}
+
+
 void wtSystem::ToggleFrame()
 {
 	finishedFrame = currentFrame;
@@ -691,36 +735,7 @@ int wtSystem::RunFrame()
 		toggledFrame = false;
 	}
 
-	// TEMP TEST CODE
-	loadedState = false;
-	savedState = false;
-	if ( config.sys.requestSaveState )
-	{
-		RecordSate();
-		SaveSate();
-		savedState = true;
-	}
-
-	if ( config.sys.requestLoadState )
-	{
-		LoadState();
-		loadedState = true;
-	}
-
-	if ( config.sys.replay && !replayFinished )
-	{
-		//	int32_t stateIx = static_cast<int32_t>( ( config.cpu.restoreFrame / 100.0f ) * currentState );
-		if( toggledLastFrame || ( config.sys.restoreFrame == 1 ) )
-		{
-			frameBuffer[ currentFrame ].Clear();
-			RestoreState( config.sys.restoreFrame );
-			nextCycle = sysCycles + std::chrono::duration_cast<masterCycles_t>( frameRate_t( 1 ) );
-		}
-	} else if ( config.sys.record && toggledLastFrame ) {
-		RecordSate();
-	}
-	replayFinished = ( config.sys.restoreFrame >= currentState );
-	// END
+	RunStateControl( toggledLastFrame, nextCycle ); // TODO: remove need for 'nextCycle'
 
 	dbgInfo.cycleBegin = sysCycles;
 
