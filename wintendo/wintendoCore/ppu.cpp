@@ -455,9 +455,8 @@ uint8_t PPU::GetChrRom8x16( const uint32_t tileId, const uint8_t plane, const ui
 uint8_t PPU::GetChrRomBank8x8( const uint32_t tileId, const uint8_t plane, const uint8_t bankId, const uint8_t row )
 {
 	const uint8_t tileBytes = 16;
-	const uint16_t baseAddr = bankId * wtSystem::ChrRomSize;
-	const uint16_t chrRomBase = baseAddr + tileId * tileBytes;
-	const uint16_t bankAddr = bankId * 0x1000;
+	const uint16_t chrRomBase = tileId * tileBytes;
+	const uint16_t bankAddr = bankId * wtSystem::ChrRomSize;
 
 	return ReadVram( bankAddr + chrRomBase + row + 8 * ( plane & 0x01 ) );
 }
@@ -925,7 +924,7 @@ bool PPU::BgDataFetchEnabled()
 
 bool PPU::RenderEnabled()
 {
-	return ( regMask.sem.showBg || regMask.sem.showSprt );
+	return ( regMask.sem.showBg || regMask.sem.showSprt ) && BgDataFetchEnabled();
 }
 
 

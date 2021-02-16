@@ -427,14 +427,14 @@ void wtSystem::SaveSRam()
 {
 	if( ( cart.get() != nullptr ) && cart->HasSave() )
 	{
-		uint8_t saveBuffer[ KB_2 ];
-		for( int32_t i = 0; i < KB_2; ++i ) {
+		uint8_t saveBuffer[ KB_8 ];
+		for( int32_t i = 0; i < KB_8; ++i ) {
 			saveBuffer[ i ] = cart->mapper->ReadRom( 0x6000 + i );
 		}
 
 		std::ofstream saveFile;
 		saveFile.open( baseFileName + L".sav", ios::binary );
-		saveFile.write( reinterpret_cast<char*>( saveBuffer ), KB_2 );
+		saveFile.write( reinterpret_cast<char*>( saveBuffer ), KB_8 );
 		saveFile.close();
 	}
 }

@@ -53,12 +53,12 @@ private:
 		const uint32_t chrRomStart = system->cart->h.prgRomBanks * KB_16;
 		uint16_t chrRomBankSize = KB_8;
 
-		if ( mode == 0 )
+		if ( mode == 0 ) // Control
 		{
 			ctrlReg = regValue;
 			system->mirrorMode = GetMirrorMode();
 		}
-		else if ( hasChrRom && ( mode == 1 ) )
+		else if ( mode == 1 ) // CHR bank 0
 		{			
 			if ( ctrlReg & 0x10 )
 			{
@@ -69,12 +69,12 @@ private:
 			else
 			{
 				chrRomBankSize = KB_8;
-				chrBank0Reg = regValue & 0x0E;
+				chrBank0Reg = regValue & 0x1E;
 				chrBank0 = chrBank0Reg;
 				chrBank1 = chrBank0Reg + 1;
 			}
 		}
-		else if ( hasChrRom && ( mode == 2 ) )
+		else if ( mode == 2 ) // CHR bank 1
 		{
 			if ( ( ctrlReg & 0x10 ) != 0 )
 			{
@@ -82,7 +82,7 @@ private:
 				chrBank1 = chrBank1Reg;
 			}
 		}
-		else if ( mode == 3 )
+		else if ( mode == 3 ) // PRG bank
 		{
 			assert( system->cart->h.prgRomBanks > 0 );
 
@@ -127,8 +127,8 @@ public:
 	{
 		bank0 = 0;
 		bank1 = ( system->cart->h.prgRomBanks - 1 );
-		chrBank0Reg = 0;
-		chrBank1Reg = 1;
+		chrBank0 = 0;
+		chrBank1 = 1;
 		return 0;
 	}
 
@@ -173,7 +173,7 @@ public:
 		return 0;
 	}
 
-	uint8_t	 WriteChrRam( const uint16_t addr, const uint8_t value ) override
+	uint8_t	WriteChrRam( const uint16_t addr, const uint8_t value ) override
 	{
 		if ( InRange( addr, 0x0000, 0x1FFF ) && system->cart->HasChrRam() ) {
 			chrRam[ addr ] = value;

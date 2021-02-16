@@ -149,6 +149,8 @@ public:
 		patternTable0.Clear();
 		patternTable1.Clear();
 
+		states.clear();
+
 		currentState = 0;
 		firstState = 1;
 		currentFrame = 0;
