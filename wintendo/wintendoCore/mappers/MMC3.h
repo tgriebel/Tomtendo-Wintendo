@@ -23,7 +23,7 @@ private:
 
 	BankSelect	bankSelect;
 	uint8_t		R[8];
-	uint8_t		prgRamBank[ KB_8 ];
+	uint8_t		prgRamBank[ KB(8) ];
 	uint8_t		chrRam[ PPU::PatternTableMemorySize ];
 	uint8_t		irqLatch;
 	uint8_t		irqCounter;
@@ -113,22 +113,22 @@ public:
 		if ( InRange( addr, 0x8000, 0x9FFF ) )
 		{
 			const uint16_t bankAddr = ( addr - 0x8000 );
-			return system->cart->GetPrgRomBank( bank0, KB_8 )[ bankAddr ];
+			return system->cart->GetPrgRomBank( bank0, KB(8) )[ bankAddr ];
 		}
 		else if ( InRange( addr, 0xA000, 0xBFFF ) )
 		{
 			const uint16_t bankAddr = ( addr - 0xA000 );
-			return system->cart->GetPrgRomBank( bank1, KB_8 )[ bankAddr ];
+			return system->cart->GetPrgRomBank( bank1, KB(8) )[ bankAddr ];
 		}
 		else if ( InRange( addr, 0xC000, 0xDFFF ) )
 		{
 			const uint16_t bankAddr = ( addr - 0xC000 );
-			return system->cart->GetPrgRomBank( bank2, KB_8 )[ bankAddr ];
+			return system->cart->GetPrgRomBank( bank2, KB(8) )[ bankAddr ];
 		}
 		else if ( InRange( addr, 0xE000, 0xFFFF ) )
 		{
 			const uint16_t bankAddr = ( addr - 0xE000 );
-			return system->cart->GetPrgRomBank( bank3, KB_8 )[ bankAddr ];
+			return system->cart->GetPrgRomBank( bank3, KB(8) )[ bankAddr ];
 		}
 		else if ( InRange( addr, wtSystem::SramBase, wtSystem::SramEnd ) )
 		{
@@ -291,7 +291,7 @@ public:
 
 		if( swapChrBanks )
 		{
-			const uint32_t chrRomStart = system->cart->h.prgRomBanks * KB_16;
+			const uint32_t chrRomStart = system->cart->h.prgRomBanks * KB(16);
 			if ( bankSelect.sem.chrA12Inversion )
 			{
 				chrBank0 = R[ 2 ];
@@ -341,7 +341,7 @@ public:
 		serializer.NextChar( oldPrgBankMode, mode );
 		serializer.NextChar( oldChrBankMode, mode );
 		serializer.NextArray( reinterpret_cast<uint8_t*>( &R[ 0 ] ), 8 * sizeof( R[ 0 ] ), mode );
-		serializer.NextArray( reinterpret_cast<uint8_t*>( &prgRamBank[ 0 ] ), KB_8, mode );
+		serializer.NextArray( reinterpret_cast<uint8_t*>( &prgRamBank[ 0 ] ), KB(8), mode );
 		serializer.NextArray( reinterpret_cast<uint8_t*>( &chrRam[ 0 ] ), PPU::PatternTableMemorySize, mode );
 	}
 };

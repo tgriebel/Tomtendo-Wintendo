@@ -7,7 +7,7 @@ class MMC1 : public wtMapper
 {
 private:
 	
-	uint8_t prgRamBank[KB_8];
+	uint8_t prgRamBank[ KB(8) ];
 
 	uint8_t ctrlReg;
 	uint8_t chrBank0Reg;
@@ -50,8 +50,8 @@ private:
 		const uint16_t mode = ( address >> 13 ) & 3; // Only bits 13-14 decoded
 
 		const bool hasChrRom = system->cart->h.chrRomBanks > 0;
-		const uint32_t chrRomStart = system->cart->h.prgRomBanks * KB_16;
-		uint16_t chrRomBankSize = KB_8;
+		const uint32_t chrRomStart = system->cart->h.prgRomBanks * KB(16);
+		uint16_t chrRomBankSize = KB(8);
 
 		if ( mode == 0 ) // Control
 		{
@@ -62,13 +62,13 @@ private:
 		{			
 			if ( ctrlReg & 0x10 )
 			{
-				chrRomBankSize = KB_4;
+				chrRomBankSize = KB(4);
 				chrBank0Reg = regValue;
 				chrBank0 = chrBank0Reg;
 			}
 			else
 			{
-				chrRomBankSize = KB_8;
+				chrRomBankSize = KB(8);
 				chrBank0Reg = regValue & 0x1E;
 				chrBank0 = chrBank0Reg;
 				chrBank1 = chrBank0Reg + 1;
@@ -120,7 +120,7 @@ public:
 	{
 		mapperId = _mapperId;
 		shiftRegister.Clear();
-		memset( prgRamBank, 0, KB_8 );
+		memset( prgRamBank, 0, KB(8) );
 	}
 
 	uint8_t OnLoadCpu() override
@@ -165,9 +165,9 @@ public:
 		if( InRange( addr, 0x0000, 0x1FFF ) && system->cart->HasChrRam() )	{
 			return chrRam[ addr ];
 		} else if ( InRange( addr, 0x0000, 0x0FFF ) ) {
-			return system->cart->GetChrRomBank( chrBank0, KB_4 )[ addr ];
+			return system->cart->GetChrRomBank( chrBank0, KB(4) )[ addr ];
 		} else if ( InRange( addr, 0x1000, 0x1FFF ) ) {
-			return system->cart->GetChrRomBank( chrBank1, KB_4 )[ addr - 0x1000 ];
+			return system->cart->GetChrRomBank( chrBank1, KB(4) )[ addr - 0x1000 ];
 		}
 		assert( 0 );
 		return 0;
@@ -240,7 +240,7 @@ public:
 			shiftRegister.Set( shift );
 		}
 
-		serializer.NextArray( reinterpret_cast<uint8_t*>( &prgRamBank[ 0 ] ), KB_8, mode );
+		serializer.NextArray( reinterpret_cast<uint8_t*>( &prgRamBank[ 0 ] ), KB(8), mode );
 		serializer.NextArray( reinterpret_cast<uint8_t*>( &chrRam[ 0 ] ), PPU::PatternTableMemorySize, mode );
 	}
 };

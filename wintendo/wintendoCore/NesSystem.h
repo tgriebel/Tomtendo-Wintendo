@@ -215,7 +215,7 @@ private:
 struct wtState
 {
 	static const uint32_t CpuMemorySize = wtSystem::PhysicalMemorySize;
-	static const uint32_t PpuMemorySize = KB_2;
+	static const uint32_t PpuMemorySize = KB(2);
 
 	uint8_t				X;
 	uint8_t				Y;

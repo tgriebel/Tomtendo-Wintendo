@@ -356,7 +356,7 @@ void wtSystem::GetState( wtState& state )
 	state.PC = cpu.PC;
 	state.SP = cpu.SP;
 	memcpy( state.cpuMemory, memory, wtState::CpuMemorySize );
-	memcpy( state.ppuMemory, ppu.nt, KB_2 );
+	memcpy( state.ppuMemory, ppu.nt, KB(2) );
 }
 
 
@@ -427,14 +427,14 @@ void wtSystem::SaveSRam()
 {
 	if( ( cart.get() != nullptr ) && cart->HasSave() )
 	{
-		uint8_t saveBuffer[ KB_8 ];
-		for( int32_t i = 0; i < KB_8; ++i ) {
+		uint8_t saveBuffer[ KB(8) ];
+		for( int32_t i = 0; i < KB(8); ++i ) {
 			saveBuffer[ i ] = cart->mapper->ReadRom( 0x6000 + i );
 		}
 
 		std::ofstream saveFile;
 		saveFile.open( baseFileName + L".sav", ios::binary );
-		saveFile.write( reinterpret_cast<char*>( saveBuffer ), KB_8 );
+		saveFile.write( reinterpret_cast<char*>( saveBuffer ), KB(8) );
 		saveFile.close();
 	}
 }
@@ -444,7 +444,7 @@ void wtSystem::LoadSRam()
 {
 	if ( ( cart.get() != nullptr ) && cart->HasSave() )
 	{
-		uint8_t saveBuffer[ KB_2 ];
+		uint8_t saveBuffer[ KB(2) ];
 
 		std::ifstream saveFile;
 		saveFile.open( baseFileName + L".sav", ios::binary );
@@ -453,10 +453,10 @@ void wtSystem::LoadSRam()
 			return;
 		}
 
-		saveFile.read( reinterpret_cast<char*>( saveBuffer ), KB_2 );
+		saveFile.read( reinterpret_cast<char*>( saveBuffer ), KB(2) );
 		saveFile.close();
 
-		for ( int32_t i = 0; i < KB_2; ++i ) {
+		for ( int32_t i = 0; i < KB(2); ++i ) {
 			cart->mapper->Write( 0x6000, i, saveBuffer[ i ] );
 		}
 	}
@@ -585,7 +585,7 @@ string wtSystem::GetPrgBankDissambly( const uint8_t bankNum )
 	uint8_t* bankMem = cart->GetPrgRomBank( bankNum );
 	uint16_t curByte = 0;
 
-	while( curByte < KB_16 )
+	while( curByte < KB(16) )
 	{
 		stringstream hexString;
 		const uint32_t instrAddr = curByte;

@@ -132,7 +132,7 @@ void PPU::Serialize( Serializer& serializer, const serializeMode_t mode )
 	
 	serializer.NextArray( reinterpret_cast<uint8_t*>( &primaryOAM ), OamSize, mode );
 	serializer.NextArray( reinterpret_cast<uint8_t*>( &secondaryOAM ), OamSize * sizeof( spriteAttrib_t ), mode );
-	serializer.NextArray( nt, KB_2, mode );
+	serializer.NextArray( nt, KB(2), mode );
 	serializer.NextArray( imgPal, PPU::PaletteColorNumber, mode );
 	serializer.NextArray( sprPal, PPU::PaletteColorNumber, mode );
 	serializer.NextArray( registers, 9, mode );

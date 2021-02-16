@@ -37,51 +37,10 @@ static constexpr uint64_t APU_HZ = chrono::duration_cast<apuCycle_t>( chrono::se
 static constexpr uint64_t PPU_HZ = chrono::duration_cast<ppuCycle_t>( chrono::seconds( 1 ) ).count();
 
 const uint32_t KB_1		= 1024;
-const uint32_t KB_2		= ( KB_1 << 1 );
-const uint32_t KB_4		= ( KB_2 << 1 );
-const uint32_t KB_8		= ( KB_4 << 1 );
-const uint32_t KB_16	= ( KB_8 << 1 );
-const uint32_t KB_32	= ( KB_16 << 1 );
-const uint32_t KB_64	= ( KB_32 << 1 );
-const uint32_t KB_128	= ( KB_64 << 1 );
-const uint32_t KB_256	= ( KB_128 << 1 );
-const uint32_t KB_512	= ( KB_256 << 1 );
 const uint32_t MB_1		= 1024 * KB_1;
 
-const uint16_t BIT_0	= 0;
-const uint16_t BIT_1	= 1;
-const uint16_t BIT_2	= 2;
-const uint16_t BIT_3	= 3;
-const uint16_t BIT_4	= 4;
-const uint16_t BIT_5	= 5;
-const uint16_t BIT_6	= 6;
-const uint16_t BIT_7	= 7;
-const uint16_t BIT_8	= 8;
-const uint16_t BIT_9	= 9;
-const uint16_t BIT_10	= 10;
-const uint16_t BIT_11	= 11;
-const uint16_t BIT_12	= 12;
-const uint16_t BIT_13	= 13;
-const uint16_t BIT_14	= 14;
-const uint16_t BIT_15	= 15;
-
-const uint16_t BIT_MASK_0	= ( 1 << 0 );
-const uint16_t BIT_MASK_1	= ( 1 << 1 );
-const uint16_t BIT_MASK_2	= ( 1 << 2 );
-const uint16_t BIT_MASK_3	= ( 1 << 3 );
-const uint16_t BIT_MASK_4	= ( 1 << 4 );
-const uint16_t BIT_MASK_5	= ( 1 << 5 );
-const uint16_t BIT_MASK_6	= ( 1 << 6 );
-const uint16_t BIT_MASK_7	= ( 1 << 7 );
-const uint16_t BIT_MASK_8	= ( 1 << 8 );
-const uint16_t BIT_MASK_9	= ( 1 << 9 );
-const uint16_t BIT_MASK_10	= ( 1 << 10 );
-const uint16_t BIT_MASK_11	= ( 1 << 11 );
-const uint16_t BIT_MASK_12	= ( 1 << 12 );
-const uint16_t BIT_MASK_13	= ( 1 << 13 );
-const uint16_t BIT_MASK_14	= ( 1 << 14 );
-const uint16_t BIT_MASK_15	= ( 1 << 15 );
-
+#define KB(n) ( n * KB_1 )
+#define BIT_MASK(n)	( 1 << n )
 #define SELECT_BIT( word, bit ) ( (word) & (BIT_MASK_##bit) ) >> (BIT_##bit)
 
 class wtSystem;
@@ -198,17 +157,17 @@ public:
 		size = 0;
 	}
 
-	uint8_t* GetPrgRomBank( const uint32_t bankNum, const uint32_t bankSize = KB_16 ) {
+	uint8_t* GetPrgRomBank( const uint32_t bankNum, const uint32_t bankSize = KB(16) ) {
 		//const uint32_t bankRatio = KB_16 / bankSize;
 		//assert( bankNum <= bankRatio * GetPrgBankCount() );
 		return &rom[ bankNum * bankSize ];
 	}
 
-	uint8_t* GetChrRomBank( const uint32_t bankNum, const uint32_t bankSize = KB_4 )
+	uint8_t* GetChrRomBank( const uint32_t bankNum, const uint32_t bankSize = KB(4) )
 	{
 		//const uint32_t bankRatio = KB_4 / bankSize;
 		//assert( bankNum <= bankRatio * GetChrBankCount() );
-		const uint32_t chrRomStart = h.prgRomBanks * KB_16;		
+		const uint32_t chrRomStart = h.prgRomBanks * KB(16);
 		return &rom[ chrRomStart + bankNum * bankSize ];
 	}
 

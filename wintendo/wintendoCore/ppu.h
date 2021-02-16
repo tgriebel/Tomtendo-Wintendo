@@ -211,7 +211,7 @@ public:
 
 	ppuDebug_t		dbgInfo;
 	const RGBA*		palette;
-	uint8_t			nt[ KB_2 ];
+	uint8_t			nt[ KB(2) ];
 	uint8_t			imgPal[ PPU::PaletteColorNumber ];
 	uint8_t			sprPal[ PPU::PaletteColorNumber ];
 
@@ -333,7 +333,7 @@ public:
 		regStatus.hasLatch		= false;
 
 		memset( secondaryOAM, 0, sizeof( secondaryOAM ) );
-		memset( nt, 0, KB_2 );
+		memset( nt, 0, KB(2) );
 		memset( imgPal, 0, PPU::PaletteColorNumber );
 		memset( sprPal, 0, PPU::PaletteColorNumber );
 		memset( debugVramWriteCounter, 0, VirtualMemorySize );

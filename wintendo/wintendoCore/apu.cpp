@@ -381,14 +381,14 @@ void APU::ExecChannelTri()
 void APU::NoiseGenerator()
 {
 	const uint16_t shiftValue = noise.shift.Value();
-	const uint16_t bitShift	= noise.regFreq1.sem.mode ? BIT_6 : BIT_1;
-	const uint16_t feedback = ( shiftValue ^ ( shiftValue >> bitShift ) )& BIT_MASK_0;
-	const uint16_t newShift	= ( ( shiftValue >> 1 ) & ~BIT_MASK_14 ) | ( feedback << BIT_14 );
+	const uint16_t bitShift	= noise.regFreq1.sem.mode ? 6 : 1;
+	const uint16_t feedback = ( shiftValue ^ ( shiftValue >> bitShift ) )& BIT_MASK( 0 );
+	const uint16_t newShift	= ( ( shiftValue >> 1 ) & ~BIT_MASK( 14 ) ) | ( feedback << 14 );
 
 	noise.shift.Reload( newShift );
 
 	uint8_t volume = noise.envelope.output;
-	if ( noise.lengthCounter.IsZero() || ( noise.shift.Value() & BIT_MASK_0 ) || noise.mute ) {
+	if ( noise.lengthCounter.IsZero() || ( noise.shift.Value() & BIT_MASK( 0 ) ) || noise.mute ) {
 		volume = 0;
 	}
 
