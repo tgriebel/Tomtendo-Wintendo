@@ -514,21 +514,27 @@ void APU::ExecFrameCounter()
 {
 	halfClk		= false;
 	quarterClk	= false;
+	irqClk		= false; // TODO: check accuracy
 
 	const uint32_t mode = frameCounter.sem.mode;
-	frameSeqEvent_t& event = FrameSeqEvents[frameSeqStep][mode];
-	if( frameSeqTick == event.cycle )
+	frameSeqEvent_t& event = FrameSeqEvents[ frameSeqStep ][ mode ];
+	if( frameSeqTick.count() == event.cycle )
 	{
 		halfClk		= event.clkHalf;
 		quarterClk	= event.clkQuarter;
 		irqClk		= ( event.irq && !frameCounter.sem.interrupt );
 		++frameSeqStep;
+
+		dbgHalfClkTicks		+= halfClk ?	1: 0;
+		dbgQuarterClkTicks	+= quarterClk ?	1: 0;
+		dbgIrqEvents		+= irqClk ?		1: 0;
 	}
 
-	if ( frameSeqStep >= 6 )
+	const uint64_t lastCycle = FrameSeqEvents[ FrameSeqEventCnt - 1 ][ mode ].cycle;
+	if ( frameSeqTick.count() == lastCycle )
 	{
 		frameSeqStep = 0;
-		frameSeqTick = 0;
+		frameSeqTick = cpuCycle_t( 0 );
 	}
 }
 
@@ -560,6 +566,10 @@ bool APU::Step( const cpuCycle_t& nextCpuCycle )
 				}
 			}
 		}
+		if( irqClk ) {
+		//	system->RequestIRQ();
+		}
+
 		++cpuCycle;
 		++frameSeqTick;
 	}
@@ -608,11 +618,18 @@ float APU::TndMixer( const uint32_t triangle, const uint32_t noise, const uint32
 
 void APU::GetDebugInfo( apuDebug_t& apuDebug )
 {
-	apuDebug.pulse1		= pulse1;
-	apuDebug.pulse2		= pulse2;
-	apuDebug.triangle	= triangle;
-	apuDebug.noise		= noise;
-	apuDebug.dmc		= dmc;
+	apuDebug.pulse1				= pulse1;
+	apuDebug.pulse2				= pulse2;
+	apuDebug.triangle			= triangle;
+	apuDebug.noise				= noise;
+	apuDebug.dmc				= dmc;
+	apuDebug.frameCounter		= frameCounter;
+	apuDebug.halfClkTicks		= dbgHalfClkTicks;
+	apuDebug.quarterClkTicks	= dbgHalfClkTicks;
+	apuDebug.irqClkEvents		= dbgIrqEvents;
+	apuDebug.frameCounterTicks	= frameSeqTick;
+	apuDebug.cycle				= cpuCycle;
+	apuDebug.apuCycle			= apuCycle;
 }
 
 

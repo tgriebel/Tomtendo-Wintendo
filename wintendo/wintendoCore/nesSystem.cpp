@@ -614,7 +614,7 @@ string wtSystem::GetPrgBankDissambly( const uint8_t bankNum )
 		debugStream << "0x" << right << uppercase << setfill( '0' ) << setw( 4 ) << hex << instrAddr << setfill( ' ' ) << "  " << setw( 10 ) << left << hexString.str() << mnemonic << std::endl;
 
 		curByte += 1 + operandCnt;
-		assert( curByte <= ( KB_16 + operandCnt + 1 ) );
+		assert( curByte <= ( KB(16) + operandCnt + 1 ) );
 	}
 
 	return debugStream.str();
@@ -719,7 +719,7 @@ int wtSystem::RunFrame()
 	masterCycles_t cyclesPerFrame;
 
 #if defined( _DEBUG ) // hack for slow fps
-	if( elapsed > std::chrono::duration_cast<chrono::nanoseconds>( chrono::microseconds( 17 ) ) ) {
+	if( elapsed > std::chrono::duration_cast<chrono::nanoseconds>( chrono::milliseconds( 17 ) ) ) {
 		cyclesPerFrame = std::chrono::duration_cast<masterCycles_t>( frameRate_t(1) );
 	} else
 #endif

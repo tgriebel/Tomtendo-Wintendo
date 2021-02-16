@@ -599,6 +599,13 @@ struct apuDebug_t
 	TriangleChannel	triangle;
 	NoiseChannel	noise;
 	DmcChannel		dmc;
+	frameCounter_t	frameCounter;
+	uint32_t		halfClkTicks;
+	uint32_t		quarterClkTicks;
+	uint32_t		irqClkEvents;
+	cpuCycle_t		frameCounterTicks;
+	cpuCycle_t		cycle;
+	apuCycle_t		apuCycle;
 };
 
 
@@ -619,7 +626,7 @@ private:
 
 	apuStatus_t		regStatus;
 
-	uint32_t		frameSeqTick;
+	cpuCycle_t		frameSeqTick;
 	uint8_t			frameSeqStep;
 
 	bool			halfClk;
@@ -630,6 +637,9 @@ private:
 	apuCycle_t		dbgTargetCycle;
 	masterCycles_t	dbgSysStartCycle;
 	masterCycles_t	dbgSysTargetCycle;
+	uint32_t		dbgHalfClkTicks;
+	uint32_t		dbgQuarterClkTicks;
+	uint32_t		dbgIrqEvents;
 
 	uint32_t		apuTicks;
 
@@ -681,7 +691,11 @@ public:
 		quarterClk			= false;
 		irqClk				= false;
 
-		frameSeqTick		= 0;
+		dbgHalfClkTicks		= 0;
+		dbgQuarterClkTicks	= 0;
+		dbgIrqEvents		= 0;
+
+		frameSeqTick		= cpuCycle_t( 0 );
 		frameOutput			= nullptr;
 
 		for ( uint32_t i = 0; i < SoundBufferCnt; ++i )
