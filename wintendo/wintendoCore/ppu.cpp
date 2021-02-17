@@ -1170,14 +1170,14 @@ ppuCycle_t PPU::Exec()
 		BgPipelineFetch( cycleCount ); // Prefetch first two tiles on next scanline
 		BgPipelineDebugPrefetchFetchTiles();
 	}
-	else if ( cycleCount < 340 ) // [337 - 340], +4 cycles
+	else if ( cycleCount <= 339 ) // [337 - 339], +3 cycles
 	{
 		BgPipelineFetch( cycleCount );
 
 		// 2 unused fetches
 		execCycles++;
 	}
-	else if ( cycleCount <= 341 )
+	else if ( cycleCount <= 340 )
 	{
 		if( currentScanline == PRERENDER_SCANLINE )
 		{
