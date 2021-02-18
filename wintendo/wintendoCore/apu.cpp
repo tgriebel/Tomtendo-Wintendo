@@ -23,26 +23,30 @@ void APU::WriteReg( const uint16_t addr, const uint8_t value )
 {
 	switch( addr )
 	{
-		case 0x4000:	pulse1.regCtrl.byte				= value;	break;
-		case 0x4002:	pulse1.regTune.sem1.lower		= value;	break;
-		case 0x4004:	pulse2.regCtrl.byte				= value;	break;
-		case 0x4006:	pulse2.regTune.sem1.lower		= value;	break;
-		case 0x4008:	triangle.regLinear.byte			= value;	break;
-		case 0x400A:	triangle.regTimer.sem1.lower	= value;	break;
-		case 0x400C:	noise.regCtrl.byte				= value;	break;
-		case 0x4010:	dmc.regCtrl.byte				= value;	break;
-
+		case 0x4000: {
+			pulse1.regCtrl.byte = value;
+		} break;		
+		
 		case 0x4001:
 		{
 			pulse1.regRamp.byte = value;
 			pulse1.sweep.reloadFlag = true;
 		} break;
 
+		case 0x4002: {
+			pulse1.regTune.sem1.lower = value;
+		} break;
+
 		case 0x4003:
 		{
 			pulse1.regTune.sem1.upper = value;
+			pulse1.timer.sem0.counter = LengthLUT[ pulse1.regTune.sem0.counter ];
 			pulse1.sequenceStep = 0;
 			pulse1.envelope.startFlag = true;
+		} break;
+
+		case 0x4004: {
+			pulse2.regCtrl.byte = value;
 		} break;
 
 		case 0x4005:
@@ -51,11 +55,24 @@ void APU::WriteReg( const uint16_t addr, const uint8_t value )
 			pulse2.sweep.reloadFlag = true;
 		} break;
 
+		case 0x4006: {
+			pulse2.regTune.sem1.lower = value;
+		} break;
+
 		case 0x4007:
 		{
 			pulse2.regTune.sem1.upper = value;
+			pulse2.timer.sem0.counter = LengthLUT[ pulse2.regTune.sem0.counter ];
 			pulse2.sequenceStep = 0;
 			pulse2.envelope.startFlag = true;
+		} break;
+
+		case 0x4008: {
+			triangle.regLinear.byte = value;
+		} break;
+
+		case 0x400A: {
+			triangle.regTimer.sem1.lower = value;
 		} break;
 
 		case 0x400B:
@@ -63,6 +80,10 @@ void APU::WriteReg( const uint16_t addr, const uint8_t value )
 			triangle.regTimer.sem1.upper = value;
 			triangle.lengthCounter.Reload( LengthLUT[ triangle.regTimer.sem0.counter ] );
 			triangle.reloadFlag = true;
+		} break;
+
+		case 0x400C: {
+			noise.regCtrl.byte = value;
 		} break;
 
 		case 0x400E:
@@ -77,6 +98,10 @@ void APU::WriteReg( const uint16_t addr, const uint8_t value )
 			noise.envelope.decayLevel = 0x0F;
 			noise.regFreq2.byte = value;
 			noise.lengthCounter.Reload( LengthLUT[ noise.regFreq2.sem.length ] );
+		} break;
+
+		case 0x4010: {
+			dmc.regCtrl.byte = value;
 		} break;
 
 		case 0x4011:
@@ -127,9 +152,10 @@ void APU::WriteReg( const uint16_t addr, const uint8_t value )
 			if ( dmc.mute ) {
 				dmc.byteCnt = 0;
 			}
+
+			frameCounter.sem.interrupt = false;
 			// If the DMC bit is set, the DMC sample will be restarted only if its bytes remaining is 0.
 			// If there are bits remaining in the 1-byte sample buffer, these will finish playing before the next sample is fetched.
-
 			dmc.irq = false;
 
 		} break;
@@ -144,8 +170,7 @@ void APU::WriteReg( const uint16_t addr, const uint8_t value )
 			if( frameCounter.sem.mode )
 			{
 				// TODO: check correctness
-				quarterClk = true;
-				halfClk = true;
+				RunFrameClock( true, true, false );
 			}
 		} break;
 		default: break;
@@ -171,22 +196,17 @@ uint8_t APU::ReadReg( const uint16_t addr )
 	result.sem.p2 = ( pulse2.timer.sem0.counter > 0 );
 	result.sem.n = !noise.lengthCounter.IsZero();
 
-	irqClk = false;
-
 	return result.byte;
 }
 
 
-void APU::EnvelopeGenerater( envelope_t& envelope, const uint8_t volume, const bool loop, const bool constant )
+void APU::ClockEnvelope( envelope_t& envelope, const uint8_t volume, const bool loop, const bool constant )
 {
 	if ( system->config.apu.disableEnvelope )
 	{
 		envelope.output = volume;
 		return;
 	}
-
-	if( !quarterClk )
-		return;
 
 	if( envelope.startFlag )
 	{
@@ -207,7 +227,7 @@ void APU::EnvelopeGenerater( envelope_t& envelope, const uint8_t volume, const b
 	}
 
 	assert( envelope.divCounter <= 0x10 );
-	//assert( envelope.decayLevel <= 0x0F );
+	assert( envelope.decayLevel <= 0x0F );
 
 	if ( constant ) {
 		envelope.output = volume;
@@ -218,11 +238,8 @@ void APU::EnvelopeGenerater( envelope_t& envelope, const uint8_t volume, const b
 }
 
 
-void APU::PulseSweep( PulseChannel& pulse )
+void APU::ClockSweep( PulseChannel& pulse )
 {
-	if ( !halfClk )
-		return;
-
 	pulse.period.Reload( pulse.regTune.sem0.timer );
 
 	if ( system->config.apu.disableSweep ) {
@@ -279,92 +296,39 @@ bool APU::IsDutyHigh( const PulseChannel& pulse )
 
 void APU::PulseSequencer( PulseChannel& pulse )
 {
-	const uint32_t sampleCnt = static_cast<uint32_t>( ( apuCycle - pulse.lastApuCycle ).count() );
-	const uint32_t cpuSampleCnt = static_cast<uint32_t>( ( cpuCycle - pulse.lastCycle ).count() );
-	float volume = pulse.envelope.output;
-
-	float pulseSample = pulse.envelope.output;
-
-	if ( ( pulse.timer.sem0.counter == 0 ) ||
-		( pulse.period.Value() < 8 ) ||
-		pulse.mute ||
-		!IsDutyHigh( pulse ) /*|| pulse.sweep.mute*/ )
-	{
-		pulseSample = 0;
-	}
-
-	for ( uint32_t sample = 0; sample < cpuSampleCnt; sample++ ) {
-		pulse.samples.Enque( pulseSample );
-	}
-
-	pulse.lastCycle = cpuCycle;
-	pulse.lastApuCycle = apuCycle;
-	pulse.sequenceStep = ( pulse.sequenceStep + 1 ) & 0x0F;
 }
 
 
 void APU::ExecPulseChannel( PulseChannel& pulse )
 {
-//	PulseSweep( pulse );
-//	EnvelopeGenerater( pulse.envelope, pulse.regCtrl.sem.volume, pulse.regCtrl.sem.counterHalt, pulse.regCtrl.sem.isConstant );
-
 	pulse.timer.sem0.timer--;
-	if ( halfClk && !pulse.regCtrl.sem.counterHalt ) {
-		pulse.timer.sem0.counter--;
-	}
-	
 	if ( pulse.timer.sem0.timer == 0 )
 	{
 		pulse.timer.sem0.timer = pulse.period.Value() + 1;
-		PulseSequencer( pulse );
+		pulse.sequenceStep = ( pulse.sequenceStep + 1 ) & 0x0F;
 	}
+
+	float pulseSample = pulse.envelope.output;
+	if ( ( pulse.timer.sem0.counter == 0 ) ||
+		( pulse.period.Value() < 8 ) ||
+		pulse.mute ||
+		!IsDutyHigh( pulse ) || pulse.sweep.mute )
+	{
+		pulseSample = 0;
+	}
+
+	pulse.samples.Enque( pulseSample );
+	pulse.samples.Enque( pulseSample );
 }
 
 
 void APU::TriSequencer()
 {
-	const uint32_t sampleCnt = static_cast<uint32_t>( ( cpuCycle - triangle.lastCycle ).count() );
-
-	bool isSeqHalted = false;
-	isSeqHalted |= triangle.lengthCounter.IsZero();
-	isSeqHalted |= triangle.linearCounter.IsZero();
-
-	float volume = TriLUT[ triangle.sequenceStep ];
-	if ( triangle.mute ) {
-		volume = 0;
-	}
-
-	for ( uint32_t sample = 0; sample < sampleCnt; sample++ ) {
-		triangle.samples.Enque( volume );
-	}
-
-	triangle.lastCycle = cpuCycle;
-
-	if( !isSeqHalted ) {
-		triangle.sequenceStep = ( triangle.sequenceStep + 1 ) % 32;
-	}
 }
 
 
 void APU::ExecChannelTri()
 {
-	if( quarterClk )
-	{
-		if( triangle.reloadFlag ) {
-			triangle.linearCounter.Reload( triangle.regLinear.sem.counterLoad );
-		} else if ( !triangle.linearCounter.IsZero() ) {
-			triangle.linearCounter.Dec();
-		}
-
-		if ( !triangle.lengthCounter.IsZero() && !triangle.regLinear.sem.counterHalt ) {
-			triangle.lengthCounter.Dec();
-		}
-
-		if( !triangle.regLinear.sem.counterHalt ) {
-			triangle.reloadFlag = false;
-		}
-	}
-
 	if( triangle.regLinear.sem.counterHalt ) {
 		triangle.lengthCounter.Reload();
 	}
@@ -372,34 +336,28 @@ void APU::ExecChannelTri()
 	triangle.timer.Dec();
 	if ( triangle.timer.IsZero() )
 	{
-		TriSequencer();
+		bool isSeqHalted = false;
+		isSeqHalted |= triangle.lengthCounter.IsZero();
+		isSeqHalted |= triangle.linearCounter.IsZero();
+
+		if ( !isSeqHalted ) {
+			triangle.sequenceStep = ( triangle.sequenceStep + 1 ) % 32;
+		}
 		triangle.timer.Reload( 1 + triangle.regTimer.sem0.timer );
 	}
+
+	float volume = TriLUT[ triangle.sequenceStep ];
+	if ( triangle.mute ) {
+		volume = 0;
+	}
+
+	triangle.samples.Enque( volume );
 }
 
 
 void APU::NoiseGenerator()
 {
-	const uint16_t shiftValue = noise.shift.Value();
-	const uint16_t bitShift	= noise.regFreq1.sem.mode ? 6 : 1;
-	const uint16_t feedback = ( shiftValue ^ ( shiftValue >> bitShift ) )& BIT_MASK( 0 );
-	const uint16_t newShift	= ( ( shiftValue >> 1 ) & ~BIT_MASK( 14 ) ) | ( feedback << 14 );
 
-	noise.shift.Reload( newShift );
-
-	uint8_t volume = noise.envelope.output;
-	if ( noise.lengthCounter.IsZero() || ( noise.shift.Value() & BIT_MASK( 0 ) ) || noise.mute ) {
-		volume = 0;
-	}
-
-	const uint32_t sampleCnt = static_cast<uint32_t>( ( apuCycle - noise.lastApuCycle ).count() );
-	const uint32_t cpuSampleCnt = static_cast<uint32_t>( ( cpuCycle - noise.lastCycle ).count() );
-	for ( uint32_t sample = 0; sample < cpuSampleCnt; sample++ ) {
-		noise.samples.Enque( volume );
-	}
-
-	noise.lastApuCycle = apuCycle;
-	noise.lastCycle = cpuCycle;
 }
 
 
@@ -408,9 +366,22 @@ void APU::ExecChannelNoise()
 	noise.timer.Dec();
 	if ( noise.timer.IsZero() )
 	{
-		NoiseGenerator();
+		const uint16_t shiftValue = noise.shift.Value();
+		const uint16_t bitShift = noise.regFreq1.sem.mode ? 6 : 1;
+		const uint16_t feedback = ( shiftValue ^ ( shiftValue >> bitShift ) ) & BIT_MASK( 0 );
+		const uint16_t newShift = ( ( shiftValue >> 1 ) & ~BIT_MASK( 14 ) ) | ( feedback << 14 );
+
+		noise.shift.Reload( newShift );
 		noise.timer.Reload( NoiseLUT[NTSC][ noise.regFreq1.sem.period ] );
 	}
+
+	uint8_t volume = noise.envelope.output;
+	if ( noise.lengthCounter.IsZero() || ( noise.shift.Value() & BIT_MASK( 0 ) ) || noise.mute ) {
+		volume = 0;
+	}
+
+	noise.samples.Enque( volume );
+	noise.samples.Enque( volume );
 }
 
 
@@ -512,22 +483,20 @@ void APU::ExecChannelDMC()
 
 void APU::ExecFrameCounter()
 {
-	halfClk		= false;
-	quarterClk	= false;
-	irqClk		= false; // TODO: check accuracy
-
 	const uint32_t mode = frameCounter.sem.mode;
 	frameSeqEvent_t& event = FrameSeqEvents[ frameSeqStep ][ mode ];
 	if( frameSeqTick.count() == event.cycle )
 	{
-		halfClk		= event.clkHalf;
-		quarterClk	= event.clkQuarter;
-		irqClk		= ( event.irq && !frameCounter.sem.interrupt );
+		const bool halfClk		= event.clkHalf;
+		const bool quarterClk	= event.clkQuarter;
+		const bool irqClk		= ( event.irq && !frameCounter.sem.interrupt );
 		++frameSeqStep;
 
 		dbgHalfClkTicks		+= halfClk ?	1: 0;
 		dbgQuarterClkTicks	+= quarterClk ?	1: 0;
 		dbgIrqEvents		+= irqClk ?		1: 0;
+
+		RunFrameClock( halfClk, quarterClk, irqClk );
 	}
 
 	const uint64_t lastCycle = FrameSeqEvents[ FrameSeqEventCnt - 1 ][ mode ].cycle;
@@ -535,6 +504,57 @@ void APU::ExecFrameCounter()
 	{
 		frameSeqStep = 0;
 		frameSeqTick = cpuCycle_t( 0 );
+	}
+}
+
+
+void APU::RunFrameClock( const bool halfClk, const bool quarterClk, const bool irq )
+{
+	if ( halfClk )
+	{
+		ClockSweep( pulse1 );
+		ClockSweep( pulse2 );
+
+		if ( pulse1.timer.sem0.counter != 0 && !pulse1.regCtrl.sem.counterHalt ) {
+			pulse1.timer.sem0.counter--;
+		}
+
+		if ( pulse2.timer.sem0.counter != 0 && !pulse2.regCtrl.sem.counterHalt ) {
+			pulse2.timer.sem0.counter--;
+		}
+
+		if ( !noise.lengthCounter.IsZero() && !noise.regCtrl.sem.counterHalt ) {
+			noise.lengthCounter.Dec();
+		}
+	}
+
+	if ( quarterClk )
+	{
+		// TODO: clock all length counters?
+		const noiseCtrl_t& noiseCtrl = noise.regCtrl;
+		ClockEnvelope( pulse1.envelope, pulse1.regCtrl.sem.volume, pulse1.regCtrl.sem.counterHalt, pulse1.regCtrl.sem.isConstant );
+		ClockEnvelope( pulse2.envelope, pulse2.regCtrl.sem.volume, pulse2.regCtrl.sem.counterHalt, pulse2.regCtrl.sem.isConstant );
+		ClockEnvelope( noise.envelope, noiseCtrl.sem.volume, noiseCtrl.sem.counterHalt, noiseCtrl.sem.isConstant );
+
+		if ( triangle.reloadFlag ) {
+			triangle.linearCounter.Reload( triangle.regLinear.sem.counterLoad );
+			triangle.reloadFlag = false;
+		}
+		else if ( !triangle.linearCounter.IsZero() && !triangle.regLinear.sem.counterHalt ) {
+			triangle.linearCounter.Dec();
+		}
+
+		if ( !triangle.lengthCounter.IsZero() && !triangle.regLinear.sem.counterHalt ) {
+		//	triangle.lengthCounter.Dec();
+		}
+
+		if ( !triangle.regLinear.sem.counterHalt ) {
+		//	triangle.reloadFlag = false;
+		}
+	}
+
+	if ( irq ) {
+		//	system->RequestIRQ();
 	}
 }
 
@@ -552,37 +572,20 @@ bool APU::Step( const cpuCycle_t& nextCpuCycle )
 	{
 		ExecFrameCounter();
 		ExecChannelTri();
-		// TODO: move
+
+		//apuCycle = chrono::duration_cast<apuCycle_t>( cpuCycle );
+		if ( ( cpuCycle.count() % 2 ) == 0 )
 		{
-			const noiseCtrl_t& ctrl = noise.regCtrl;
-			PulseSweep( pulse1 );
-			PulseSweep( pulse2 );
-			EnvelopeGenerater( pulse1.envelope, pulse1.regCtrl.sem.volume, pulse1.regCtrl.sem.counterHalt, pulse1.regCtrl.sem.isConstant );
-			EnvelopeGenerater( pulse2.envelope, pulse2.regCtrl.sem.volume, pulse2.regCtrl.sem.counterHalt, pulse2.regCtrl.sem.isConstant );		
-			EnvelopeGenerater( noise.envelope, ctrl.sem.volume, ctrl.sem.counterHalt, ctrl.sem.isConstant );
-			if ( quarterClk ) {
-				if ( !noise.lengthCounter.IsZero() && !ctrl.sem.counterHalt ) {
-					noise.lengthCounter.Dec();
-				}
-			}
-		}
-		if( irqClk ) {
-		//	system->RequestIRQ();
+			ExecPulseChannel( pulse1 );
+			ExecPulseChannel( pulse2 );
+			ExecChannelNoise();
+			ExecChannelDMC();
 		}
 
 		++cpuCycle;
 		++frameSeqTick;
 	}
-
-	while ( apuCycle < nextApuCycle )
-	{
-		ExecPulseChannel( pulse1 );
-		ExecPulseChannel( pulse2 );
-		ExecChannelNoise();
-		ExecChannelDMC();
-		++apuTicks;
-		++apuCycle;
-	}
+	apuCycle = chrono::duration_cast<apuCycle_t>( cpuCycle );
 
 	return true;
 }
@@ -648,7 +651,6 @@ bool APU::AllChannelHaveSamples()
 
 void APU::Begin()
 {
-	apuTicks = 0;
 }
 
 

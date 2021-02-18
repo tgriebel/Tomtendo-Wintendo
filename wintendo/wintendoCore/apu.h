@@ -628,10 +628,7 @@ private:
 
 	cpuCycle_t		frameSeqTick;
 	uint8_t			frameSeqStep;
-
-	bool			halfClk;
-	bool			quarterClk;
-	bool			irqClk;
+	uint8_t			frameSeq;
 
 	apuCycle_t		dbgStartCycle;
 	apuCycle_t		dbgTargetCycle;
@@ -640,8 +637,6 @@ private:
 	uint32_t		dbgHalfClkTicks;
 	uint32_t		dbgQuarterClkTicks;
 	uint32_t		dbgIrqEvents;
-
-	uint32_t		apuTicks;
 
 	cpuCycle_t		cpuCycle;
 	apuCycle_t		apuCycle;
@@ -687,10 +682,6 @@ public:
 
 		regStatus.byte		= 0x00;
 
-		halfClk				= false;
-		quarterClk			= false;
-		irqClk				= false;
-
 		dbgHalfClkTicks		= 0;
 		dbgQuarterClkTicks	= 0;
 		dbgIrqEvents		= 0;
@@ -731,15 +722,13 @@ private:
 	void	ExecChannelNoise();
 	void	ExecChannelDMC();
 	void	ExecFrameCounter();
-	void	EnvelopeGenerater( envelope_t& envelope, const uint8_t volume, const bool loop, const bool constant );
+	void	ClockEnvelope( envelope_t& envelope, const uint8_t volume, const bool loop, const bool constant );
 	bool	IsDutyHigh( const PulseChannel& pulse );
-	void	PulseSweep( PulseChannel& pulse );
-	void	PulseSequencer( PulseChannel& pulse );
+	void	ClockSweep( PulseChannel& pulse );
+	void	RunFrameClock( const bool halfClk, const bool quarterClk, const bool irq );
 	void	InitMixerLUT();
 	float	PulseMixer( const uint32_t pulse1, const uint32_t pulse2 );
 	float	TndMixer( const uint32_t triangle, const uint32_t noise, const uint32_t dmc );
-	void	TriSequencer();
-	void	NoiseGenerator();
 	void	DmcGenerator();
 	bool	AllChannelHaveSamples();
 };

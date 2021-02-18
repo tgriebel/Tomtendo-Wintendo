@@ -165,7 +165,6 @@ void APU::Serialize( Serializer& serializer, const serializeMode_t mode )
 
 	serializer.Next32b( frameSeqTick,		mode );
 	serializer.Next8b( frameSeqStep,		mode );
-	serializer.Next32b( apuTicks,			mode );
 */
 }
 
