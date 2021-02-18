@@ -193,9 +193,9 @@ void TriangleChannel::Serialize( Serializer& serializer, const serializeMode_t m
 	serializer.Next16b( regTimer.byte2x,	mode );
 	serializer.NextBool( reloadFlag,		mode );
 	serializer.NextBool( mute,				mode );
+	serializer.Next8b( lengthCounter,		mode );
 
 	SerializeBitCounter( serializer, mode, linearCounter );
-	SerializeBitCounter( serializer, mode, lengthCounter );
 	SerializeBitCounter( serializer, mode, timer );	
 	SerializeCycle( serializer, mode, lastCycle );
 }
@@ -207,10 +207,10 @@ void NoiseChannel::Serialize( Serializer& serializer, const serializeMode_t mode
 	serializer.Next8b( regFreq1.byte, mode );
 	serializer.Next8b( regFreq2.byte, mode );
 	serializer.NextBool( mute, mode );
+	serializer.Next8b( lengthCounter, mode );
 	
 	SerializeBitCounter( serializer, mode, shift );
 	SerializeBitCounter( serializer, mode, timer );
-	SerializeBitCounter( serializer, mode, lengthCounter );
 	SerializeEnvelope( serializer, mode, envelope );
 	SerializeCycle( serializer, mode, lastCycle );
 }

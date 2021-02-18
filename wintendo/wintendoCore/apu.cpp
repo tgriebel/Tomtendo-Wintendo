@@ -40,7 +40,7 @@ void APU::WriteReg( const uint16_t addr, const uint8_t value )
 		case 0x4003:
 		{
 			pulse1.regTune.sem1.upper = value;
-			pulse1.timer.sem0.counter = LengthLUT[ pulse1.regTune.sem0.counter ];
+			pulse1.lengthCounter = LengthLUT[ pulse1.regTune.sem0.counter ];
 			pulse1.sequenceStep = 0;
 			pulse1.envelope.startFlag = true;
 		} break;
@@ -62,7 +62,7 @@ void APU::WriteReg( const uint16_t addr, const uint8_t value )
 		case 0x4007:
 		{
 			pulse2.regTune.sem1.upper = value;
-			pulse2.timer.sem0.counter = LengthLUT[ pulse2.regTune.sem0.counter ];
+			pulse2.lengthCounter = LengthLUT[ pulse2.regTune.sem0.counter ];
 			pulse2.sequenceStep = 0;
 			pulse2.envelope.startFlag = true;
 		} break;
@@ -78,7 +78,7 @@ void APU::WriteReg( const uint16_t addr, const uint8_t value )
 		case 0x400B:
 		{
 			triangle.regTimer.sem1.upper = value;
-			triangle.lengthCounter.Reload( LengthLUT[ triangle.regTimer.sem0.counter ] );
+			triangle.lengthCounter = LengthLUT[ triangle.regTimer.sem0.counter ];
 			triangle.reloadFlag = true;
 		} break;
 
@@ -97,7 +97,7 @@ void APU::WriteReg( const uint16_t addr, const uint8_t value )
 			noise.envelope.startFlag = true;
 			noise.envelope.decayLevel = 0x0F;
 			noise.regFreq2.byte = value;
-			noise.lengthCounter.Reload( LengthLUT[ noise.regFreq2.sem.length ] );
+			noise.lengthCounter = LengthLUT[ noise.regFreq2.sem.length ];
 		} break;
 
 		case 0x4010: {
@@ -134,19 +134,19 @@ void APU::WriteReg( const uint16_t addr, const uint8_t value )
 			dmc.mute		= !regStatus.sem.d;
 
 			if ( pulse1.mute ) {
-				pulse1.timer.sem0.counter = 0;
+				pulse1.lengthCounter = 0;
 			}
 
 			if ( pulse2.mute ) {
-				pulse2.timer.sem0.counter = 0;
+				pulse2.lengthCounter = 0;
 			}
 
 			if( triangle.mute ) {
-				triangle.lengthCounter.Reload();
+				triangle.lengthCounter = 0;
 			}
 
 			if ( noise.mute ) {
-				noise.lengthCounter.Reload();
+				noise.lengthCounter = 0;
 			}
 			
 			if ( dmc.mute ) {
@@ -192,9 +192,10 @@ uint8_t APU::ReadReg( const uint16_t addr )
 	//	If an interrupt flag was set at the same moment of the read, it will read back as 1 but it will not be cleared.
 
 	apuStatus_t result;
-	result.sem.p1 = ( pulse1.timer.sem0.counter > 0 );
-	result.sem.p2 = ( pulse2.timer.sem0.counter > 0 );
-	result.sem.n = !noise.lengthCounter.IsZero();
+	result.sem.p1 = ( pulse1.lengthCounter > 0 );
+	result.sem.p2 = ( pulse2.lengthCounter > 0 );
+	result.sem.n = ( noise.lengthCounter > 0 );
+	result.sem.t = ( triangle.lengthCounter > 0 );
 
 	return result.byte;
 }
@@ -304,7 +305,7 @@ void APU::ExecPulseChannel( PulseChannel& pulse )
 	}
 
 	float pulseSample = pulse.envelope.output;
-	if ( ( pulse.timer.sem0.counter == 0 ) ||
+	if ( ( pulse.lengthCounter == 0 ) ||
 		( pulse.period.Value() < 8 ) ||
 		pulse.mute ||
 		!IsDutyHigh( pulse ) || pulse.sweep.mute )
@@ -320,14 +321,14 @@ void APU::ExecPulseChannel( PulseChannel& pulse )
 void APU::ExecChannelTri()
 {
 	if( triangle.regLinear.sem.counterHalt ) {
-		triangle.lengthCounter.Reload();
+		triangle.lengthCounter = 0;
 	}
 
 	triangle.timer.Dec();
 	if ( triangle.timer.IsZero() )
 	{
 		bool isSeqHalted = false;
-		isSeqHalted |= triangle.lengthCounter.IsZero();
+		isSeqHalted |= ( triangle.lengthCounter == 0 );
 		isSeqHalted |= triangle.linearCounter.IsZero();
 
 		if ( !isSeqHalted ) {
@@ -360,7 +361,7 @@ void APU::ExecChannelNoise()
 	}
 
 	uint8_t volume = noise.envelope.output;
-	if ( noise.lengthCounter.IsZero() || ( noise.shift.Value() & BIT_MASK( 0 ) ) || noise.mute ) {
+	if ( ( noise.lengthCounter == 0 ) || ( noise.shift.Value() & BIT_MASK( 0 ) ) || noise.mute ) {
 		volume = 0;
 	}
 
@@ -499,22 +500,21 @@ void APU::RunFrameClock( const bool halfClk, const bool quarterClk, const bool i
 		ClockSweep( pulse1 );
 		ClockSweep( pulse2 );
 
-		if ( pulse1.timer.sem0.counter != 0 && !pulse1.regCtrl.sem.counterHalt ) {
-			pulse1.timer.sem0.counter--;
+		if ( ( pulse1.lengthCounter != 0 ) && !pulse1.regCtrl.sem.counterHalt ) {
+			pulse1.lengthCounter--;
 		}
 
-		if ( pulse2.timer.sem0.counter != 0 && !pulse2.regCtrl.sem.counterHalt ) {
-			pulse2.timer.sem0.counter--;
+		if ( ( pulse2.lengthCounter != 0 ) && !pulse2.regCtrl.sem.counterHalt ) {
+			pulse2.lengthCounter--;
 		}
 
-		if ( !noise.lengthCounter.IsZero() && !noise.regCtrl.sem.counterHalt ) {
-			noise.lengthCounter.Dec();
+		if ( ( noise.lengthCounter != 0 ) && !noise.regCtrl.sem.counterHalt ) {
+			noise.lengthCounter--;
 		}
 	}
 
 	if ( quarterClk )
 	{
-		// TODO: clock all length counters?
 		const noiseCtrl_t& noiseCtrl = noise.regCtrl;
 		ClockEnvelope( pulse1.envelope, pulse1.regCtrl.sem.volume, pulse1.regCtrl.sem.counterHalt, pulse1.regCtrl.sem.isConstant );
 		ClockEnvelope( pulse2.envelope, pulse2.regCtrl.sem.volume, pulse2.regCtrl.sem.counterHalt, pulse2.regCtrl.sem.isConstant );
@@ -528,12 +528,12 @@ void APU::RunFrameClock( const bool halfClk, const bool quarterClk, const bool i
 			triangle.linearCounter.Dec();
 		}
 
-		if ( !triangle.lengthCounter.IsZero() && !triangle.regLinear.sem.counterHalt ) {
-		//	triangle.lengthCounter.Dec();
+		if ( ( triangle.lengthCounter != 0 ) && !triangle.regLinear.sem.counterHalt ) {
+			triangle.lengthCounter--;
 		}
 
 		if ( !triangle.regLinear.sem.counterHalt ) {
-		//	triangle.reloadFlag = false;
+			triangle.reloadFlag = false;
 		}
 	}
 

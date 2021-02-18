@@ -348,6 +348,7 @@ public:
 	timerCtrl_t			regTune;
 	timerCtrl_t			timer;
 	BitCounter<11>		period;
+	uint8_t				lengthCounter;
 	cpuCycle_t			lastCycle;
 	apuCycle_t			lastApuCycle;
 	uint8_t				sequenceStep;
@@ -393,7 +394,7 @@ public:
 	timerCtrl_t			regTimer;
 	bool				reloadFlag;
 	BitCounter<7>		linearCounter;
-	BitCounter<7>		lengthCounter;
+	uint8_t				lengthCounter;
 	BitCounter<11>		timer;
 	uint8_t				sequenceStep;
 	cpuCycle_t			lastCycle;
@@ -409,7 +410,7 @@ public:
 		lastCycle		= cpuCycle_t( 0 );
 
 		linearCounter.Reload();
-		lengthCounter.Reload();
+		lengthCounter = 0;
 		timer.Reload();
 		samples.Reset();
 
@@ -429,7 +430,7 @@ public:
 	BitCounter<15>		shift;
 	envelope_t			envelope;
 	BitCounter<12>		timer; // TODO: how many bits?
-	BitCounter<7>		lengthCounter; // TODO: how many bits?
+	uint8_t				lengthCounter;
 	wtSampleQueue		samples;
 	apuCycle_t			lastApuCycle;
 	cpuCycle_t			lastCycle;
@@ -446,7 +447,7 @@ public:
 		envelope.divCounter = 1;
 		envelope.startFlag = false;
 		timer.Reload();
-		lengthCounter.Reload();
+		lengthCounter = 0;
 		samples.Reset();
 		lastApuCycle = apuCycle_t( 0 );
 		lastCycle = cpuCycle_t( 0 );
@@ -560,7 +561,7 @@ static const uint8_t TriLUT[32] =
 };
 
 
-static const uint16_t LengthLUT[] =
+static const uint8_t LengthLUT[] =
 {
 	10, 254, 20, 2, 40, 4, 80, 6, 160, 8, 60, 10, 14, 12, 26, 14,
 	12, 16, 24, 18, 48, 20, 96, 22, 192, 24, 72, 26, 16, 28, 32, 30,

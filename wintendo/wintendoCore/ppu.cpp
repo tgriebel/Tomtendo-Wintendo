@@ -983,7 +983,7 @@ void PPU::Render()
 		pixelColor.rgba = palette[ colorIx ];
 		{
 			// Debugging features
-			const float scanlineValue = currentScanline / 341.0;
+			const float scanlineValue = currentScanline / 341.0f;
 			const float pixelValue = ( imageIx / 61440.0f );
 			//pixelColor.rgba.red = static_cast<uint8_t>( 255.0f * scanlineValue );
 			//pixelColor.rgba.blue = static_cast<uint8_t>( 255.0f * scanlineValue );
