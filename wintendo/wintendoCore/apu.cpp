@@ -294,11 +294,6 @@ bool APU::IsDutyHigh( const PulseChannel& pulse )
 }
 
 
-void APU::PulseSequencer( PulseChannel& pulse )
-{
-}
-
-
 void APU::ExecPulseChannel( PulseChannel& pulse )
 {
 	pulse.timer.sem0.timer--;
@@ -319,11 +314,6 @@ void APU::ExecPulseChannel( PulseChannel& pulse )
 
 	pulse.samples.Enque( pulseSample );
 	pulse.samples.Enque( pulseSample );
-}
-
-
-void APU::TriSequencer()
-{
 }
 
 
@@ -352,12 +342,6 @@ void APU::ExecChannelTri()
 	}
 
 	triangle.samples.Enque( volume );
-}
-
-
-void APU::NoiseGenerator()
-{
-
 }
 
 
