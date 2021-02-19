@@ -35,12 +35,14 @@ void APU::WriteReg( const uint16_t addr, const uint8_t value )
 
 		case 0x4002: {
 			pulse1.regTune.sem1.lower = value;
+			pulse1.period.Reload( pulse1.regTune.sem0.timer );
 		} break;
 
 		case 0x4003:
 		{
 			pulse1.regTune.sem1.upper = value;
 			pulse1.lengthCounter = LengthLUT[ pulse1.regTune.sem0.counter ];
+			pulse1.period.Reload( pulse1.regTune.sem0.timer );
 			pulse1.sequenceStep = 0;
 			pulse1.envelope.startFlag = true;
 		} break;
@@ -57,12 +59,14 @@ void APU::WriteReg( const uint16_t addr, const uint8_t value )
 
 		case 0x4006: {
 			pulse2.regTune.sem1.lower = value;
+			pulse2.periodTimer.Reload( pulse2.regTune.sem0.timer );
 		} break;
 
 		case 0x4007:
 		{
 			pulse2.regTune.sem1.upper = value;
 			pulse2.lengthCounter = LengthLUT[ pulse2.regTune.sem0.counter ];
+			pulse2.periodTimer.Reload( pulse2.regTune.sem0.timer );
 			pulse2.sequenceStep = 0;
 			pulse2.envelope.startFlag = true;
 		} break;
@@ -241,12 +245,11 @@ void APU::ClockEnvelope( envelope_t& envelope, const uint8_t volume, const bool 
 
 void APU::ClockSweep( PulseChannel& pulse )
 {
-	pulse.period.Reload( pulse.regTune.sem0.timer );
-
-	if ( system->config.apu.disableSweep ) {
+	if ( system->config.apu.disableSweep || !pulse.regRamp.sem.enabled ) { // TODO: avoid checking enable here since more matters?
+		pulse.period.Reload( pulse.regTune.sem0.timer );
 		return;
 	}
-
+	
 	const bool		enabled	= pulse.regRamp.sem.enabled;
 	const bool		negate	= pulse.regRamp.sem.negate;
 	const uint8_t	period	= pulse.regRamp.sem.period;
@@ -272,17 +275,18 @@ void APU::ClockSweep( PulseChannel& pulse )
 			change = ( pulse.channelNum == PULSE_1 ) ? ( -change - 1 ) : -change;
 		}
 		
-		targetPeriod += ( change <= 0 ) ? 0 : change;
+		if( ( (int32_t)targetPeriod + change ) >= 0 )
+			targetPeriod += change;
 	}
 
-	if ( reload ) {
+	if ( reload )
+	{
 		sweep.divider.Reload( period + 1 );
 		reload = false;
 	}
 
 	// Check for carry-bit
 	sweep.mute = ( targetPeriod > 0x07FF );
-
 	if( !sweep.mute ) {
 		pulse.period.Reload( targetPeriod );
 	}
@@ -297,10 +301,10 @@ bool APU::IsDutyHigh( const PulseChannel& pulse )
 
 void APU::ExecPulseChannel( PulseChannel& pulse )
 {
-	pulse.timer.sem0.timer--;
-	if ( pulse.timer.sem0.timer == 0 )
+	pulse.periodTimer.Dec();
+	if ( pulse.periodTimer.IsZero() )
 	{
-		pulse.timer.sem0.timer = pulse.period.Value() + 1;
+		pulse.periodTimer.Reload( pulse.period.Value() + 1 );
 		pulse.sequenceStep = ( pulse.sequenceStep + 1 ) & 0x0F;
 	}
 

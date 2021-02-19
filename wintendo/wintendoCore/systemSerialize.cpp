@@ -174,7 +174,6 @@ void PulseChannel::Serialize( Serializer& serializer, const serializeMode_t mode
 	serializer.Next8b( regCtrl.byte, mode );
 	serializer.Next16b( regTune.byte2x, mode );
 	serializer.Next8b( regRamp.byte, mode );
-	serializer.Next16b( timer.byte2x, mode );
 	serializer.Next32b( volume, mode );
 	serializer.Next8b( sequenceStep, mode );
 	serializer.NextBool( mute, mode );
@@ -182,6 +181,7 @@ void PulseChannel::Serialize( Serializer& serializer, const serializeMode_t mode
 	SerializeEnvelope( serializer, mode, envelope );
 	SerializeSweep( serializer, mode, sweep );
 	SerializeBitCounter( serializer, mode, period );
+	SerializeBitCounter( serializer, mode, periodTimer );
 	SerializeCycle( serializer, mode, lastCycle );
 }
 

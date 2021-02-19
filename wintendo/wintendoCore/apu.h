@@ -346,8 +346,8 @@ public:
 	pulseCtrl_t			regCtrl;
 	pulseRamp_t			regRamp;
 	timerCtrl_t			regTune;
-	timerCtrl_t			timer;
-	BitCounter<11>		period;
+	BitCounter<12>		periodTimer;
+	BitCounter<12>		period;
 	uint8_t				lengthCounter;
 	cpuCycle_t			lastCycle;
 	apuCycle_t			lastApuCycle;
@@ -365,17 +365,17 @@ public:
 		regCtrl.byte			= 0;
 		regRamp.byte			= 0;
 		regTune.byte2x			= 0;
-		timer.byte2x			= 0;
 
 		sequenceStep			= 0;
 		volume					= 0;
+		lengthCounter			= 0;
 
 		mute					= true;
 		sweep.reloadFlag		= true;
 		sweep.mute				= false;
 		
-		sweep.divider.Reload();
-		period.Reload();		
+		sweep.divider.Reload( 1 );
+		period.Reload( 1 );
 		samples.Reset();
 
 		memset( &envelope, 0, sizeof( envelope ) );
