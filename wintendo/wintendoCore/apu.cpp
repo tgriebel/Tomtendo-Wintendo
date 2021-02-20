@@ -106,6 +106,7 @@ void APU::WriteReg( const uint16_t addr, const uint8_t value )
 
 		case 0x4010: {
 			dmc.regCtrl.byte = value;
+			dmc.period = DmcLUT[ NTSC ][ dmc.regCtrl.sem.freq ];
 		} break;
 
 		case 0x4011:
@@ -232,7 +233,7 @@ void APU::ClockEnvelope( envelope_t& envelope, const uint8_t volume, const bool 
 	}
 
 	assert( envelope.divCounter <= 0x10 );
-	assert( envelope.decayLevel <= 0x0F );
+//	assert( envelope.decayLevel <= 0x0F );
 
 	if ( constant ) {
 		envelope.output = volume;
@@ -406,7 +407,7 @@ void APU::ExecChannelDMC()
 	// If the bit is 1, add 2; otherwise, subtract 2. But if adding or subtracting 2 would cause the
 	// output level to leave the 0-127 range, leave the output level unchanged. This means subtract 2
 	// only if the current level is at least 2, or add 2 only if the current level is at most 125.
-	if( dmc.silenceFlag )
+	if( !dmc.silenceFlag )
 	{
 		if( dmc.shiftReg & 0x01  )
 		{
@@ -444,17 +445,15 @@ void APU::ExecChannelDMC()
 		if( dmc.regCtrl.sem.loop )
 		{
 			// TODO: Restart
+		
 		}
 		else if( dmc.regCtrl.sem.irqEnable ) {
 			system->RequestIRQ(); // TODO: is this right?
 		}
 
-		if ( dmc.emptyBuffer )
-		{
+		if ( dmc.emptyBuffer ) {
 			dmc.silenceFlag = true;
-		}
-		else
-		{
+		} else {
 			dmc.silenceFlag = false;
 			dmc.shiftReg = dmc.sampleBuffer;
 			dmc.emptyBuffer = true;
@@ -463,8 +462,9 @@ void APU::ExecChannelDMC()
 	}
 
 	float volume = 0.0f;
-	const uint16_t dmcPeriod = DmcLUT[ NTSC] [ dmc.regCtrl.sem.freq ];
-	if( cpuCycle.count() % dmcPeriod ) {		
+	--dmc.periodCounter;
+	if( dmc.periodCounter == 0 ) {
+		dmc.periodCounter = dmc.period;
 		if ( !dmc.silenceFlag ) {
 			volume = dmc.outputLevel.Value();
 		}
@@ -674,11 +674,11 @@ void APU::End()
 
 		assert( pulseMixed < 0.3f );
 
-		soundOutput->dbgPulse1.Write( pulse1Sample );
-		soundOutput->dbgPulse2.Write( pulse2Sample );
-		soundOutput->dbgTri.Write( triSample );
-		soundOutput->dbgNoise.Write( noiseSample );
-		soundOutput->dbgDmc.Write( dmcSample );
+		soundOutput->dbgPulse1.EnqueFIFO( pulse1Sample );
+		soundOutput->dbgPulse2.EnqueFIFO( pulse2Sample );
+		soundOutput->dbgTri.EnqueFIFO( triSample );
+		soundOutput->dbgNoise.EnqueFIFO( noiseSample );
+		soundOutput->dbgDmc.EnqueFIFO( dmcSample );
 		soundOutput->master.Enque( floor( 32767.0f * mixedSample ) );
 	}
 
@@ -690,9 +690,4 @@ void APU::End()
 	soundOutput = &soundOutputBuffers[currentBuffer];
 
 	soundOutput->master.Reset();
-	soundOutput->dbgPulse1.Clear();
-	soundOutput->dbgPulse2.Clear();
-	soundOutput->dbgTri.Clear();
-	soundOutput->dbgNoise.Clear();
-	soundOutput->dbgDmc.Clear();
 }

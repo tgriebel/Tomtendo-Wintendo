@@ -104,6 +104,7 @@ private:
 	wtPaletteImage		paletteDebug;
 	wtPatternTableImage	patternTable0;
 	wtPatternTableImage	patternTable1;
+	wt16x8ChrImage		pickedObj8x16;
 	std::deque<wtStateBlob> states;
 	uint32_t			currentState;
 	uint32_t			firstState;
@@ -143,6 +144,7 @@ public:
 		paletteDebug.SetDebugName( "Palette" );
 		patternTable0.SetDebugName( "PatternTable0" );
 		patternTable1.SetDebugName( "PatternTable1" );
+		pickedObj8x16.SetDebugName( "Picked Object 8x16" );
 
 		frameBuffer[0].Clear();
 		frameBuffer[1].Clear();
@@ -150,6 +152,7 @@ public:
 		paletteDebug.Clear();
 		patternTable0.Clear();
 		patternTable1.Clear();
+		pickedObj8x16.Clear();
 
 		states.clear();
 
@@ -174,6 +177,7 @@ public:
 	string		GetPrgBankDissambly( const uint8_t bankNum );
 	void		GenerateRomDissambly( string prgRomAsm[128] );
 	void		GenerateChrRomTables( wtPatternTableImage chrRom[32] );
+	void		GetChrRomPalette( const uint8_t paletteId, RGBA palette[ 4 ] );
 	bool		Run( const masterCycles_t& nextCycle );
 	int			RunFrame();
 	void		CaptureInput( const Controller keys );
@@ -249,6 +253,7 @@ struct wtFrameResult
 	wtPaletteImage		paletteDebug;
 	wtPatternTableImage patternTable0;
 	wtPatternTableImage patternTable1;
+	wt16x8ChrImage		pickedObj8x16;
 	apuDebug_t			apuDebug;
 	ppuDebug_t			ppuDebug;
 	std::vector<OpDebugInfo>* dbgMetrics;

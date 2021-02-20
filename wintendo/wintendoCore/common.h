@@ -385,6 +385,8 @@ using wtDisplayImage = wtRawImage<256, 240>;
 using wtNameTableImage = wtRawImage<2 * 256, 2 *240>;
 using wtPaletteImage = wtRawImage<16, 2>;
 using wtPatternTableImage = wtRawImage<128, 128>;
+using wt16x8ChrImage = wtRawImage<8, 16>;
+using wt8x8ChrImage = wtRawImage<8, 8>;
 
 enum class wtImageTag
 {

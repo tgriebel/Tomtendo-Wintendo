@@ -602,7 +602,7 @@ void PPU::DrawTile( wtNameTableImage& imageBuffer, const wtRect& imageRect, cons
 }
 
 
-void PPU::DrawChrRomTile( wtRawImageInterface* imageBuffer, const wtRect& imageRect, const RGBA dbgPalette[4], const uint32_t tileId, const uint32_t ptrnTableId )
+void PPU::DrawChrRomTile( wtRawImageInterface* imageBuffer, const wtRect& imageRect, const RGBA dbgPalette[4], const uint32_t tileId, const uint32_t ptrnTableId, const bool is8x16, const bool isUpper )
 {
 	for ( uint32_t y = 0; y < PPU::TilePixels; ++y )
 	{
@@ -613,8 +613,18 @@ void PPU::DrawChrRomTile( wtRawImageInterface* imageBuffer, const wtRect& imageR
 			chrRomPoint.x = x;
 			chrRomPoint.y = y;
 
-			const uint8_t chrRom0 = GetChrRomBank8x8( tileId, 0, ptrnTableId, chrRomPoint.y );
-			const uint8_t chrRom1 = GetChrRomBank8x8( tileId, 1, ptrnTableId, chrRomPoint.y );
+			uint8_t chrRom0;
+			uint8_t chrRom1;
+			if( is8x16 )
+			{
+				chrRom0 = GetChrRom8x16( tileId, 0, chrRomPoint.y, isUpper );
+				chrRom1 = GetChrRom8x16( tileId, 1, chrRomPoint.y, isUpper );
+			}
+			else
+			{
+				chrRom0 = GetChrRom8x8( tileId, 0, ptrnTableId, chrRomPoint.y );
+				chrRom1 = GetChrRom8x8( tileId, 1, ptrnTableId, chrRomPoint.y );
+			}
 
 			const uint16_t chrRomColor = GetChrRomPalette( chrRom0, chrRom1, chrRomPoint.x );
 
@@ -736,14 +746,24 @@ bool PPU::DrawSpritePixel( wtDisplayImage& imageBuffer, const wtRect& imageRect,
 }
 
 
-void PPU::DrawDebugPatternTables( wtPatternTableImage& imageBuffer, const RGBA palette[4], const uint32_t tableID )
+void PPU::DrawDebugPatternTables( wtPatternTableImage& imageBuffer, const RGBA dbgPalette[4], const uint32_t tableID )
 {
 	for ( int32_t tileY = 0; tileY < 16; ++tileY )
 	{
 		for ( int32_t tileX = 0; tileX < 16; ++tileX )
 		{
-			DrawChrRomTile( &imageBuffer, wtRect{ (int32_t)PPU::TilePixels * tileX, (int32_t)PPU::TilePixels * tileY, PPU::PatternTableWidth, PPU::PatternTableHeight }, palette, (int32_t)( tileX + 16 * tileY ), tableID );
+			DrawChrRomTile( &imageBuffer, wtRect{ (int32_t)PPU::TilePixels * tileX, (int32_t)PPU::TilePixels * tileY, PPU::PatternTableWidth, PPU::PatternTableHeight }, dbgPalette, (int32_t)( tileX + 16 * tileY ), tableID );
 		}
+	}
+}
+
+
+void PPU::DrawDebugObject( wtRawImageInterface* imageBuffer, const RGBA dbgPalette[ 4 ], const spriteAttrib_t& attrib )
+{
+	const int32_t tileHeight = attrib.is8x16 ? 2 : 1;
+	DrawChrRomTile( imageBuffer, wtRect{ 0, 0, (int32_t)PPU::TilePixels, PPU::TilePixels }, dbgPalette, attrib.tileId, attrib.tableId, attrib.is8x16, false );
+	if( attrib.is8x16 ) {
+		DrawChrRomTile( imageBuffer, wtRect{ 0, (int32_t)PPU::TilePixels, (int32_t)PPU::TilePixels, PPU::TilePixels }, dbgPalette, attrib.tileId, attrib.tableId, attrib.is8x16, true );
 	}
 }
 
@@ -818,6 +838,8 @@ void PPU::LoadSecondaryOAM()
 
 		secondaryOAM[destSpriteNum] = GetSpriteData( spriteNum, primaryOAM );
 		secondaryOAM[ destSpriteNum ].secondaryOamIndex = destSpriteNum;
+		secondaryOAM[ destSpriteNum ].is8x16 = isLargeSpriteMode;
+		secondaryOAM[ destSpriteNum ].tableId = GetSpritePatternTableId();
 		destSpriteNum++;
 
 		if ( destSpriteNum >= system->config.ppu.spriteLimit ) {

@@ -315,6 +315,7 @@ void wtSystem::GetFrameResult( wtFrameResult& outFrameResult )
 	outFrameResult.paletteDebug		= paletteDebug;
 	outFrameResult.patternTable0	= patternTable0;
 	outFrameResult.patternTable1	= patternTable1;
+	outFrameResult.pickedObj8x16	= pickedObj8x16;
 	outFrameResult.ppuDebug			= ppu.dbgInfo;
 
 	GetState( outFrameResult.state );
@@ -626,21 +627,28 @@ void wtSystem::GenerateRomDissambly( string prgRomAsm[128] )
 }
 
 
-void wtSystem::GenerateChrRomTables( wtPatternTableImage chrRom[32] )
+void wtSystem::GetChrRomPalette( const uint8_t paletteId, RGBA palette[ 4 ] )
 {
-	assert( cart->GetChrBankCount() <= 32 );
-	const uint16_t baseAddr = ( config.ppu.chrPalette > 3 ) ? PPU::SpritePaletteAddr: PPU::PaletteBaseAddr;
-	const uint16_t baseOffset = 4 * ( config.ppu.chrPalette % 4 );
+	const uint16_t baseAddr = ( paletteId > 3 ) ? PPU::SpritePaletteAddr : PPU::PaletteBaseAddr;
+	const uint16_t baseOffset = 4 * ( paletteId % 4 );
 	const uint8_t p0 = ppu.ReadVram( baseAddr + baseOffset + 0 );
 	const uint8_t p1 = ppu.ReadVram( baseAddr + baseOffset + 1 );
 	const uint8_t p2 = ppu.ReadVram( baseAddr + baseOffset + 2 );
 	const uint8_t p3 = ppu.ReadVram( baseAddr + baseOffset + 3 );
 
+	palette[ 0 ] = ppu.palette[ p0 ];
+	palette[ 1 ] = ppu.palette[ p1 ];
+	palette[ 2 ] = ppu.palette[ p2 ];
+	palette[ 3 ] = ppu.palette[ p3 ];
+}
+
+
+void wtSystem::GenerateChrRomTables( wtPatternTableImage chrRom[32] )
+{
+	assert( cart->GetChrBankCount() <= 32 );
+
 	RGBA palette[4];
-	palette[0] = ppu.palette[p0];
-	palette[1] = ppu.palette[p1];
-	palette[2] = ppu.palette[p2];
-	palette[3] = ppu.palette[p3];
+	GetChrRomPalette( config.ppu.chrPalette, palette );
 
 	assert( cart->h.chrRomBanks <= 16 );
 	for ( uint32_t bankNum = 0; bankNum < cart->h.chrRomBanks; ++bankNum )
@@ -763,6 +771,10 @@ int wtSystem::RunFrame()
 
 	ppu.DrawDebugPatternTables( patternTable0, palette, 0 );
 	ppu.DrawDebugPatternTables( patternTable1, palette, 1 );
+
+	RGBA pickedPalette[ 4 ];
+	GetChrRomPalette( ( ppu.dbgInfo.spritePicked.palette >> 2 ) + 4, pickedPalette );
+	ppu.DrawDebugObject( &pickedObj8x16, pickedPalette, ppu.dbgInfo.spritePicked );
 
 	bool debugNT = debugNTEnable && ( ( frameNumber % 60 ) == 0 );
 	if( debugNT )

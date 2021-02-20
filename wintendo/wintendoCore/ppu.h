@@ -132,14 +132,15 @@ struct spriteAttrib_t
 	uint8_t	x;
 	uint8_t	y;
 	uint8_t	tileId;
-
 	uint8_t	palette;
-	uint8_t	priority;
-	uint8_t	flippedHorizontal;
-	uint8_t	flippedVertical;
 	uint8_t	oamIndex;
-	uint8_t	secondaryOamIndex; // debugging
-	bool	sprite0;
+	uint8_t	secondaryOamIndex;	// debugging
+	uint8_t	tableId;			// debugging
+	uint8_t	flippedHorizontal	: 1;
+	uint8_t	flippedVertical		: 1;
+	uint8_t	priority			: 1;
+	bool	sprite0				: 1;
+	bool	is8x16				: 1;
 };
 
 
@@ -269,7 +270,8 @@ public:
 	void			WriteReg( const uint16_t addr, const uint8_t value );
 	uint8_t			ReadReg( uint16_t address );
 
-	void			DrawDebugPatternTables( wtPatternTableImage& imageBuffer, const RGBA palette[4], const uint32_t tableID );
+	void			DrawDebugPatternTables( wtPatternTableImage& imageBuffer, const RGBA dbgPalette[4], const uint32_t tableID );
+	void			DrawDebugObject( wtRawImageInterface* imageBuffer, const RGBA dbgPalette[ 4 ], const spriteAttrib_t& attrib );
 	void			DrawDebugNametable( wtNameTableImage& nameTableSheet );
 	void			DrawDebugPalette( wtPaletteImage& imageBuffer );
 
@@ -354,7 +356,7 @@ private:
 
 	void			DrawBlankScanline( wtDisplayImage& imageBuffer, const wtRect& imageRect, const uint8_t scanY );
 	void			DrawTile( wtNameTableImage& imageBuffer, const wtRect& imageRect, const wtPoint& nametableTile, const uint32_t ntId, const uint32_t ptrnTableId );
-	void			DrawChrRomTile( wtRawImageInterface* imageBuffer, const wtRect& imageRect, const RGBA palette[4], const uint32_t tileId, const uint32_t ptrnTableId );
+	void			DrawChrRomTile( wtRawImageInterface* imageBuffer, const wtRect& imageRect, const RGBA palette[4], const uint32_t tileId, const uint32_t ptrnTableId, const bool is8x16 = false, const bool isUpper = false );
 	bool			DrawSpritePixel( wtDisplayImage& imageBuffer, const wtRect& imageRect, const spriteAttrib_t attribs, const wtPoint& point, const uint8_t bgPixel );
 
 	bool			BgDataFetchEnabled();

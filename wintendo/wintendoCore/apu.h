@@ -16,6 +16,23 @@ public:
 		Reset();
 	}
 
+	float Peek( const uint32_t sampleIx ) const
+	{
+		const int32_t index = ( begin + sampleIx ) % ApuBufferSize;
+		if ( ( index >= end ) || ( sampleIx >= GetSampleCnt() ) ) {
+			return 0.0f;
+		}
+		return samples[ index ];
+	}
+
+	void EnqueFIFO( const float sample )
+	{
+		if ( IsFull() ) {
+			Deque();
+		}
+		Enque( sample );
+	}
+
 	void Enque( const float sample )
 	{
 		if ( IsFull() )
@@ -476,10 +493,12 @@ public:
 
 	uint16_t			addr;
 	uint16_t			byteCnt;
+	uint16_t			period;
+	uint16_t			periodCounter;
 	uint8_t				sampleBuffer;
+	uint8_t				shiftReg;
 	BitCounter<7>		outputLevel;
 	bool				emptyBuffer;
-	uint8_t				shiftReg;
 
 	void Clear()
 	{
@@ -494,6 +513,8 @@ public:
 		emptyBuffer		= false;
 
 		shiftReg		= 0;
+		period			= 0;
+		periodCounter	= 1;
 		silenceFlag		= false;
 		irq				= false;
 		mute			= false;
@@ -584,11 +605,11 @@ static const uint16_t DmcLUT[ANALOG_MODE_COUNT][16] =
 
 struct apuOutput_t
 {
-	wtSoundBuffer	dbgPulse1;
-	wtSoundBuffer	dbgPulse2;
-	wtSoundBuffer	dbgTri;
-	wtSoundBuffer	dbgNoise;
-	wtSoundBuffer	dbgDmc;
+	wtSampleQueue	dbgPulse1;
+	wtSampleQueue	dbgPulse2;
+	wtSampleQueue	dbgTri;
+	wtSampleQueue	dbgNoise;
+	wtSampleQueue	dbgDmc;
 	wtSampleQueue	master;
 };
 
@@ -693,11 +714,11 @@ public:
 		for ( uint32_t i = 0; i < SoundBufferCnt; ++i )
 		{
 			soundOutputBuffers[i].master.Reset();
-			soundOutputBuffers[i].dbgPulse1.Clear();
-			soundOutputBuffers[i].dbgPulse2.Clear();
-			soundOutputBuffers[i].dbgTri.Clear();
-			soundOutputBuffers[i].dbgNoise.Clear();
-			soundOutputBuffers[i].dbgDmc.Clear();
+			soundOutputBuffers[i].dbgPulse1.Reset();
+			soundOutputBuffers[i].dbgPulse2.Reset();
+			soundOutputBuffers[i].dbgTri.Reset();
+			soundOutputBuffers[i].dbgNoise.Reset();
+			soundOutputBuffers[i].dbgDmc.Reset();
 		}
 
 		system = nullptr;
