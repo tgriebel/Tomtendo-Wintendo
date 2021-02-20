@@ -275,8 +275,7 @@ void APU::ClockSweep( PulseChannel& pulse )
 			change = ( pulse.channelNum == PULSE_1 ) ? ( -change - 1 ) : -change;
 		}
 		
-		if( ( (int32_t)targetPeriod + change ) >= 0 )
-			targetPeriod += change;
+		targetPeriod += change;
 	}
 
 	if ( reload )
@@ -285,7 +284,7 @@ void APU::ClockSweep( PulseChannel& pulse )
 		reload = false;
 	}
 
-	// Check for carry-bit
+	// Check for carry-bit and overflow
 	sweep.mute = ( targetPeriod > 0x07FF );
 	if( !sweep.mute ) {
 		pulse.period.Reload( targetPeriod );
@@ -463,10 +462,15 @@ void APU::ExecChannelDMC()
 		}
 	}
 
+	float volume = 0.0f;
 	const uint16_t dmcPeriod = DmcLUT[ NTSC] [ dmc.regCtrl.sem.freq ];
-	if( cpuCycle.count() % dmcPeriod ) {
-		DmcGenerator();
+	if( cpuCycle.count() % dmcPeriod ) {		
+		if ( !dmc.silenceFlag ) {
+			volume = dmc.outputLevel.Value();
+		}
 	}
+	dmc.samples.Enque( volume );
+	dmc.samples.Enque( volume );
 }
 
 

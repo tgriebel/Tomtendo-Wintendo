@@ -15,6 +15,7 @@
 #include "ppu.h"
 #include "apu.h"
 #include "bitmap.h"
+#include "input.h"
 #include "serializer.h"
 
 struct wtState;
@@ -80,6 +81,7 @@ public:
 
 	uint8_t				mirrorMode;
 	wtConfig			config;
+	wtInput				input;
 
 private:
 	static const uint32_t MaxStates = 5000;
@@ -187,11 +189,10 @@ public:
 	void		SaveSate();
 	void		LoadState();
 	void		ToggleFrame();
+	bool		MouseInRegion( const wtRect& region );
 
 	// Implemented in "mapper.h"
 	unique_ptr<wtMapper> AssignMapper( const uint32_t mapperId );
-
-	static bool	MouseInRegion( const wtRect& region );
 
 private:
 	void		DebugPrintFlushLog();

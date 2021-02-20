@@ -7,6 +7,7 @@
 #include <wincodec.h>
 #include <xaudio2.h>
 #include <queue>
+#include <comdef.h>
 #include "wintendoApp.h"
 
 struct wtAudioEngine

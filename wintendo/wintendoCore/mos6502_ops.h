@@ -457,6 +457,7 @@ OP_DEF( Illegal )
 	assert( 0 );
 }
 
+
 OP_DEF( SKB )
 {
 	PC += 1;
@@ -469,7 +470,7 @@ OP_DEF( SKW )
 }
 
 
-void BuildOpLUT()
+inline void BuildOpLUT()
 {
 	OP_ADDR( 0x00,	BRK,		None,				0, 7 )
 	OP_ADDR( 0x01,	ORA,		IndexedIndirect,	1, 6 )

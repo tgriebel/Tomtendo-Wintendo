@@ -169,8 +169,7 @@ bool wtAudioEngine::AudioSubmit()
 
 	if ( FAILED( hr ) )
 	{
-		//_com_error err( hr );
-		//std::cout << "Highpass 90hz Filter failure: " << err.ErrorMessage();
+		OutputDebugStringA( "Highpass 90hz Filter failure\n" );
 	}
 
 	XAUDIO2_FILTER_PARAMETERS hiPassFilterParameters1;
@@ -182,19 +181,19 @@ bool wtAudioEngine::AudioSubmit()
 	if ( FAILED( hr ) )
 	{
 		//_com_error err( hr );
-		//std::cout << "Highpass 440hz Filter failure: " << err.ErrorMessage();
+		//err.ErrorMessage();	
+		OutputDebugStringA( "Highpass 440hz Filter failure\n" );
 	}
 
 	XAUDIO2_FILTER_PARAMETERS lowpassFilterParameters;
 	lowpassFilterParameters.Type = LowPassFilter;
 	lowpassFilterParameters.Frequency = XAudio2CutoffFrequencyToRadians( F3, FreqHz );
 	lowpassFilterParameters.OneOverQ = Q3;
-	hr = pMasteringVoice->SetFilterParameters( &lowpassFilterParameters, XAUDIO2_COMMIT_ALL );
+	//hr = pMasteringVoice->SetFilterParameters( &lowpassFilterParameters, XAUDIO2_COMMIT_ALL );
 
 	if ( FAILED( hr ) )
 	{
-		//_com_error err( hr );
-		//std::cout << "Lowpass Filter failure: " << err.ErrorMessage();
+		OutputDebugStringA( "Lowpass Filter failure\n" );
 	}
 	
 

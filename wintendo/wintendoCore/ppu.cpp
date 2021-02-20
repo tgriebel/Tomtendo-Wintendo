@@ -719,7 +719,7 @@ bool PPU::DrawSpritePixel( wtDisplayImage& imageBuffer, const wtRect& imageRect,
 	const uint32_t imageIndex = imageX + imageY * imageRect.width;
 
 	uint8_t spriteHeight = regCtrl.sem.sprite8x16Mode ? 16 : 8;
-	if ( wtSystem::MouseInRegion( { attribs.x, attribs.y, attribs.x + 8, attribs.y + spriteHeight } ) )
+	if ( system->MouseInRegion( { attribs.x, attribs.y, attribs.x + 8, attribs.y + spriteHeight } ) )
 	{
 		pixelColor.rawABGR = ~pixelColor.rawABGR;
 		pixelColor.rgba.alpha = 0xFF;

@@ -15,13 +15,6 @@
 #include "mapper.h"
 #include "timer.h"
 
-using namespace std;
-
-// TODO: remove globals
-ButtonFlags keyBuffer[2] = { ButtonFlags::BUTTON_NONE, ButtonFlags::BUTTON_NONE };
-wtPoint mousePoint;
-bool lockFps = true;
-
 static void LoadNesFile( const std::wstring& fileName, unique_ptr<wtCart>& outCart )
 {
 	// TODO: use serializer here
@@ -93,7 +86,9 @@ int wtSystem::Init( const wstring& filePath )
 void wtSystem::Shutdown()
 {
 #if DEBUG_ADDR == 1
-//	cpu.logFile.close();
+	if( cpu.logFile.is_open() ) {
+		cpu.logFile.close();
+	}
 #endif // #if DEBUG_ADDR == 1
 }
 
@@ -209,7 +204,7 @@ uint8_t wtSystem::GetMirrorMode() const
 
 bool wtSystem::MouseInRegion( const wtRect& region ) // TODO: draft code, kill later
 {
-	return ( ( mousePoint.x >= region.x ) && ( mousePoint.x < region.width ) && ( mousePoint.y >= region.y ) && ( mousePoint.y < region.height ) );
+	return ( ( input.mousePoint.x >= region.x ) && ( input.mousePoint.x < region.width ) && ( input.mousePoint.y >= region.y ) && ( input.mousePoint.y < region.height ) );
 }
 
 
@@ -237,13 +232,13 @@ uint8_t wtSystem::ReadMemory( const uint16_t address )
 
 		if ( strobeOn )
 		{
-			keyBuffer = static_cast<uint8_t>( GetKeyBuffer( controllerId ) & static_cast<ButtonFlags>( 0X80 ) );
+			keyBuffer = static_cast<uint8_t>( input.GetKeyBuffer( controllerId ) & static_cast<ButtonFlags>( 0X80 ) );
 			btnShift[controllerIndex] = 0;
 
 			return keyBuffer;
 		}
 
-		keyBuffer = static_cast<uint8_t>( GetKeyBuffer( controllerId ) >> static_cast<ButtonFlags>( 7 - btnShift[controllerIndex] ) ) & 0x01;
+		keyBuffer = static_cast<uint8_t>( input.GetKeyBuffer( controllerId ) >> static_cast<ButtonFlags>( 7 - btnShift[controllerIndex] ) ) & 0x01;
 		++btnShift[controllerIndex];
 		btnShift[controllerIndex] %= 8;
 
