@@ -760,6 +760,7 @@ void PPU::DrawDebugPatternTables( wtPatternTableImage& imageBuffer, const RGBA d
 
 void PPU::DrawDebugObject( wtRawImageInterface* imageBuffer, const RGBA dbgPalette[ 4 ], const spriteAttrib_t& attrib )
 {
+	imageBuffer->Clear();
 	const int32_t tileHeight = attrib.is8x16 ? 2 : 1;
 	DrawChrRomTile( imageBuffer, wtRect{ 0, 0, (int32_t)PPU::TilePixels, PPU::TilePixels }, dbgPalette, attrib.tileId, attrib.tableId, attrib.is8x16, false );
 	if( attrib.is8x16 ) {
