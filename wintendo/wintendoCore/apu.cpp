@@ -118,14 +118,12 @@ void APU::WriteReg( const uint16_t addr, const uint8_t value )
 
 		case 0x4012:
 		{
-			dmc.regAddr = value;
-			dmc.addr = ( 0xC000 | ( dmc.regAddr << 6 ) ) & 0xFFC0;
+			dmc.regAddr = ( 0xC000 | ( value << 6 ) ) & 0xFFC0;
 		} break;
 
 		case 0x4013:
 		{
-			dmc.regLength = value;
-			dmc.byteCnt = ( 0x01 | ( value << 4 ) );
+			dmc.regLength = ( 0x01 | ( value << 4 ) );
 		} break;
 
 		case 0x4015:
@@ -155,13 +153,13 @@ void APU::WriteReg( const uint16_t addr, const uint8_t value )
 			}
 			
 			if ( dmc.mute ) {
-				dmc.byteCnt = 0;
+				dmc.bytesRemaining = 0;
+			} else if ( dmc.bytesRemaining == 0 ) {
+				dmc.startRead = true;
 			}
 
 			frameCounter.sem.interrupt = false;
-			// If the DMC bit is set, the DMC sample will be restarted only if its bytes remaining is 0.
-			// If there are bits remaining in the 1-byte sample buffer, these will finish playing before the next sample is fetched.
-			dmc.irq = false;
+			dmc.regCtrl.sem.irqEnable = false;
 
 		} break;
 
@@ -201,6 +199,11 @@ uint8_t APU::ReadReg( const uint16_t addr )
 	result.sem.p2 = ( pulse2.lengthCounter > 0 );
 	result.sem.n = ( noise.lengthCounter > 0 );
 	result.sem.t = ( triangle.lengthCounter > 0 );
+	result.sem.d = ( dmc.bytesRemaining > 0 );
+	result.sem.dmcIrq = dmc.regCtrl.sem.irqEnable; // TODO: is this right?
+	result.sem.frIrq = frameCounter.sem.interrupt;
+
+	frameCounter.sem.interrupt = false;
 
 	return result.byte;
 }
@@ -374,44 +377,51 @@ void APU::ExecChannelNoise()
 }
 
 
-void APU::DmcGenerator()
+void APU::SampleDmcBuffer()
 {
-	const uint32_t sampleCnt = static_cast<uint32_t>( ( apuCycle - dmc.lastApuCycle ).count() );
-	const uint32_t cpuSampleCnt = static_cast<uint32_t>( ( cpuCycle - dmc.lastCycle ).count() );
-	for ( uint32_t sample = 0; sample < cpuSampleCnt; sample++ )
+	if ( dmc.startRead )
 	{
-		if ( !dmc.silenceFlag ) {
-			dmc.samples.Enque( dmc.outputLevel.Value() );
-		} else {
-			dmc.samples.Enque( 0.0f );
-		}
+		dmc.startRead = false;
+		dmc.addr = dmc.regAddr;
+		dmc.bytesRemaining = dmc.regLength;
 	}
 
-	dmc.lastApuCycle = apuCycle;
-	dmc.lastCycle = cpuCycle;
+	if ( dmc.emptyBuffer && ( dmc.bytesRemaining > 0 ) ) {
+		dmc.sampleBuffer = system->ReadMemory( dmc.addr );
+		dmc.emptyBuffer = false;
+
+		if ( dmc.addr == 0xFFFF ) {
+			dmc.addr = 0x8000;
+		}
+		else {
+			++dmc.addr;
+		}
+
+		--dmc.bytesRemaining;
+		if ( dmc.bytesRemaining == 0 ) {
+			if ( dmc.regCtrl.sem.loop ) {
+				dmc.startRead = true;
+			}
+			else if ( dmc.regCtrl.sem.irqEnable ) {
+				dmc.irq = true;
+			}
+		}
+	}
 }
 
 
-void APU::ExecChannelDMC()
+void APU::ClockDmc()
 {
-	if ( dmc.regCtrl.sem.irqEnable ) {
-		system->RequestIRQ();
-	}
-
-	if( dmc.emptyBuffer ) {
-		dmc.sampleBuffer = system->ReadMemory( dmc.addr );
-	}
-
 	// https://wiki.nesdev.com/w/index.php/APU_DMC (see output level)
 	// 1. If the silence flag is clear, the output level changes based on bit 0 of the shift register.
 	// If the bit is 1, add 2; otherwise, subtract 2. But if adding or subtracting 2 would cause the
 	// output level to leave the 0-127 range, leave the output level unchanged. This means subtract 2
 	// only if the current level is at least 2, or add 2 only if the current level is at most 125.
-	if( !dmc.silenceFlag )
+	if ( !dmc.silenceFlag )
 	{
-		if( dmc.shiftReg & 0x01  )
+		if ( dmc.shiftReg & 0x01 )
 		{
-			if( dmc.outputLevel.Value() <= 125 )
+			if ( dmc.outputLevel.Value() <= 125 )
 			{
 				dmc.outputLevel.Inc();
 				dmc.outputLevel.Inc(); // TODO: rethink interface or use byte
@@ -425,30 +435,21 @@ void APU::ExecChannelDMC()
 				dmc.outputLevel.Dec();
 			}
 		}
+		// 2. The right shift register is clocked.
+		dmc.shiftReg >>= 1;
 	}
-
-	// 2. The right shift register is clocked.
-	dmc.shiftReg >>= 1;
 
 	// 3. As stated above, the bits-remaining counter is decremented. If it becomes zero, a new output cycle is started.
-	if ( dmc.addr == 0xFFFF ) {
-		dmc.addr = 0x8000;
-	} else {
-		dmc.addr += 1;
-		dmc.byteCnt--;
-	}
-
-	if( dmc.byteCnt == 0 )
+	--dmc.bitCnt;
+	if ( dmc.bitCnt == 0 )
 	{
-		dmc.byteCnt = 8;
-
-		if( dmc.regCtrl.sem.loop )
+		dmc.bitCnt = 8;
+		if ( dmc.regCtrl.sem.loop )
 		{
-			// TODO: Restart
-		
+			// TODO: Restart		
 		}
-		else if( dmc.regCtrl.sem.irqEnable ) {
-			system->RequestIRQ(); // TODO: is this right?
+		else if ( dmc.regCtrl.sem.irqEnable && dmc.irq ) {
+			//	TODO: system->RequestIRQ();h
 		}
 
 		if ( dmc.emptyBuffer ) {
@@ -457,19 +458,22 @@ void APU::ExecChannelDMC()
 			dmc.silenceFlag = false;
 			dmc.shiftReg = dmc.sampleBuffer;
 			dmc.emptyBuffer = true;
-			dmc.sampleBuffer = 0;
 		}
+	}
+}
+
+
+void APU::ExecChannelDMC()
+{
+	--dmc.periodCounter;
+	if( dmc.periodCounter == 0 )
+	{
+		SampleDmcBuffer();
+		ClockDmc();
+		dmc.periodCounter = dmc.period;
 	}
 
-	float volume = 0.0f;
-	--dmc.periodCounter;
-	if( dmc.periodCounter == 0 ) {
-		dmc.periodCounter = dmc.period;
-		if ( !dmc.silenceFlag ) {
-			volume = dmc.outputLevel.Value();
-		}
-	}
-	dmc.samples.Enque( volume );
+	const float volume = dmc.outputLevel.Value();
 	dmc.samples.Enque( volume );
 }
 
@@ -564,6 +568,7 @@ bool APU::Step( const cpuCycle_t& nextCpuCycle )
 	{
 		ExecFrameCounter();
 		ExecChannelTri();
+		ExecChannelDMC();
 
 		//apuCycle = chrono::duration_cast<apuCycle_t>( cpuCycle );
 		if ( ( cpuCycle.count() % 2 ) == 0 )
@@ -571,7 +576,6 @@ bool APU::Step( const cpuCycle_t& nextCpuCycle )
 			ExecPulseChannel( pulse1 );
 			ExecPulseChannel( pulse2 );
 			ExecChannelNoise();
-			ExecChannelDMC();
 		}
 
 		++cpuCycle;
@@ -619,6 +623,7 @@ void APU::GetDebugInfo( apuDebug_t& apuDebug )
 	apuDebug.noise				= noise;
 	apuDebug.dmc				= dmc;
 	apuDebug.frameCounter		= frameCounter;
+	apuDebug.status				= regStatus;
 	apuDebug.halfClkTicks		= dbgHalfClkTicks;
 	apuDebug.quarterClkTicks	= dbgHalfClkTicks;
 	apuDebug.irqClkEvents		= dbgIrqEvents;

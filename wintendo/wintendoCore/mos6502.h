@@ -140,9 +140,11 @@ public:
 	bool				resetLog;
 	vector<OpDebugInfo>	dbgMetrics;
 
+	// TODO: move to system
 	mutable bool		interruptRequestNMI;
 	mutable bool		interruptRequest;
 	mutable bool		oamInProcess;
+	mutable bool		dmcTransfer;
 
 	uint8_t				X;
 	uint8_t				Y;

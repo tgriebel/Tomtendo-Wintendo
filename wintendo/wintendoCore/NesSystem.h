@@ -190,6 +190,7 @@ public:
 	void		RequestNMI() const;
 	void		RequestIRQ() const;
 	void		RequestDMA() const;
+	void		RequestDmcTransfer() const;
 	void		SaveSate();
 	void		LoadState();
 	void		ToggleFrame();

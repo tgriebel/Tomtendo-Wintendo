@@ -218,6 +218,8 @@ uint8_t wtSystem::ReadMemory( const uint16_t address )
 	{
 		return ppu.ReadReg( address );
 	}
+	// https://wiki.nesdev.com/w/index.php/APU_DMC#cite_note-2
+	// This note describes the register conflict
 	else if ( IsApuRegister( address ) )
 	{
 		return apu.ReadReg( address );
@@ -416,6 +418,12 @@ void wtSystem::RequestIRQ() const
 void wtSystem::RequestDMA() const
 {
 	cpu.oamInProcess = true;
+}
+
+
+void wtSystem::RequestDmcTransfer() const
+{
+	cpu.dmcTransfer = true;
 }
 
 

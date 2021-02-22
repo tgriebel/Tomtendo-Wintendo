@@ -220,14 +220,14 @@ void DmcChannel::Serialize( Serializer& serializer, const serializeMode_t mode )
 {
 	serializer.Next8b( regCtrl.byte, mode );
 	serializer.Next8b( regLoad.byte, mode );
-	serializer.Next8b( regAddr, mode );
-	serializer.Next8b( regLength, mode );
+	serializer.Next16b( regAddr, mode );
+	serializer.Next16b( regLength, mode );
 	serializer.NextBool( irq, mode );
 	serializer.NextBool( silenceFlag, mode );
 	serializer.NextBool( mute, mode );
 
 	serializer.Next16b( addr, mode );
-	serializer.Next16b( byteCnt, mode );
+	serializer.Next16b( bitCnt, mode );
 	serializer.Next8b( sampleBuffer, mode );
 	serializer.NextBool( emptyBuffer, mode );
 	serializer.Next8b( shiftReg, mode );

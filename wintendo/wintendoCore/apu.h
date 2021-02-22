@@ -8,6 +8,36 @@ static const uint32_t		ApuSamplesPerSec	= static_cast<uint32_t>( CPU_HZ );
 static constexpr uint32_t	ApuBufferMs			= static_cast<uint32_t>( 1000.0f / MinFPS );
 static constexpr uint32_t	ApuBufferSize		= static_cast<uint32_t>( ApuSamplesPerSec *  ( ApuBufferMs / 1000.0f ) );
 
+static const uint8_t TriLUT[ 32 ] =
+{
+	0x0F, 0x0E, 0x0D, 0x0C, 0x0B, 0x0A,	0x09, 0x08,
+	0x07, 0x06, 0x05, 0x04,	0x03, 0x02, 0x01, 0x00,
+	0x00, 0x01,	0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+	0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F,
+};
+
+
+static const uint8_t LengthLUT[] =
+{
+	10, 254, 20, 2, 40, 4, 80, 6, 160, 8, 60, 10, 14, 12, 26, 14,
+	12, 16, 24, 18, 48, 20, 96, 22, 192, 24, 72, 26, 16, 28, 32, 30,
+};
+
+
+static const uint16_t NoiseLUT[ ANALOG_MODE_COUNT ][ 16 ] =
+{
+	{ 4, 8, 16, 32, 64, 96, 128, 160, 202, 254, 380, 508, 762, 1016, 2034, 4068, }, // NTSC LUT
+	{ 4, 8, 14, 30, 60, 88, 118, 148, 188, 236, 354, 472, 708,  944, 1890, 3778, }, // PAL LUT
+};
+
+
+static const uint16_t DmcLUT[ ANALOG_MODE_COUNT ][ 16 ] =
+{
+	{ 428, 380, 340, 320, 286, 254, 226, 214, 190, 160, 142, 128, 106,  84,  72,  54 }, // NTSC LUT
+	{ 398, 354, 316, 298, 276, 236, 210, 198, 176, 148, 132, 118,  98,  78,  66,  50 }, // PAL LUT
+};
+
+
 class wtSampleQueue
 {
 public:
@@ -308,8 +338,8 @@ union apuStatus_t
 		uint8_t n		: 1;
 		uint8_t d		: 1;
 		uint8_t unused	: 1;
-		uint8_t frInt	: 1;
-		uint8_t dmcInt	: 1;
+		uint8_t frIrq	: 1;
+		uint8_t dmcIrq	: 1;
 	} sem;
 
 	uint8_t byte;
@@ -481,8 +511,8 @@ class DmcChannel
 public:
 	dmcCtrl_t			regCtrl;
 	dmcLoad_t			regLoad;
-	uint8_t				regAddr;
-	uint8_t				regLength;
+	uint16_t			regAddr;
+	uint16_t			regLength;
 
 	wtSampleQueue		samples;
 	apuCycle_t			lastApuCycle;
@@ -492,13 +522,15 @@ public:
 	bool				mute;
 
 	uint16_t			addr;
-	uint16_t			byteCnt;
+	uint16_t			bitCnt;
+	uint16_t			bytesRemaining;
 	uint16_t			period;
 	uint16_t			periodCounter;
 	uint8_t				sampleBuffer;
 	uint8_t				shiftReg;
 	BitCounter<7>		outputLevel;
 	bool				emptyBuffer;
+	bool				startRead;
 
 	void Clear()
 	{
@@ -508,14 +540,16 @@ public:
 		regLength		= 0;
 
 		addr			= 0;
-		byteCnt			= 0;
+		bitCnt			= 1;
+		bytesRemaining	= 0;
 		sampleBuffer	= 0;
 		emptyBuffer		= false;
+		startRead		= false;
 
 		shiftReg		= 0;
-		period			= 0;
-		periodCounter	= 1;
-		silenceFlag		= false;
+		period			= DmcLUT[ NTSC ][ 0 ];
+		periodCounter	= period;
+		silenceFlag		= true;
 		irq				= false;
 		mute			= false;
 
@@ -573,36 +607,6 @@ static const uint8_t PulseLUT[4][8] =
 };
 
 
-static const uint8_t TriLUT[32] =
-{
-	0x0F, 0x0E, 0x0D, 0x0C, 0x0B, 0x0A,	0x09, 0x08,
-	0x07, 0x06, 0x05, 0x04,	0x03, 0x02, 0x01, 0x00,
-	0x00, 0x01,	0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
-	0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F,
-};
-
-
-static const uint8_t LengthLUT[] =
-{
-	10, 254, 20, 2, 40, 4, 80, 6, 160, 8, 60, 10, 14, 12, 26, 14,
-	12, 16, 24, 18, 48, 20, 96, 22, 192, 24, 72, 26, 16, 28, 32, 30,
-};
-
-
-static const uint16_t NoiseLUT[ ANALOG_MODE_COUNT ][16] =
-{
-	{ 4, 8, 16, 32, 64, 96, 128, 160, 202, 254, 380, 508, 762, 1016, 2034, 4068, }, // NTSC LUT
-	{ 4, 8, 14, 30, 60, 88, 118, 148, 188, 236, 354, 472, 708,  944, 1890, 3778, }, // PAL LUT
-};
-
-
-static const uint16_t DmcLUT[ANALOG_MODE_COUNT][16] =
-{
-	{ 428, 380, 340, 320, 286, 254, 226, 214, 190, 160, 142, 128, 106,  84,  72,  54 }, // NTSC LUT
-	{ 398, 354, 316, 298, 276, 236, 210, 198, 176, 148, 132, 118,  98,  78,  66,  50 }, // PAL LUT
-};
-
-
 struct apuOutput_t
 {
 	wtSampleQueue	dbgPulse1;
@@ -622,6 +626,7 @@ struct apuDebug_t
 	NoiseChannel	noise;
 	DmcChannel		dmc;
 	frameCounter_t	frameCounter;
+	apuStatus_t		status;
 	uint32_t		halfClkTicks;
 	uint32_t		quarterClkTicks;
 	uint32_t		irqClkEvents;
@@ -735,6 +740,7 @@ public:
 	float	GetPulseFrequency( PulseChannel& pulse );
 	float	GetPulsePeriod( PulseChannel& pulse );
 	void	GetDebugInfo( apuDebug_t& apuDebug );
+	void	SampleDmcBuffer();
 
 	void	Serialize( Serializer& serializer, const serializeMode_t mode );
 
@@ -751,6 +757,6 @@ private:
 	void	InitMixerLUT();
 	float	PulseMixer( const uint32_t pulse1, const uint32_t pulse2 );
 	float	TndMixer( const uint32_t triangle, const uint32_t noise, const uint32_t dmc );
-	void	DmcGenerator();
+	void	ClockDmc();
 	bool	AllChannelHaveSamples();
 };
