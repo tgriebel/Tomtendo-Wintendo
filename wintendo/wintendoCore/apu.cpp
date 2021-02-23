@@ -474,7 +474,7 @@ void APU::ExecChannelDMC()
 	}
 
 	const float volume = dmc.outputLevel.Value();
-	dmc.samples.Enque( volume );
+	dmc.samples.Enque( dmc.mute ? 0.0f : volume );
 }
 
 
