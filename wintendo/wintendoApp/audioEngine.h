@@ -31,7 +31,6 @@ struct wtAudioEngine
 
 	wtSoundBuffer						dbgSoundFrameData;
 
-	volatile uint64_t					soundBufferCpyLock	= 0;
 	UINT32								OperationSetCounter	= 0;
 
 	int32_t								currentSndBufferIx	= 0;
