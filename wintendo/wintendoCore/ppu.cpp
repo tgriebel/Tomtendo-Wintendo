@@ -457,8 +457,9 @@ uint8_t PPU::GetChrRomBank8x8( const uint32_t tileId, const uint8_t plane, const
 	const uint8_t tileBytes = 16;
 	const uint16_t chrRomBase = tileId * tileBytes;
 	const uint16_t bankAddr = bankId * wtSystem::ChrRomSize;
+	const uint8_t* bank = system->cart->GetChrRomBank( bankId );
 
-	return ReadVram( bankAddr + chrRomBase + row + 8 * ( plane & 0x01 ) );
+	return bank[ chrRomBase + row + 8 * ( plane & 0x01 ) ];
 }
 
 
@@ -617,13 +618,14 @@ void PPU::DrawChrRomTile( wtRawImageInterface* imageBuffer, const wtRect& imageR
 			uint8_t chrRom1;
 			if( is8x16 )
 			{
+				// FIXME: read from cart banks like 8x8
 				chrRom0 = GetChrRom8x16( tileId, 0, chrRomPoint.y, isUpper );
 				chrRom1 = GetChrRom8x16( tileId, 1, chrRomPoint.y, isUpper );
 			}
 			else
 			{
-				chrRom0 = GetChrRom8x8( tileId, 0, ptrnTableId, chrRomPoint.y );
-				chrRom1 = GetChrRom8x8( tileId, 1, ptrnTableId, chrRomPoint.y );
+				chrRom0 = GetChrRomBank8x8( tileId, 0, ptrnTableId, chrRomPoint.y );
+				chrRom1 = GetChrRomBank8x8( tileId, 1, ptrnTableId, chrRomPoint.y );
 			}
 
 			const uint16_t chrRomColor = GetChrRomPalette( chrRom0, chrRom1, chrRomPoint.x );

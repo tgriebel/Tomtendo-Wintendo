@@ -633,16 +633,15 @@ void APU::GetDebugInfo( apuDebug_t& apuDebug )
 }
 
 
-bool APU::AllChannelHaveSamples()
+uint32_t APU::GetNextSampleIx() const
 {
-	bool hasSamples = true;
-	hasSamples = hasSamples && !pulse1.samples.IsEmpty();
-	hasSamples = hasSamples && !pulse2.samples.IsEmpty();
-	hasSamples = hasSamples && ( triangle.samples.GetSampleCnt() > 1 );
-	hasSamples = hasSamples && !noise.samples.IsEmpty();
-	hasSamples = hasSamples && !dmc.samples.IsEmpty();
-
-	return hasSamples;
+	uint32_t sampleIx = UINT32_MAX;
+	sampleIx = std::min( sampleIx, pulse1.samples.GetSampleCnt() );
+	sampleIx = std::min( sampleIx, pulse2.samples.GetSampleCnt() );
+	sampleIx = std::min( sampleIx, triangle.samples.GetSampleCnt() );
+	sampleIx = std::min( sampleIx, noise.samples.GetSampleCnt() );
+	sampleIx = std::min( sampleIx, dmc.samples.GetSampleCnt() );
+	return sampleIx;
 }
 
 
@@ -659,7 +658,8 @@ void APU::RegisterSystem( wtSystem* sys )
 
 void APU::End()
 {
-	while( AllChannelHaveSamples() )
+	const uint32_t nextIx = GetNextSampleIx();
+	for( uint32_t i = 0; i < nextIx; ++i )
 	{
 		float pulse1Sample			= pulse1.samples.Deque();
 		float pulse2Sample			= pulse2.samples.Deque();
@@ -686,8 +686,6 @@ void APU::End()
 		soundOutput->dbgDmc.EnqueFIFO( dmcSample );
 		soundOutput->master.Enque( floor( 32767.0f * mixedSample ) );
 	}
-
-	soundOutput->master.SetHz( CPU_HZ );
 
 	frameOutput = soundOutput;
 

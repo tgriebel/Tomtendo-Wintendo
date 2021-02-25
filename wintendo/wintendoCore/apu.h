@@ -123,16 +123,6 @@ public:
 		}
 	}
 
-	void SetHz( const float _hz )
-	{
-		hz = _hz;
-	}
-
-	float GetHz() const
-	{
-		return hz;
-	}
-
 	void Reset()
 	{
 		begin = -1;
@@ -141,7 +131,6 @@ public:
 
 private:
 	float	samples[ApuBufferSize];
-	float	hz;
 	int32_t	begin;
 	int32_t	end;
 };
@@ -172,16 +161,6 @@ public:
 		assert( currentIndex <= ApuBufferSize );
 	}
 
-	void SetHz( const float _hz )
-	{
-		hz = _hz;
-	}
-
-	float GetHz() const
-	{
-		return hz;
-	}
-
 	float Read( const uint32_t index ) const
 	{
 		assert( index <= ApuBufferSize );
@@ -205,7 +184,6 @@ public:
 
 private:
 	float		samples[ApuBufferSize];
-	float		hz;
 	uint32_t	currentIndex;
 };
 
@@ -745,18 +723,18 @@ public:
 	void	Serialize( Serializer& serializer, const serializeMode_t mode );
 
 private:
-	void	ExecPulseChannel( PulseChannel& pulse );
-	void	ExecChannelTri();
-	void	ExecChannelNoise();
-	void	ExecChannelDMC();
-	void	ExecFrameCounter();
-	void	ClockEnvelope( envelope_t& envelope, const uint8_t volume, const bool loop, const bool constant );
-	bool	IsDutyHigh( const PulseChannel& pulse );
-	void	ClockSweep( PulseChannel& pulse );
-	void	RunFrameClock( const bool halfClk, const bool quarterClk, const bool irq );
-	void	InitMixerLUT();
-	float	PulseMixer( const uint32_t pulse1, const uint32_t pulse2 );
-	float	TndMixer( const uint32_t triangle, const uint32_t noise, const uint32_t dmc );
-	void	ClockDmc();
-	bool	AllChannelHaveSamples();
+	void		ExecPulseChannel( PulseChannel& pulse );
+	void		ExecChannelTri();
+	void		ExecChannelNoise();
+	void		ExecChannelDMC();
+	void		ExecFrameCounter();
+	void		ClockEnvelope( envelope_t& envelope, const uint8_t volume, const bool loop, const bool constant );
+	bool		IsDutyHigh( const PulseChannel& pulse );
+	void		ClockSweep( PulseChannel& pulse );
+	void		RunFrameClock( const bool halfClk, const bool quarterClk, const bool irq );
+	void		InitMixerLUT();
+	float		PulseMixer( const uint32_t pulse1, const uint32_t pulse2 );
+	float		TndMixer( const uint32_t triangle, const uint32_t noise, const uint32_t dmc );
+	void		ClockDmc();
+	uint32_t	GetNextSampleIx() const;
 };

@@ -658,9 +658,8 @@ void wtSystem::GenerateChrRomTables( wtPatternTableImage chrRom[32] )
 	RGBA palette[4];
 	GetChrRomPalette( config.ppu.chrPalette, palette );
 
-	assert( cart->h.chrRomBanks <= 16 );
-	for ( uint32_t bankNum = 0; bankNum < cart->h.chrRomBanks; ++bankNum )
-	{
+	assert( cart->h.chrRomBanks <= 32 );
+	for ( uint32_t bankNum = 0; bankNum < cart->h.chrRomBanks; ++bankNum ) {
 		ppu.DrawDebugPatternTables( chrRom[bankNum], palette, bankNum );
 	}
 }
