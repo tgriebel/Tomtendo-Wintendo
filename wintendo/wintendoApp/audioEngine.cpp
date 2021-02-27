@@ -54,7 +54,7 @@ void wtAudioEngine::Init()
 	for ( int32_t i = 0; i < wtAudioEngine::SndBufferCnt; ++i )
 	{
 		soundBufferBytesCnt[ i ] = 0;
-		soundBufferState[ i ] = -2;
+		soundBufferState[ i ] = SOUND_STATE_EMPTY;
 	}
 }
 
@@ -65,12 +65,7 @@ void wtAudioEngine::EncodeSamples( wtSampleQueue& soundQueue )
 	int32_t* destIx = &soundBufferBytesCnt[ currentSndBufferIx ];
 	while ( !soundQueue.IsEmpty() )
 	{
-		assert( soundBufferState[ currentSndBufferIx ] != -1 );
-		if ( soundBufferState[ currentSndBufferIx ] == -2 )
-		{
-			// Debug code
-		//	memset( soundDataBuffer[currentSndBufferIx], 0xFF, BufferSize );
-		}
+		assert( soundBufferState[ currentSndBufferIx ] != SOUND_STATE_SUBMITTED );
 
 		float rawSample = soundQueue.Deque();
 		int16_t encodedSample = static_cast<int16_t>( rawSample );
@@ -86,7 +81,7 @@ void wtAudioEngine::EncodeSamples( wtSampleQueue& soundQueue )
 		if ( *destIx >= target )
 		{
 			++totalAudioBuffers;
-			soundBufferState[ currentSndBufferIx ] = 0;
+			soundBufferState[ currentSndBufferIx ] = SOUND_STATE_READY;
 			currentSndBufferIx = ( currentSndBufferIx + 1 ) % wtAudioEngine::SndBufferCnt;
 
 			destIx = &soundBufferBytesCnt[ currentSndBufferIx ];
@@ -104,7 +99,7 @@ bool wtAudioEngine::AudioSubmit()
 	if ( consumeBufferIx == -1 )
 		return false;
 
-	if ( soundBufferState[ consumeBufferIx ] == -2 )
+	if ( soundBufferState[ consumeBufferIx ] == SOUND_STATE_EMPTY )
 		return false;
 
 	pSourceVoice->GetState( &audioState, 0 );

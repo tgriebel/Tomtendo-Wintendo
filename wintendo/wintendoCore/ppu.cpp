@@ -723,7 +723,7 @@ bool PPU::DrawSpritePixel( wtDisplayImage& imageBuffer, const wtRect& imageRect,
 		return true;
 	}
 
-	if( !system->config.ppu.showSprite ) {
+	if( !system->config->ppu.showSprite ) {
 		return true;
 	}
 
@@ -845,7 +845,7 @@ void PPU::LoadSecondaryOAM()
 		secondaryOAM[ destSpriteNum ].tableId = GetSpritePatternTableId();
 		destSpriteNum++;
 
-		if ( destSpriteNum >= system->config.ppu.spriteLimit ) {
+		if ( destSpriteNum >= system->config->ppu.spriteLimit ) {
 			regStatus.current.sem.spriteOverflow = true; //  // TODO: accuracy
 			break;
 		}
@@ -985,7 +985,7 @@ void PPU::Render()
 
 	bool bgMask = ( !regMask.sem.bgLeft && ( beamPosition.x < 8 ) );
 	bgMask = bgMask || !regMask.sem.showBg;
-	bgMask = bgMask || !system->config.ppu.showBG;
+	bgMask = bgMask || !system->config->ppu.showBG;
 
 	if ( bgMask )
 	{

@@ -182,6 +182,11 @@ public:
 		instructionCycles = cpuCycle_t( 0 );
 		cycle = cpuCycle_t(0); // FIXME? Test log starts cycles at 7. Is there a BRK at power up?
 
+		interruptRequestNMI = false;
+		interruptRequest = false;
+		oamInProcess = false;
+		dmcTransfer = false;
+
 		forceStop = false;
 
 		resetLog = false;
@@ -197,6 +202,7 @@ public:
 	}
 
 	bool Step( const cpuCycle_t& nextCycle );
+	void RegisterSystem( wtSystem* sys );
 
 	void Serialize( Serializer& serializer, const serializeMode_t mode );
 

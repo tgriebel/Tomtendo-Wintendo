@@ -8,14 +8,14 @@
 float APU::GetPulseFrequency( PulseChannel& pulse )
 {
 	float freq = CPU_HZ / ( 16.0f * pulse.period.Value() + 1 );
-	freq *= system->config.apu.frequencyScale;
+	freq *= system->config->apu.frequencyScale;
 	return freq;
 }
 
 
 float APU::GetPulsePeriod( PulseChannel& pulse )
 {
-	return ( 1.0f / system->config.apu.frequencyScale ) * ( pulse.period.Value() );
+	return ( 1.0f / system->config->apu.frequencyScale ) * ( pulse.period.Value() );
 }
 
 
@@ -211,7 +211,7 @@ uint8_t APU::ReadReg( const uint16_t addr )
 
 void APU::ClockEnvelope( envelope_t& envelope, const uint8_t volume, const bool loop, const bool constant )
 {
-	if ( system->config.apu.disableEnvelope )
+	if ( system->config->apu.disableEnvelope )
 	{
 		envelope.output = volume;
 		return;
@@ -249,7 +249,7 @@ void APU::ClockEnvelope( envelope_t& envelope, const uint8_t volume, const bool 
 
 void APU::ClockSweep( PulseChannel& pulse )
 {
-	if ( system->config.apu.disableSweep || !pulse.regRamp.sem.enabled ) { // TODO: avoid checking enable here since more matters?
+	if ( system->config->apu.disableSweep || !pulse.regRamp.sem.enabled ) { // TODO: avoid checking enable here since more matters?
 		pulse.period.Reload( pulse.regTune.sem0.timer );
 		return;
 	}
@@ -298,7 +298,7 @@ void APU::ClockSweep( PulseChannel& pulse )
 
 bool APU::IsDutyHigh( const PulseChannel& pulse )
 {
-	return PulseLUT[ pulse.regCtrl.sem.duty ][ ( pulse.sequenceStep + system->config.apu.waveShift ) % 8 ];
+	return PulseLUT[ pulse.regCtrl.sem.duty ][ ( pulse.sequenceStep + system->config->apu.waveShift ) % 8 ];
 }
 
 
@@ -625,7 +625,7 @@ void APU::GetDebugInfo( apuDebug_t& apuDebug )
 	apuDebug.frameCounter		= frameCounter;
 	apuDebug.status				= regStatus;
 	apuDebug.halfClkTicks		= dbgHalfClkTicks;
-	apuDebug.quarterClkTicks	= dbgHalfClkTicks;
+	apuDebug.quarterClkTicks	= dbgQuarterClkTicks;
 	apuDebug.irqClkEvents		= dbgIrqEvents;
 	apuDebug.frameCounterTicks	= frameSeqTick;
 	apuDebug.cycle				= cpuCycle;
@@ -667,11 +667,11 @@ void APU::End()
 		float noiseSample			= noise.samples.Deque();
 		float dmcSample				= dmc.samples.Deque();
 
-		pulse1Sample				= ( system->config.apu.mutePulse1	)	? 0.0f : pulse1Sample;
-		pulse2Sample				= ( system->config.apu.mutePulse2	)	? 0.0f : pulse2Sample;
-		triSample					= ( system->config.apu.muteTri		)	? 0.0f : triSample;
-		noiseSample					= ( system->config.apu.muteNoise	)	? 0.0f : noiseSample;
-		dmcSample					= ( system->config.apu.muteDMC		)	? 0.0f : dmcSample;
+		pulse1Sample				= ( system->config->apu.mutePulse1	)	? 0.0f : pulse1Sample;
+		pulse2Sample				= ( system->config->apu.mutePulse2	)	? 0.0f : pulse2Sample;
+		triSample					= ( system->config->apu.muteTri		)	? 0.0f : triSample;
+		noiseSample					= ( system->config->apu.muteNoise	)	? 0.0f : noiseSample;
+		dmcSample					= ( system->config->apu.muteDMC		)	? 0.0f : dmcSample;
 
 		const float pulseMixed		= PulseMixer( (uint32_t)pulse1Sample, (uint32_t)pulse2Sample );
 		const float tndMixed		= TndMixer( (uint32_t)triSample, (uint32_t)noiseSample, (uint32_t)dmcSample );

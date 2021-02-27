@@ -67,6 +67,7 @@ public:
 	uint32_t			finishedFrame;
 	uint32_t			currentFrame;
 	uint64_t			frameNumber;
+	uint64_t			previousFrameNumber;
 	bool				savedState;
 	bool				loadedState;
 	bool				toggledFrame;
@@ -74,40 +75,37 @@ public:
 
 	bool				headless;
 
-	// TODO: Need to support two controllers and clean this up
-	std::atomic<Controller> controller;
-	bool				strobeOn;
-	uint8_t				btnShift[2];
-
 	uint8_t				mirrorMode;
-	wtConfig			config;
+	const wtConfig*		config;
 	wtInput				input;
 
 private:
 	static const uint32_t MaxStates = 5000;
 
-	wstring				fileName;
-	wstring				baseFileName;
-	Cpu6502				cpu;
-	PPU					ppu;
-	APU					apu;
-	uint8_t				memory[ PhysicalMemorySize ];
-	masterCycles_t		sysCycles;
-	bool				replayFinished;
-	bool				debugNTEnable;
-	timePoint_t			previousTime;
-	wtDebugInfo			dbgInfo;
+	wstring						fileName;
+	wstring						baseFileName;
+	Cpu6502						cpu;
+	PPU							ppu;
+	APU							apu;
+	uint8_t						memory[ PhysicalMemorySize ];
+	masterCycles_t				sysCycles;
+	bool						replayFinished;
+	bool						debugNTEnable;
+	timePoint_t					previousTime;
+	wtDebugInfo					dbgInfo;
 #if DEBUG_ADDR == 1
-	std::map<uint16_t, uint8_t> memoryDebug;
+	std::map<uint16_t, uint8_t>	memoryDebug;
 #endif // #if DEBUG_ADDR == 1
-	wtNameTableImage	nameTableSheet;
-	wtPaletteImage		paletteDebug;
-	wtPatternTableImage	patternTable0;
-	wtPatternTableImage	patternTable1;
-	wt16x8ChrImage		pickedObj8x16;
-	std::deque<wtStateBlob> states;
-	uint32_t			currentState;
-	uint32_t			firstState;
+	wtNameTableImage			nameTableSheet;
+	wtPaletteImage				paletteDebug;
+	wtPatternTableImage			patternTable0;
+	wtPatternTableImage			patternTable1;
+	wt16x8ChrImage				pickedObj8x16;
+	std::deque<wtStateBlob>		states;
+	uint32_t					currentState;
+	uint32_t					firstState;
+	bool						strobeOn;
+	uint8_t						btnShift[ 2 ];
 
 public:
 	wtSystem()
@@ -117,8 +115,6 @@ public:
 
 	void Reset()
 	{
-		InitConfig();
-
 		sysCycles = masterCycles_t( 0 );
 		previousTime = std::chrono::steady_clock::now();
 
@@ -127,6 +123,8 @@ public:
 		strobeOn = false;
 		btnShift[0] = 0;
 		btnShift[1] = 0;
+
+		previousFrameNumber = 0;
 
 		mirrorMode = MIRROR_MODE_HORIZONTAL;
 
@@ -164,57 +162,56 @@ public:
 		previousTime = chrono::steady_clock::now();
 	}
 
-	uint8_t&	GetStack();
-	uint8_t		ReadMemory( const uint16_t address );
-	void		WriteMemory( const uint16_t address, const uint16_t offset, const uint8_t value );
-	uint8_t		GetMapperId() const;
-	uint8_t		GetMirrorMode() const;
+	uint8_t&		GetStack();
+	uint8_t			ReadMemory( const uint16_t address );
+	void			WriteMemory( const uint16_t address, const uint16_t offset, const uint8_t value );
+	uint8_t			GetMapperId() const;
+	uint8_t			GetMirrorMode() const;
 
-	int			Init( const wstring& filePath );
-	void		Shutdown();
-	void		LoadProgram( const uint32_t resetVectorManual = 0x10000 );
-	void		Serialize( Serializer& serializer, const serializeMode_t mode );
-	string		GetPrgBankDissambly( const uint8_t bankNum );
-	void		GenerateRomDissambly( string prgRomAsm[128] );
-	void		GenerateChrRomTables( wtPatternTableImage chrRom[32] );
-	void		GetChrRomPalette( const uint8_t paletteId, RGBA palette[ 4 ] );
-	bool		Run( const masterCycles_t& nextCycle );
-	int			RunFrame();
-	void		CaptureInput( const Controller keys );
-	void		WriteInput( const uint8_t value );
-	void		GetFrameResult( wtFrameResult& outFrameResult );
-	void		GetState( wtState& state );
-	void		GetConfig( wtConfig& config );
-	void		SyncConfig( wtConfig& config );
-	void		InitConfig();
-	void		RequestNMI() const;
-	void		RequestIRQ() const;
-	void		RequestDMA() const;
-	void		RequestDmcTransfer() const;
-	void		SaveSate();
-	void		LoadState();
-	void		ToggleFrame();
-	bool		MouseInRegion( const wtRect& region );
+	int				Init( const wstring& filePath );
+	void			Shutdown();
+	void			LoadProgram( const uint32_t resetVectorManual = 0x10000 );
+	void			Serialize( Serializer& serializer, const serializeMode_t mode );
+	string			GetPrgBankDissambly( const uint8_t bankNum );
+	void			GenerateRomDissambly( string prgRomAsm[128] );
+	void			GenerateChrRomTables( wtPatternTableImage chrRom[32] );
+	void			GetChrRomPalette( const uint8_t paletteId, RGBA palette[ 4 ] );
+	bool			Run( const masterCycles_t& nextCycle );
+	int				RunFrame();
+	uint8_t			ReadInput( const uint16_t address );
+	void			WriteInput( const uint16_t address, const uint8_t value );
+	void			GetFrameResult( wtFrameResult& outFrameResult );
+	void			GetState( wtState& state );
+	void			SetConfig( wtConfig& cfg );
+	void			RequestNMI() const;
+	void			RequestIRQ() const;
+	void			RequestDMA() const;
+	void			RequestDmcTransfer() const;
+	void			SaveSate();
+	void			LoadState();
+	void			ToggleFrame();
+	bool			MouseInRegion( const wtRect& region );
+	static void		InitConfig( wtConfig& cfg );
 
 	// Implemented in "mapper.h"
 	unique_ptr<wtMapper> AssignMapper( const uint32_t mapperId );
 
 private:
-	void		DebugPrintFlushLog();
-	void		WritePhysicalMemory( const uint16_t address, const uint8_t value );
-	uint16_t	MirrorAddress( const uint16_t address ) const;
-	void		RecordSate( wtStateBlob& state );
-	void		RestoreState( const wtStateBlob& state );
-	void		RunStateControl( const bool newFrame, masterCycles_t& nextCycle );
-	void		SaveSRam();
-	void		LoadSRam();
+	void			DebugPrintFlushLog();
+	void			WritePhysicalMemory( const uint16_t address, const uint8_t value );
+	uint16_t		MirrorAddress( const uint16_t address ) const;
+	void			RecordSate( wtStateBlob& state );
+	void			RestoreState( const wtStateBlob& state );
+	void			RunStateControl( const bool newFrame, masterCycles_t& nextCycle );
+	void			SaveSRam();
+	void			LoadSRam();
 
-	static bool	IsInputRegister( const uint16_t address );
-	static bool	IsPpuRegister( const uint16_t address );
-	static bool	IsApuRegister( const uint16_t address );
-	static bool IsCartMemory( const uint16_t address );
-	static bool IsPhysicalMemory( const uint16_t address );
-	static bool	IsDMA( const uint16_t address );
+	static bool		IsInputRegister( const uint16_t address );
+	static bool		IsPpuRegister( const uint16_t address );
+	static bool		IsApuRegister( const uint16_t address );
+	static bool		IsCartMemory( const uint16_t address );
+	static bool		IsPhysicalMemory( const uint16_t address );
+	static bool		IsDMA( const uint16_t address );
 };
 
 
@@ -236,26 +233,26 @@ struct wtState
 
 struct wtFrameResult
 {
-	uint64_t			currentFrame;
-	wtDisplayImage		frameBuffer;
-	apuOutput_t			soundOutput;
-	bool				sndReady;
-	bool				savedState;
-	bool				loadedState;
-	bool				replayFinished;
+	uint64_t					currentFrame;
+	wtDisplayImage				frameBuffer;
+	apuOutput_t					soundOutput;
+	bool						sndReady;
+	bool						savedState;
+	bool						loadedState;
+	bool						replayFinished;
 
 	// Debug
-	wtDebugInfo			dbgInfo;
-	wtState				state;
-	wtRomHeader			romHeader;
-	wtMirrorMode		mirrorMode;
-	uint32_t			mapperId;
-	wtNameTableImage	nameTableSheet;
-	wtPaletteImage		paletteDebug;
-	wtPatternTableImage patternTable0;
-	wtPatternTableImage patternTable1;
-	wt16x8ChrImage		pickedObj8x16;
-	apuDebug_t			apuDebug;
-	ppuDebug_t			ppuDebug;
-	std::vector<OpDebugInfo>* dbgMetrics;
+	wtDebugInfo					dbgInfo;
+	wtState						state;
+	wtRomHeader					romHeader;
+	wtMirrorMode				mirrorMode;
+	uint32_t					mapperId;
+	wtNameTableImage			nameTableSheet;
+	wtPaletteImage				paletteDebug;
+	wtPatternTableImage			patternTable0;
+	wtPatternTableImage			patternTable1;
+	wt16x8ChrImage				pickedObj8x16;
+	apuDebug_t					apuDebug;
+	ppuDebug_t					ppuDebug;
+	std::vector<OpDebugInfo>*	dbgMetrics;
 };

@@ -201,6 +201,8 @@ struct wtDebugInfo
 {
 	uint32_t		frameTimeUs;
 	uint64_t		frameNumber;
+	uint64_t		framePerRun;
+	uint64_t		runInvocations;
 	masterCycles_t	cycleBegin;
 	masterCycles_t	cycleEnd;
 };
@@ -218,10 +220,9 @@ struct wtConfig
 		bool		requestLoadState;
 	} sys;
 
-
 	struct CPU
 	{
-		int32_t		traceFrameCount;	
+		int32_t		traceFrameCount;
 	} cpu;
 
 	struct APU
@@ -240,10 +241,10 @@ struct wtConfig
 
 	struct PPU
 	{
-		int32_t	chrPalette;
-		int32_t	spriteLimit;
-		bool	showBG;
-		bool	showSprite;
+		int32_t		chrPalette;
+		int32_t		spriteLimit;
+		bool		showBG;
+		bool		showSprite;
 	} ppu;
 };
 

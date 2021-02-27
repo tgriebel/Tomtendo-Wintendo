@@ -71,6 +71,9 @@ int wtSystem::Init( const wstring& filePath )
 	apu.Reset();
 	apu.RegisterSystem( this );
 
+	cpu.Reset();
+	cpu.RegisterSystem( this );
+
 	LoadProgram();
 	fileName = filePath;
 
@@ -110,10 +113,7 @@ void wtSystem::LoadProgram( const uint32_t resetVectorManual )
 
 	cpu.nmiVector = Combine( ReadMemory( NmiVectorAddr ), ReadMemory( NmiVectorAddr + 1 ) );
 	cpu.irqVector = Combine( ReadMemory( IrqVectorAddr ), ReadMemory( IrqVectorAddr + 1 ) );
-
-	cpu.interruptRequestNMI = false;
-	cpu.Reset(); // TODO: move this
-	cpu.system = this;
+	cpu.PC = cpu.resetVector;
 
 	if ( cart->h.controlBits0.fourScreenMirror ) {
 		mirrorMode = MIRROR_MODE_FOURSCREEN;
@@ -218,33 +218,21 @@ uint8_t wtSystem::ReadMemory( const uint16_t address )
 	{
 		return ppu.ReadReg( address );
 	}
-	// https://wiki.nesdev.com/w/index.php/APU_DMC#cite_note-2
-	// This note describes the register conflict
+	else if ( address == 0x4017 )
+	{
+		// FIXME: what to return?
+		// https://wiki.nesdev.com/w/index.php/APU_DMC#cite_note-2
+		// This note describes the register conflict
+		ReadInput( address );	
+		return apu.ReadReg( address );
+	}	
 	else if ( IsApuRegister( address ) )
 	{
 		return apu.ReadReg( address );
 	}
-	else if ( IsInputRegister( address ) ) // FIXME: APU will eat 0x4017
+	else if ( IsInputRegister( address ) )
 	{
-		assert( InputRegister0 <= address );
-		const uint32_t controllerIndex = ( address - InputRegister0 );
-		const ControllerId controllerId = static_cast<ControllerId>( controllerIndex );
-
-		uint8_t keyBuffer = 0;
-
-		if ( strobeOn )
-		{
-			keyBuffer = static_cast<uint8_t>( input.GetKeyBuffer( controllerId ) & static_cast<ButtonFlags>( 0X80 ) );
-			btnShift[controllerIndex] = 0;
-
-			return keyBuffer;
-		}
-
-		keyBuffer = static_cast<uint8_t>( input.GetKeyBuffer( controllerId ) >> static_cast<ButtonFlags>( 7 - btnShift[controllerIndex] ) ) & 0x01;
-		++btnShift[controllerIndex];
-		btnShift[controllerIndex] %= 8;
-
-		return keyBuffer;
+		return ReadInput( address );
 	}
 	else
 	{
@@ -265,18 +253,16 @@ void wtSystem::WriteMemory( const uint16_t address, const uint16_t offset, const
 		ppu.IssueDMA( value );
 		apu.WriteReg( address, value );
 	}
+	else if ( address == 0x4017 )
+	{
+		WriteInput( address, value );
+		apu.WriteReg( address, value );
+	}
 	else if ( IsInputRegister( address ) )
 	{
-		const bool prevStrobeOn = strobeOn;
-		strobeOn = ( value & 0x01 );
-
-		if ( prevStrobeOn && !strobeOn )
-		{
-			btnShift[0] = 0;
-			btnShift[1] = 0;
-		}
+		WriteInput( address, value );
 	}
-	else if ( wtSystem::IsApuRegister( address ) ) // FIXME: the input will always eat 4017
+	else if ( wtSystem::IsApuRegister( address ) )
 	{
 		apu.WriteReg( address, value );
 	}
@@ -299,16 +285,40 @@ void wtSystem::WritePhysicalMemory( const uint16_t address, const uint8_t value 
 }
 
 
-void wtSystem::WriteInput( const uint8_t value )
+uint8_t wtSystem::ReadInput( const uint16_t address )
 {
+	uint8_t keyBuffer = 0;
 
+	assert( InputRegister0 <= address );
+	const uint32_t controllerIndex = ( address - InputRegister0 );
+	const ControllerId controllerId = static_cast<ControllerId>( controllerIndex );
+
+	if ( strobeOn )
+	{
+		keyBuffer = static_cast<uint8_t>( input.GetKeyBuffer( controllerId ) & static_cast<ButtonFlags>( 0X80 ) );
+		btnShift[ controllerIndex ] = 0;
+	} 
+	else 
+	{
+		keyBuffer = static_cast<uint8_t>( input.GetKeyBuffer( controllerId ) >> static_cast<ButtonFlags>( 7 - btnShift[ controllerIndex ] ) ) & 0x01;
+		++btnShift[ controllerIndex ];
+		btnShift[ controllerIndex ] %= 8;
+	}
+	return keyBuffer;
 }
 
 
-void wtSystem::CaptureInput( const Controller keys )
+void wtSystem::WriteInput( const uint16_t address, const uint8_t value )
 {
-	controller.exchange( keys );
+	const bool prevStrobeOn = strobeOn;
+	strobeOn = ( value & 0x01 );
+	if ( prevStrobeOn && !strobeOn )
+	{
+		btnShift[ 0 ] = 0;
+		btnShift[ 1 ] = 0;
+	}
 }
+
 
 void wtSystem::GetFrameResult( wtFrameResult& outFrameResult )
 {
@@ -358,15 +368,15 @@ void wtSystem::GetState( wtState& state )
 }
 
 
-void wtSystem::InitConfig()
+void wtSystem::InitConfig( wtConfig& config )
 {
 	// System
 	config.sys.restoreFrame		= 0;
 	config.sys.nextScaline		= 0;
 	config.sys.replay			= false;
 	config.sys.record			= false;
-	config.sys.requestLoadState = false;
-	config.sys.requestSaveState = false;
+	config.sys.requestLoadState	= false;
+	config.sys.requestSaveState	= false;
 
 	// CPU
 	config.cpu.traceFrameCount	= 0;
@@ -391,15 +401,9 @@ void wtSystem::InitConfig()
 }
 
 
-void wtSystem::GetConfig( wtConfig& systemConfig )
+void wtSystem::SetConfig( wtConfig& systemConfig )
 {
-	systemConfig = config;
-}
-
-
-void wtSystem::SyncConfig( wtConfig& systemConfig )
-{
-	config = systemConfig;
+	config = &systemConfig;
 }
 
 
@@ -529,9 +533,9 @@ bool wtSystem::Run( const masterCycles_t& nextCycle )
 	static constexpr masterCycles_t ticks( CpuClockDivide );
 
 #if DEBUG_ADDR == 1
-	if( config.cpu.traceFrameCount ) {
+	if( config->cpu.traceFrameCount ) {
 		cpu.resetLog = true;
-		cpu.logFrameCount = config.cpu.traceFrameCount;
+		cpu.logFrameCount = config->cpu.traceFrameCount;
 	}
 
 	if( cpu.resetLog ) {
@@ -539,9 +543,8 @@ bool wtSystem::Run( const masterCycles_t& nextCycle )
 		cpu.resetLog = false;
 	}
 
-	if( ( cpu.logFrameCount > 0 ) && !cpu.logFile.is_open() && cpu.logToFile )
-	{
-		cpu.logFile.open( "tomTendo.log" );
+	if( ( cpu.logFrameCount > 0 ) && !cpu.logFile.is_open() && cpu.logToFile ) {
+		cpu.logFile.open( fileName + L".log" );
 	}
 #endif
 
@@ -656,7 +659,7 @@ void wtSystem::GenerateChrRomTables( wtPatternTableImage chrRom[32] )
 	assert( cart->GetChrBankCount() <= 32 );
 
 	RGBA palette[4];
-	GetChrRomPalette( config.ppu.chrPalette, palette );
+	GetChrRomPalette( config->ppu.chrPalette, palette );
 
 	assert( cart->h.chrRomBanks <= 32 );
 	for ( uint32_t bankNum = 0; bankNum < cart->h.chrRomBanks; ++bankNum ) {
@@ -669,7 +672,7 @@ void wtSystem::RunStateControl( const bool newFrame, masterCycles_t& nextCycle )
 {
 	loadedState = false;
 	savedState = false;
-	if ( config.sys.requestSaveState )
+	if ( config->sys.requestSaveState )
 	{
 		wtStateBlob state;
 		RecordSate( state );
@@ -677,17 +680,17 @@ void wtSystem::RunStateControl( const bool newFrame, masterCycles_t& nextCycle )
 		savedState = true;
 	}
 
-	if ( config.sys.requestLoadState )
+	if ( config->sys.requestLoadState )
 	{
 		LoadState();
 		loadedState = true;
 	}
 
-	const uint32_t stateIx = static_cast<uint32_t>( ( config.sys.restoreFrame / 100.0f ) * states.size() ) - 1;
+	const uint32_t stateIx = static_cast<uint32_t>( ( config->sys.restoreFrame / 100.0f ) * states.size() ) - 1;
 	replayFinished = ( stateIx >= ( states.size() - 1 ) ) || ( states.size() == 0 );
-	if ( config.sys.replay && !replayFinished )
+	if ( config->sys.replay && !replayFinished )
 	{		
-		if ( newFrame || ( config.sys.restoreFrame == 1 ) )
+		if ( newFrame || ( config->sys.restoreFrame == 1 ) )
 		{
 			frameBuffer[ currentFrame ].Clear();
 			
@@ -695,7 +698,7 @@ void wtSystem::RunStateControl( const bool newFrame, masterCycles_t& nextCycle )
 			nextCycle = sysCycles + std::chrono::duration_cast<masterCycles_t>( frameRate_t( 1 ) );
 		}
 	}
-	else if ( config.sys.record && newFrame )
+	else if ( config->sys.record && newFrame )
 	{
 		states.push_back( wtStateBlob() );
 		RecordSate( states.back() );
@@ -705,7 +708,7 @@ void wtSystem::RunStateControl( const bool newFrame, masterCycles_t& nextCycle )
 		}
 	}
 
-	if ( config.sys.replay && replayFinished ) {
+	if ( config->sys.replay && replayFinished ) {
 		states.clear();
 	}
 }
@@ -744,6 +747,7 @@ int wtSystem::RunFrame()
 		toggledLastFrame = true;
 		toggledFrame = false;
 	}
+	previousFrameNumber = frameNumber;
 
 	RunStateControl( toggledLastFrame, nextCycle ); // TODO: remove need for 'nextCycle'
 
@@ -759,6 +763,8 @@ int wtSystem::RunFrame()
 	const double frameTimeUs = emuTime.GetElapsedUs();
 	dbgInfo.frameTimeUs = static_cast<uint32_t>( frameTimeUs );
 	dbgInfo.frameNumber = frameNumber;
+	dbgInfo.framePerRun += frameNumber - previousFrameNumber;
+	dbgInfo.runInvocations++;
 
 	if ( headless )	{
 		return isRunning;

@@ -14,7 +14,7 @@
 using namespace DirectX;
 using Microsoft::WRL::ComPtr;
 
-static const uint32_t				FrameCount = 2;
+static const uint32_t				FrameCount = 3;
 static const uint32_t				FrameResultCount = FrameCount;//( FrameCount + 1 );
 
 struct DisplayConstantBuffer
@@ -128,8 +128,7 @@ struct sync_t
 	ComPtr<ID3D12Fence>					fence;
 	ComPtr<ID3D12Fence>					cpyFence;
 	UINT64								fenceValues[ FrameCount ];
-	volatile uint64_t					frameBufferCpyLock;
-	HANDLE								frameCopySemaphore[ FrameCount ];
+	HANDLE								frameSubmitSemaphore[ FrameCount ];
 	HANDLE								audioCopySemaphore[ FrameCount ];
 };
 

@@ -10,6 +10,13 @@
 #include <comdef.h>
 #include "wintendoApp.h"
 
+enum SoundState
+{
+	SOUND_STATE_EMPTY = -2,
+	SOUND_STATE_SUBMITTED = -1,
+	SOUND_STATE_READY = 0,
+};
+
 struct wtAudioEngine
 {
 	static const uint32_t				SndBufferCnt		= 10;
@@ -38,7 +45,6 @@ struct wtAudioEngine
 	int32_t								totalAudioSubmits	= 0;
 	int32_t								totalAudioBuffers	= 0;
 
-	float								audioDuration		= 0.0f;
 #if defined(_DEBUG)
 	bool								enableSound			= false;
 #else
@@ -64,9 +70,11 @@ class VoiceCallback : public IXAudio2VoiceCallback
 {
 public:
 	Timer timer;
+	float totalDuration;
 	HANDLE hBufferEndEvent;
 	volatile LONG totalQueues;
-	VoiceCallback() : hBufferEndEvent( CreateEvent( NULL, FALSE, FALSE, NULL ) ), totalQueues( 0 ) {}
+	volatile LONG processedQueues;
+	VoiceCallback() : hBufferEndEvent( CreateEvent( NULL, FALSE, FALSE, NULL ) ), totalQueues( 0 ), processedQueues( 0 ), totalDuration( 0.0f ) {}
 	~VoiceCallback() { CloseHandle( hBufferEndEvent ); }
 
 	void OnStreamEnd() { }
@@ -76,16 +84,16 @@ public:
 
 	void OnBufferEnd( void* pBufferContext )
 	{
-		timer.Stop();
-		//audio.audioDuration = timer.GetElapsed();
+		totalDuration += static_cast<float>( timer.GetElapsedMs() );
 
 		if ( pBufferContext != nullptr )
 		{
-			*( (int32_t*)pBufferContext ) = -2;
+			*( (int32_t*)pBufferContext ) = SOUND_STATE_EMPTY;
 		}
 
 		SetEvent( hBufferEndEvent );
 		InterlockedAdd( &totalQueues, -1 );
+		InterlockedAdd( &processedQueues, 1 );
 	}
 	void OnBufferStart( void* pBufferContext )
 	{

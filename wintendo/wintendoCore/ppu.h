@@ -282,8 +282,6 @@ public:
 	ppuCycle_t		Exec();
 	bool			Step( const ppuCycle_t& nextCycle );
 
-
-
 	PPU()
 	{
 		palette = &DefaultPalette[0];
