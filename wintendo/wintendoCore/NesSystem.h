@@ -20,8 +20,8 @@
 
 struct wtState;
 struct wtFrameResult;
-struct wtDebugInfo;
-struct wtConfig;
+struct debugTiming_t;
+struct config_t;
 
 class wtSystem
 {
@@ -76,7 +76,7 @@ public:
 	bool				headless;
 
 	uint8_t				mirrorMode;
-	const wtConfig*		config;
+	const config_t*		config;
 	wtInput				input;
 
 private:
@@ -92,7 +92,7 @@ private:
 	bool						replayFinished;
 	bool						debugNTEnable;
 	timePoint_t					previousTime;
-	wtDebugInfo					dbgInfo;
+	debugTiming_t				dbgInfo;
 #if DEBUG_ADDR == 1
 	std::map<uint16_t, uint8_t>	memoryDebug;
 #endif // #if DEBUG_ADDR == 1
@@ -182,7 +182,9 @@ public:
 	void			WriteInput( const uint16_t address, const uint8_t value );
 	void			GetFrameResult( wtFrameResult& outFrameResult );
 	void			GetState( wtState& state );
-	void			SetConfig( wtConfig& cfg );
+	const PPU&		GetPPU() const;
+	const APU&		GetAPU() const;
+	void			SetConfig( config_t& cfg );
 	void			RequestNMI() const;
 	void			RequestIRQ() const;
 	void			RequestDMA() const;
@@ -191,7 +193,7 @@ public:
 	void			LoadState();
 	void			ToggleFrame();
 	bool			MouseInRegion( const wtRect& region );
-	static void		InitConfig( wtConfig& cfg );
+	static void		InitConfig( config_t& cfg );
 
 	// Implemented in "mapper.h"
 	unique_ptr<wtMapper> AssignMapper( const uint32_t mapperId );
@@ -242,7 +244,7 @@ struct wtFrameResult
 	bool						replayFinished;
 
 	// Debug
-	wtDebugInfo					dbgInfo;
+	debugTiming_t				dbgInfo;
 	wtState						state;
 	wtRomHeader					romHeader;
 	wtMirrorMode				mirrorMode;
@@ -254,5 +256,5 @@ struct wtFrameResult
 	wt16x8ChrImage				pickedObj8x16;
 	apuDebug_t					apuDebug;
 	ppuDebug_t					ppuDebug;
-	std::vector<OpDebugInfo>*	dbgMetrics;
+	wtLog*						dbgLog;
 };

@@ -216,11 +216,10 @@ public:
 	uint8_t			imgPal[ PPU::PaletteColorNumber ];
 	uint8_t			sprPal[ PPU::PaletteColorNumber ];
 
-	int32_t			currentScanline; // FIXME: only here for debug testing
-
 private:
 	wtSystem*		system;
 	ppuCycle_t		cycle;
+	int32_t			currentScanline;
 
 	ppuCtrl			regCtrl;
 	ppuMask_t		regMask;
@@ -278,9 +277,11 @@ public:
 	void			WriteVram();
 	uint8_t			ReadVram( const uint16_t addr );
 	bool			IsMemoryMapped( const uint16_t addr ) const;
+	ppuCycle_t		GetCycle() const;
+	uint32_t		GetScanline() const;
 
 	ppuCycle_t		Exec();
-	bool			Step( const ppuCycle_t& nextCycle );
+	bool			Step( const ppuCycle_t& nextCycle );	
 
 	PPU()
 	{
@@ -384,7 +385,6 @@ private:
 	bool			DataportEnabled();
 	bool			InVBlank();
 	void			IncRenderAddr();
-	uint32_t		GetScanline() const;
 
 	// Write Registers
 	void			PPUCTRL( const uint8_t value );

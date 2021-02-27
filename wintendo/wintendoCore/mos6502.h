@@ -117,6 +117,7 @@ struct cpuAddrInfo_t
 };
 
 class OpDebugInfo;
+class wtLog;
 
 class Cpu6502
 {
@@ -135,10 +136,11 @@ public:
 	std::stringstream	debugAddr;
 	std::ofstream		logFile;
 	bool				logToFile = false;
-	int					logFrameCount = 0;
+	int32_t				logFrameCount = 0;
+	int32_t				logFrameTotal = 0;
 #endif
 	bool				resetLog;
-	vector<OpDebugInfo>	dbgMetrics;
+	wtLog				dbgLog;
 
 	// TODO: move to system
 	mutable bool		interruptRequestNMI;
@@ -190,19 +192,19 @@ public:
 		forceStop = false;
 
 		resetLog = false;
-		dbgMetrics.resize(0);
-		BuildOpLUT();
+		dbgLog.Reset(0);
 	}
 
 	Cpu6502()
 	{
 		resetLog = false;
-		dbgMetrics.reserve( 10000000 );
 		Reset();
+		BuildOpLUT();
 	}
 
 	bool Step( const cpuCycle_t& nextCycle );
 	void RegisterSystem( wtSystem* sys );
+	bool IsLogOpen() const;
 
 	void Serialize( Serializer& serializer, const serializeMode_t mode );
 

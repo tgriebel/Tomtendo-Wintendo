@@ -6,7 +6,7 @@
 #include "debug.h"
 #include "mos6502.h"
 
-void OpDebugInfo::ToString( std::string& buffer, bool registerDebug )
+void OpDebugInfo::ToString( std::string& buffer, const bool registerDebug ) const
 {
 	std::stringstream debugStream;
 
@@ -110,4 +110,73 @@ void OpDebugInfo::ToString( std::string& buffer, bool registerDebug )
 	}
 
 	buffer += debugStream.str();
+}
+
+
+void wtLog::Reset( const uint32_t targetCount )
+{
+	log.clear();
+	totalCount = targetCount;
+	frameIx = 0;
+	log.resize( totalCount );
+	for ( size_t frameIndex = 0; frameIndex < totalCount; ++frameIndex ) {
+		log[ frameIndex ].reserve( 10000 );
+	}
+}
+
+
+void wtLog::NewFrame()
+{
+	if( IsFull() ) {
+		return;
+	}
+
+	++frameIx;
+	log[ frameIx ].reserve( 10000 );
+}
+
+
+OpDebugInfo& wtLog::NewLine()
+{
+	log[ frameIx ].resize( log[ frameIx ].size() + 1 );
+	return GetLogLine();
+}
+
+
+const logFrame_t& wtLog::GetLogFrame( const uint32_t frameNum ) const
+{
+	const uint32_t frameIndex = ( frameNum >= totalCount ) ? 0 : frameNum;
+	return log[ frameIndex ];
+}
+
+
+OpDebugInfo& wtLog::GetLogLine()
+{
+	return log[ frameIx ].back();
+}
+
+
+uint32_t wtLog::GetRecordCount() const
+{
+	return ( totalCount == 0 ) ? 0 : ( frameIx + 1 );
+}
+
+
+bool wtLog::IsFull() const
+{
+	assert( totalCount > 0 );
+	return ( totalCount <= 1 ) || ( frameIx >= ( totalCount - 1 ) );
+}
+
+
+void wtLog::ToString( std::string& buffer, const uint32_t frameBegin, const uint32_t frameEnd, const bool registerDebug ) const
+{
+	for( uint32_t i = ( frameBegin + 1 ); i <= frameEnd; ++i )
+	{
+		for ( const OpDebugInfo& dbgInfo : GetLogFrame( i ) )
+		{
+			dbgInfo.ToString( buffer, true );
+			buffer += "\n";
+		}
+	}
 }

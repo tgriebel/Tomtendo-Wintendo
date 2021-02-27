@@ -968,7 +968,14 @@ bool PPU::DataportEnabled()
 uint32_t PPU::GetScanline() const
 {
 	// assert( ( static_cast<uint32_t>( cycle.count() ) / ScanlineCycles ) == currentScanline );
-	return ( static_cast<uint32_t>( cycle.count() ) / 340 ) % 262;
+//	return ( static_cast<uint32_t>( cycle.count() ) / 340 ) % 262;
+	return currentScanline;
+}
+
+
+ppuCycle_t PPU::GetCycle() const
+{
+	return cycle;
 }
 
 

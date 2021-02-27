@@ -6,9 +6,9 @@
 #include "common.h"
 
 #if DEBUG_ADDR == 1
-#define DEBUG_ADDR_INDEXED_ZERO if( logFrameCount > 0 )									\
+#define DEBUG_ADDR_INDEXED_ZERO if( IsLogOpen() )										\
 	{																					\
-		OpDebugInfo& dbgInfo	= dbgMetrics.back();									\
+		OpDebugInfo& dbgInfo	= dbgLog.GetLogLine();									\
 		dbgInfo.addrMode		= static_cast<uint8_t>( ( &reg == &X ) ? addrMode_t::IndexedAbsoluteX : addrMode_t::IndexedAbsoluteY );	\
 		dbgInfo.address			= address;												\
 		dbgInfo.targetAddress	= targetAddress;										\
@@ -16,9 +16,9 @@
 		dbgInfo.isXReg			= ( &reg == &X );										\
 	}
 
-#define DEBUG_ADDR_INDEXED_ABS if( logFrameCount > 0 )									\
+#define DEBUG_ADDR_INDEXED_ABS if( IsLogOpen() )										\
 	{																					\
-		OpDebugInfo& dbgInfo	= dbgMetrics.back();									\
+		OpDebugInfo& dbgInfo	= dbgLog.GetLogLine();									\
 		dbgInfo.addrMode		= static_cast<uint8_t>( ( &reg == &X ) ? addrMode_t::IndexedAbsoluteX : addrMode_t::IndexedAbsoluteY );	\
 		dbgInfo.address			= address;												\
 		dbgInfo.targetAddress	= targetAddress;										\
@@ -26,33 +26,33 @@
 		dbgInfo.isXReg			= ( &reg == &X );										\
 	}
 
-#define DEBUG_ADDR_ZERO if( cpu.logFrameCount > 0 )										\
+#define DEBUG_ADDR_ZERO if( cpu.IsLogOpen() )											\
 	{																					\
-		OpDebugInfo& dbgInfo	= cpu.dbgMetrics.back();								\
+		OpDebugInfo& dbgInfo	= cpu.dbgLog.GetLogLine();								\
 		dbgInfo.addrMode		= static_cast<uint8_t>( addrMode_t::Zero );				\
 		dbgInfo.address			= address;												\
 		dbgInfo.memValue		= cpu.system->ReadMemory( address );					\
 	}
 
-#define DEBUG_ADDR_ABS if( cpu.logFrameCount > 0 )										\
+#define DEBUG_ADDR_ABS if( cpu.IsLogOpen() )											\
 	{																					\
-		OpDebugInfo& dbgInfo	= cpu.dbgMetrics.back();								\
+		OpDebugInfo& dbgInfo	= cpu.dbgLog.GetLogLine();								\
 		dbgInfo.addrMode		= static_cast<uint8_t>( addrMode_t::Absolute );			\
 		dbgInfo.address			= address;												\
 		dbgInfo.memValue		= cpu.system->ReadMemory( address );					\
 	}
 
-#define DEBUG_ADDR_IMMEDIATE if( cpu.logFrameCount > 0 )								\
+#define DEBUG_ADDR_IMMEDIATE if( cpu.IsLogOpen() )										\
 	{																					\
-		OpDebugInfo& dbgInfo	= cpu.dbgMetrics.back();								\
+		OpDebugInfo& dbgInfo	= cpu.dbgLog.GetLogLine();								\
 		dbgInfo.addrMode		= static_cast<uint8_t>( addrMode_t::Immediate );		\
 		dbgInfo.address			= address;												\
 		dbgInfo.memValue		= cpu.ReadOperand(0);									\
 	}
 
-#define DEBUG_ADDR_INDIRECT_INDEXED if( cpu.logFrameCount > 0 )							\
+#define DEBUG_ADDR_INDIRECT_INDEXED if( cpu.IsLogOpen() )								\
 	{																					\
-		OpDebugInfo& dbgInfo	= cpu.dbgMetrics.back();								\
+		OpDebugInfo& dbgInfo	= cpu.dbgLog.GetLogLine();								\
 		dbgInfo.addrMode		= static_cast<uint8_t>( addrMode_t::IndirectIndexed );	\
 		dbgInfo.address			= address;												\
 		dbgInfo.memValue		= cpu.system->ReadMemory( offset );						\
@@ -60,9 +60,9 @@
 		dbgInfo.offset			= offset;												\
 	}
 
-#define DEBUG_ADDR_INDEXED_INDIRECT if( cpu.logFrameCount > 0 )							\
+#define DEBUG_ADDR_INDEXED_INDIRECT if( cpu.IsLogOpen() )								\
 	{																					\
-		OpDebugInfo& dbgInfo	= cpu.dbgMetrics.back();								\
+		OpDebugInfo& dbgInfo	= cpu.dbgLog.GetLogLine();								\
 		dbgInfo.addrMode		= static_cast<uint8_t>( addrMode_t::IndexedIndirect );	\
 		dbgInfo.address			= address;												\
 		dbgInfo.memValue		= cpu.system->ReadMemory( address );					\
@@ -70,32 +70,37 @@
 		dbgInfo.targetAddress	= targetAddress;										\
 	}
 
-#define DEBUG_ADDR_ACCUMULATOR if( cpu.logFrameCount > 0 ) {							\
-		OpDebugInfo& dbgInfo	= cpu.dbgMetrics.back();								\
+#define DEBUG_ADDR_ACCUMULATOR if( cpu.IsLogOpen() )									\
+	{																					\
+		OpDebugInfo& dbgInfo	= cpu.dbgLog.GetLogLine();								\
 		dbgInfo.addrMode		= static_cast<uint8_t>( addrMode_t::Accumulator );		\
 	}
 
-#define DEBUG_ADDR_JMP if( logFrameCount > 0 ) {										\
-		OpDebugInfo& dbgInfo	= dbgMetrics.back();									\
+#define DEBUG_ADDR_JMP if( IsLogOpen() )												\
+	{																					\
+		OpDebugInfo& dbgInfo	= dbgLog.GetLogLine();									\
 		dbgInfo.addrMode		= static_cast<uint8_t>( addrMode_t::Jmp );				\
 		dbgInfo.address			= PC;													\
 	}
 
-#define DEBUG_ADDR_JMPI if( logFrameCount > 0 ) {										\
-		OpDebugInfo& dbgInfo	= dbgMetrics.back();									\
+#define DEBUG_ADDR_JMPI if( IsLogOpen() )												\
+	{																					\
+		OpDebugInfo& dbgInfo	= dbgLog.GetLogLine();									\
 		dbgInfo.addrMode		= static_cast<uint8_t>( addrMode_t::JmpIndirect );		\
 		dbgInfo.offset			= addr;													\
 		dbgInfo.address			= PC;													\
 	}
 
-#define DEBUG_ADDR_JSR if( logFrameCount > 0 ) {										\
-		OpDebugInfo& dbgInfo	= dbgMetrics.back();									\
+#define DEBUG_ADDR_JSR if( IsLogOpen() )												\
+	{																					\
+		OpDebugInfo& dbgInfo	= dbgLog.GetLogLine();									\
 		dbgInfo.addrMode		= static_cast<uint8_t>( addrMode_t::Jsr );				\
 		dbgInfo.address			= PC;													\
 	}
 
-#define DEBUG_ADDR_BRANCH if( logFrameCount > 0 ) {										\
-		OpDebugInfo& dbgInfo	= dbgMetrics.back();									\
+#define DEBUG_ADDR_BRANCH if( IsLogOpen() )												\
+	{																					\
+		OpDebugInfo& dbgInfo	= dbgLog.GetLogLine();									\
 		dbgInfo.addrMode		= static_cast<uint8_t>( addrMode_t::Branch );			\
 		dbgInfo.address			= branchedPC;											\
 	}
@@ -188,5 +193,31 @@ public:
 		regInfo			= { 0, 0, 0, 0, 0, 0 };
 	}
 
-	void ToString( std::string& buffer, bool registerDebug = true );
+	void ToString( std::string& buffer, const bool registerDebug = true ) const;
+};
+
+using logFrame_t = std::vector<OpDebugInfo>;
+using logRecords_t = std::vector<logFrame_t>;
+
+class wtLog
+{
+private:
+	logRecords_t		log;
+	uint32_t			frameIx;
+	uint32_t			totalCount;
+
+public:
+	wtLog() : frameIx( 0 ), totalCount( 1 )
+	{
+		log.resize( totalCount );
+	}
+
+	void				Reset( const uint32_t targetCount );
+	void				NewFrame();
+	OpDebugInfo&		NewLine();
+	const logFrame_t&	GetLogFrame( const uint32_t frameIx ) const;
+	OpDebugInfo&		GetLogLine();
+	uint32_t			GetRecordCount() const;
+	bool				IsFull() const;
+	void				ToString( std::string& buffer, const uint32_t frameBegin, const uint32_t frameEnd, const bool registerDebug = true ) const;
 };

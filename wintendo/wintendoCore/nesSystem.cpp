@@ -44,14 +44,11 @@ static void LoadNesFile( const std::wstring& fileName, unique_ptr<wtCart>& outCa
 void wtSystem::DebugPrintFlushLog()
 {
 #if DEBUG_ADDR == 1
-	if ( cpu.logFrameCount == 0 && cpu.logToFile )
+	if ( !cpu.IsLogOpen() && cpu.logToFile )
 	{
-		for( OpDebugInfo& dbgInfo : cpu.dbgMetrics )
-		{
-			string dbgString;
-			dbgInfo.ToString( dbgString );
-			cpu.logFile << dbgString << endl;
-		}
+		string dbgString;
+		cpu.dbgLog.ToString( dbgString, 0, 0, true );
+		cpu.logFile << dbgString << endl;
 	}
 #endif
 }
@@ -332,12 +329,12 @@ void wtSystem::GetFrameResult( wtFrameResult& outFrameResult )
 
 	GetState( outFrameResult.state );
 #if DEBUG_ADDR
-	outFrameResult.dbgMetrics = &cpu.dbgMetrics;
+	outFrameResult.dbgLog			= &cpu.dbgLog;
 #endif
-	outFrameResult.dbgInfo = dbgInfo;
-	outFrameResult.romHeader = cart->h;
-	outFrameResult.mirrorMode = static_cast<wtMirrorMode>( GetMirrorMode() );
-	outFrameResult.mapperId = GetMapperId();
+	outFrameResult.dbgInfo			= dbgInfo;
+	outFrameResult.romHeader		= cart->h;
+	outFrameResult.mirrorMode		= static_cast<wtMirrorMode>( GetMirrorMode() );
+	outFrameResult.mapperId			= GetMapperId();
 
 	if( apu.frameOutput != nullptr )
 	{
@@ -368,7 +365,19 @@ void wtSystem::GetState( wtState& state )
 }
 
 
-void wtSystem::InitConfig( wtConfig& config )
+const PPU& wtSystem::GetPPU() const
+{
+	return ppu;
+}
+
+
+const APU& wtSystem::GetAPU() const
+{
+	return apu;
+}
+
+
+void wtSystem::InitConfig( config_t& config )
 {
 	// System
 	config.sys.restoreFrame		= 0;
@@ -401,7 +410,7 @@ void wtSystem::InitConfig( wtConfig& config )
 }
 
 
-void wtSystem::SetConfig( wtConfig& systemConfig )
+void wtSystem::SetConfig( config_t& systemConfig )
 {
 	config = &systemConfig;
 }
@@ -533,17 +542,18 @@ bool wtSystem::Run( const masterCycles_t& nextCycle )
 	static constexpr masterCycles_t ticks( CpuClockDivide );
 
 #if DEBUG_ADDR == 1
-	if( config->cpu.traceFrameCount ) {
+	if( config->cpu.traceFrameCount && !cpu.IsLogOpen() ) {
 		cpu.resetLog = true;
 		cpu.logFrameCount = config->cpu.traceFrameCount;
+		cpu.logFrameTotal = cpu.logFrameCount;
 	}
 
 	if( cpu.resetLog ) {
-		cpu.dbgMetrics.resize( 0 );
+		cpu.dbgLog.Reset( cpu.logFrameTotal );
 		cpu.resetLog = false;
 	}
 
-	if( ( cpu.logFrameCount > 0 ) && !cpu.logFile.is_open() && cpu.logToFile ) {
+	if( cpu.IsLogOpen() && !cpu.logFile.is_open() && cpu.logToFile ) {
 		cpu.logFile.open( fileName + L".log" );
 	}
 #endif
@@ -573,12 +583,13 @@ bool wtSystem::Run( const masterCycles_t& nextCycle )
 #endif // #if DEBUG_MODE == 1
 
 #if DEBUG_ADDR == 1
-	if ( cpu.logFrameCount <= 0 ) {
+	if ( !cpu.IsLogOpen() ) {
 		if( cpu.logToFile ) {
 			cpu.logFile.close();
 		}
 	} else {
 		cpu.logFrameCount--;
+		cpu.dbgLog.NewFrame();
 	}
 #endif // #if DEBUG_ADDR == 1
 

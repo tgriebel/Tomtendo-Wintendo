@@ -197,7 +197,7 @@ public:
 };
 
 
-struct wtDebugInfo
+struct debugTiming_t
 {
 	uint32_t		frameTimeUs;
 	uint64_t		frameNumber;
@@ -208,7 +208,7 @@ struct wtDebugInfo
 };
 
 
-struct wtConfig
+struct config_t
 {
 	struct System
 	{
