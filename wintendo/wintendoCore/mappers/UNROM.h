@@ -68,7 +68,7 @@ public:
 		return 0;
 	}
 
-	uint8_t Write( const uint16_t addr, const uint16_t offset, const uint8_t value ) override
+	uint8_t Write( const uint16_t addr, const uint8_t value ) override
 	{
 		bank = ( value & 0x07 );
 		return 0;

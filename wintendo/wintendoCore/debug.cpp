@@ -99,14 +99,20 @@ void OpDebugInfo::ToString( std::string& buffer, const bool registerDebug ) cons
 
 	if ( registerDebug )
 	{
-		debugStream << setfill( ' ' ) << setw( 28 ) << right;
+		debugStream.seekg( 0, ios::end );
+		const size_t alignment = 60;
+		const size_t width = ( alignment - debugStream.tellg() );
+		debugStream.seekg( 0, ios::beg );
+
+		debugStream << setfill( ' ' ) << setw( width ) << right;
 		debugStream << uppercase << "A:" << setfill( '0' ) << setw( 2 ) << hex << static_cast<int>( regInfo.A ) << setw( 1 ) << " ";
 		debugStream << uppercase << "X:" << setfill( '0' ) << setw( 2 ) << hex << static_cast<int>( regInfo.X ) << setw( 1 ) << " ";
 		debugStream << uppercase << "Y:" << setfill( '0' ) << setw( 2 ) << hex << static_cast<int>( regInfo.Y ) << setw( 1 ) << " ";
 		debugStream << uppercase << "P:" << setfill( '0' ) << setw( 2 ) << hex << static_cast<int>( regInfo.P ) << setw( 1 ) << " ";
 		debugStream << uppercase << "SP:" << setfill( '0' ) << setw( 2 ) << hex << static_cast<int>( regInfo.SP ) << setw( 1 ) << " ";
-		debugStream << uppercase << "PPU:" << setfill( ' ' ) << setw( 3 ) << dec << ppuCycles.count() << "," << setw( 3 ) << ( curScanline + 1 ) << " ";
-		debugStream << uppercase << "CYC:" << dec << ( 7 + cpuCycles.count() ) << "\0"; // 7 is to match the init value from the nintendolator log
+		debugStream << uppercase << "PPU:" << setfill( ' ' ) << setw( 3 ) << dec << ppuCycles.count() << setw( 1 ) << " ";
+		debugStream << uppercase << "SL:" << setfill( ' ' ) << setw( 3 ) << dec << ( curScanline + 1 ) << " ";
+		debugStream << uppercase << "CYC:" << dec << cpuCycles.count() << "\0";
 	}
 
 	buffer += debugStream.str();

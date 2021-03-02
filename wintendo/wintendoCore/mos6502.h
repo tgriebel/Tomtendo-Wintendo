@@ -160,7 +160,7 @@ public:
 private:
 	cpuCycle_t			instructionCycles;
 	uint8_t				opCode;
-	bool				forceStop;
+	bool				halt;
 
 	cpuCycle_t			dbgStartCycle;
 	cpuCycle_t			dbgTargetCycle;
@@ -189,7 +189,7 @@ public:
 		oamInProcess = false;
 		dmcTransfer = false;
 
-		forceStop = false;
+		halt = false;
 
 		resetLog = false;
 		dbgLog.Reset(0);

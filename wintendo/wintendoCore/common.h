@@ -106,7 +106,7 @@ public:
 	virtual uint8_t	ReadRom( const uint16_t addr ) = 0;
 	virtual uint8_t	ReadChrRom( const uint16_t addr ) { return 0; };
 	virtual uint8_t	WriteChrRam( const uint16_t addr, const uint8_t value ) { return 0; };
-	virtual uint8_t	Write( const uint16_t addr, const uint16_t offset, const uint8_t value ) { return 0; };
+	virtual uint8_t	Write( const uint16_t addr, const uint8_t value ) { return 0; };
 	virtual bool	InWriteWindow( const uint16_t addr, const uint16_t offset ) { return false; };
 	
 	virtual void	Serialize( Serializer& serializer, const serializeMode_t mode ) {};
@@ -114,7 +114,7 @@ public:
 };
 
 
-struct wtCart
+class wtCart
 {
 public:
 	// WARNING: This data is directly copied into right
@@ -124,6 +124,11 @@ public:
 	size_t					size;
 	unique_ptr<wtMapper>	mapper;
 
+private:
+	size_t					prgSize;
+	size_t					chrSize;
+
+public:
 	wtCart()
 	{
 		memset( &h, 0, sizeof( wtRomHeader ) );
@@ -139,6 +144,8 @@ public:
 		memcpy( &h, &header, sizeof( wtRomHeader ) );
 		memcpy( rom, romData, romSize );
 		size = romSize;
+		prgSize = KB( 16 ) * (size_t)h.prgRomBanks;
+		chrSize = KB( 8 ) * (size_t)h.chrRomBanks;
 
 		assert( h.type[ 0 ] == 'N' );
 		assert( h.type[ 1 ] == 'E' );
@@ -157,18 +164,24 @@ public:
 		size = 0;
 	}
 
-	uint8_t* GetPrgRomBank( const uint32_t bankNum, const uint32_t bankSize = KB(16) ) {
-		//const uint32_t bankRatio = KB_16 / bankSize;
-		//assert( bankNum <= bankRatio * GetPrgBankCount() );
-		return &rom[ bankNum * bankSize ];
+	uint8_t* GetPrgRomBank( const uint32_t bankNum, const uint32_t bankSize = KB(16) )
+	{
+		const size_t addr = ( bankNum * (size_t)bankSize ) % prgSize;
+		assert( addr < size );
+		return &rom[ addr ];
+	}
+
+	uint8_t GetPrgRomBankAddr( const uint32_t address )
+	{
+		assert( address < size );
+		return rom[ address ];
 	}
 
 	uint8_t* GetChrRomBank( const uint32_t bankNum, const uint32_t bankSize = KB(4) )
 	{
-		//const uint32_t bankRatio = KB_4 / bankSize;
-		//assert( bankNum <= bankRatio * GetChrBankCount() );
-		const uint32_t chrRomStart = h.prgRomBanks * KB(16);
-		return &rom[ chrRomStart + bankNum * bankSize ];
+		const size_t addr = prgSize + ( bankNum * (size_t)bankSize ) % chrSize;
+		assert( addr < size );
+		return &rom[ addr ];
 	}
 
 	uint8_t GetPrgBankCount() const

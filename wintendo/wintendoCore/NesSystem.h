@@ -18,7 +18,7 @@
 #include "input.h"
 #include "serializer.h"
 
-struct wtState;
+struct cpuDebug_t;
 struct wtFrameResult;
 struct debugTiming_t;
 struct config_t;
@@ -176,12 +176,13 @@ public:
 	void			GenerateRomDissambly( string prgRomAsm[128] );
 	void			GenerateChrRomTables( wtPatternTableImage chrRom[32] );
 	void			GetChrRomPalette( const uint8_t paletteId, RGBA palette[ 4 ] );
+	void			GetGrayscalePalette( RGBA palette[ 4 ] );
 	bool			Run( const masterCycles_t& nextCycle );
 	int				RunFrame();
 	uint8_t			ReadInput( const uint16_t address );
 	void			WriteInput( const uint16_t address, const uint8_t value );
 	void			GetFrameResult( wtFrameResult& outFrameResult );
-	void			GetState( wtState& state );
+	void			GetState( cpuDebug_t& state );
 	const PPU&		GetPPU() const;
 	const APU&		GetAPU() const;
 	void			SetConfig( config_t& cfg );
@@ -217,19 +218,27 @@ private:
 };
 
 
-struct wtState
+struct cpuDebug_t
 {
-	static const uint32_t CpuMemorySize = wtSystem::PhysicalMemorySize;
-	static const uint32_t PpuMemorySize = KB(2);
-
 	uint8_t				X;
 	uint8_t				Y;
 	uint8_t				A;
 	uint8_t				SP;
 	statusReg_t			P;
 	uint16_t			PC;
-	uint8_t				cpuMemory[CpuMemorySize];
-	uint8_t				ppuMemory[PpuMemorySize];
+	uint16_t			resetVector;
+	uint16_t			nmiVector;
+	uint16_t			irqVector;
+};
+
+
+struct memDebug_t
+{
+	static const uint32_t CpuMemorySize = wtSystem::PhysicalMemorySize;
+	static const uint32_t PpuMemorySize = KB( 2 );
+
+	uint8_t	cpuMemory[ CpuMemorySize ];
+	uint8_t	ppuMemory[ PpuMemorySize ];
 };
 
 
@@ -245,7 +254,6 @@ struct wtFrameResult
 
 	// Debug
 	debugTiming_t				dbgInfo;
-	wtState						state;
 	wtRomHeader					romHeader;
 	wtMirrorMode				mirrorMode;
 	uint32_t					mapperId;
@@ -254,6 +262,8 @@ struct wtFrameResult
 	wtPatternTableImage			patternTable0;
 	wtPatternTableImage			patternTable1;
 	wt16x8ChrImage				pickedObj8x16;
+	memDebug_t					memDebug;
+	cpuDebug_t					cpuDebug;
 	apuDebug_t					apuDebug;
 	ppuDebug_t					ppuDebug;
 	wtLog*						dbgLog;

@@ -86,7 +86,7 @@ int wtSystem::Init( const wstring& filePath )
 void wtSystem::Shutdown()
 {
 #if DEBUG_ADDR == 1
-	if( cpu.logFile.is_open() ) {
+	if ( cpu.logFile.is_open() ) {
 		cpu.logFile.close();
 	}
 #endif // #if DEBUG_ADDR == 1
@@ -102,10 +102,11 @@ void wtSystem::LoadProgram( const uint32_t resetVectorManual )
 	cart->mapper->OnLoadCpu();
 	cart->mapper->OnLoadPpu();
 
-	if ( resetVectorManual == 0x10000 )	{	
+	if ( resetVectorManual == 0x10000 ) {
 		cpu.resetVector = Combine( ReadMemory( ResetVectorAddr ), ReadMemory( ResetVectorAddr + 1 ) );
-	} else {
-		cpu.resetVector = static_cast< uint16_t >( resetVectorManual & 0xFFFF );
+	}
+	else {
+		cpu.resetVector = static_cast<uint16_t>( resetVectorManual & 0xFFFF );
 	}
 
 	cpu.nmiVector = Combine( ReadMemory( NmiVectorAddr ), ReadMemory( NmiVectorAddr + 1 ) );
@@ -114,9 +115,11 @@ void wtSystem::LoadProgram( const uint32_t resetVectorManual )
 
 	if ( cart->h.controlBits0.fourScreenMirror ) {
 		mirrorMode = MIRROR_MODE_FOURSCREEN;
-	} else if ( cart->h.controlBits0.mirror ) {
+	}
+	else if ( cart->h.controlBits0.mirror ) {
 		mirrorMode = MIRROR_MODE_VERTICAL;
-	} else {
+	}
+	else {
 		mirrorMode = MIRROR_MODE_HORIZONTAL;
 	}
 }
@@ -183,7 +186,7 @@ uint16_t wtSystem::MirrorAddress( const uint16_t address ) const
 uint8_t& wtSystem::GetStack()
 {
 	assert( ( StackBase + cpu.SP ) < PhysicalMemorySize );
-	return memory[StackBase + cpu.SP];
+	return memory[ StackBase + cpu.SP ];
 }
 
 
@@ -207,78 +210,80 @@ bool wtSystem::MouseInRegion( const wtRect& region ) // TODO: draft code, kill l
 
 uint8_t wtSystem::ReadMemory( const uint16_t address )
 {
-	if( IsCartMemory( address ) )
+	const uint16_t mAddr = MirrorAddress( address );
+	if ( IsCartMemory( mAddr ) )
 	{
-		return cart->mapper->ReadRom( address );
+		return cart->mapper->ReadRom( mAddr );
 	}
-	else if ( IsPpuRegister( address ) )
+	else if ( IsPpuRegister( mAddr ) )
 	{
-		return ppu.ReadReg( address );
+		return ppu.ReadReg( mAddr );
 	}
-	else if ( address == 0x4017 )
+	else if ( mAddr == 0x4017 )
 	{
 		// FIXME: what to return?
 		// https://wiki.nesdev.com/w/index.php/APU_DMC#cite_note-2
-		// This note describes the register conflict
-		ReadInput( address );	
-		return apu.ReadReg( address );
-	}	
-	else if ( IsApuRegister( address ) )
-	{
-		return apu.ReadReg( address );
+		// This note describes the register conflict	
+		ReadInput( mAddr );
+		return apu.ReadReg( mAddr );
 	}
-	else if ( IsInputRegister( address ) )
+	else if ( IsApuRegister( mAddr ) )
 	{
-		return ReadInput( address );
+		return apu.ReadReg( mAddr );
+	}
+	else if ( IsInputRegister( mAddr ) )
+	{
+		return ReadInput( mAddr );
 	}
 	else
 	{
-		assert( MirrorAddress( address ) < PhysicalMemorySize );
-		return memory[MirrorAddress( address )];
+		assert( mAddr < PhysicalMemorySize );
+		return memory[ mAddr ];
 	}
 }
 
 
 void wtSystem::WriteMemory( const uint16_t address, const uint16_t offset, const uint8_t value )
 {
-	if ( IsPpuRegister( address ) )
+	const uint32_t fullAddr = address + offset;
+	const uint16_t mAddr = MirrorAddress( fullAddr );
+	if ( IsPpuRegister( mAddr ) )
 	{
-		ppu.WriteReg( address, value );
+		ppu.WriteReg( mAddr, value );
 	}
-	else if ( wtSystem::IsDMA( address ) )
+	else if ( wtSystem::IsDMA( mAddr ) )
 	{
 		ppu.IssueDMA( value );
-		apu.WriteReg( address, value );
+		apu.WriteReg( mAddr, value );
 	}
-	else if ( address == 0x4017 )
+	else if ( mAddr == 0x4017 )
 	{
-		WriteInput( address, value );
-		apu.WriteReg( address, value );
+		WriteInput( mAddr, value );
+		apu.WriteReg( mAddr, value );
 	}
-	else if ( IsInputRegister( address ) )
+	else if ( IsInputRegister( mAddr ) )
 	{
-		WriteInput( address, value );
+		WriteInput( mAddr, value );
 	}
-	else if ( wtSystem::IsApuRegister( address ) )
+	else if ( wtSystem::IsApuRegister( mAddr ) )
 	{
-		apu.WriteReg( address, value );
+		apu.WriteReg( mAddr, value );
 	}
-	else if ( cart->mapper->InWriteWindow( address, offset ) )
+	else if ( cart->mapper->InWriteWindow( mAddr, offset ) )
 	{
-		cart->mapper->Write( address, offset, value );
+		cart->mapper->Write( mAddr, value );
 	}
 	else
 	{
-		const uint32_t fullAddr = address + offset;
-		WritePhysicalMemory( fullAddr, value );
+		WritePhysicalMemory( mAddr, value );
 	}
 }
 
 
 void wtSystem::WritePhysicalMemory( const uint16_t address, const uint8_t value )
 {
-	assert( MirrorAddress( address ) < PhysicalMemorySize );
-	memory[MirrorAddress(address)] = value;
+	assert( address < PhysicalMemorySize );
+	memory[ address ] = value;
 }
 
 
@@ -294,8 +299,8 @@ uint8_t wtSystem::ReadInput( const uint16_t address )
 	{
 		keyBuffer = static_cast<uint8_t>( input.GetKeyBuffer( controllerId ) & static_cast<ButtonFlags>( 0X80 ) );
 		btnShift[ controllerIndex ] = 0;
-	} 
-	else 
+	}
+	else
 	{
 		keyBuffer = static_cast<uint8_t>( input.GetKeyBuffer( controllerId ) >> static_cast<ButtonFlags>( 7 - btnShift[ controllerIndex ] ) ) & 0x01;
 		++btnShift[ controllerIndex ];
@@ -319,24 +324,26 @@ void wtSystem::WriteInput( const uint16_t address, const uint8_t value )
 
 void wtSystem::GetFrameResult( wtFrameResult& outFrameResult )
 {
-	outFrameResult.frameBuffer		= frameBuffer[ finishedFrame ];
-	outFrameResult.nameTableSheet	= nameTableSheet;
-	outFrameResult.paletteDebug		= paletteDebug;
-	outFrameResult.patternTable0	= patternTable0;
-	outFrameResult.patternTable1	= patternTable1;
-	outFrameResult.pickedObj8x16	= pickedObj8x16;
-	outFrameResult.ppuDebug			= ppu.dbgInfo;
+	outFrameResult.frameBuffer = frameBuffer[ finishedFrame ];
+	outFrameResult.nameTableSheet = nameTableSheet;
+	outFrameResult.paletteDebug = paletteDebug;
+	outFrameResult.patternTable0 = patternTable0;
+	outFrameResult.patternTable1 = patternTable1;
+	outFrameResult.pickedObj8x16 = pickedObj8x16;
+	outFrameResult.ppuDebug = ppu.dbgInfo;
 
-	GetState( outFrameResult.state );
+	GetState( outFrameResult.cpuDebug );
+	memcpy( outFrameResult.memDebug.cpuMemory, memory, memDebug_t::CpuMemorySize );
+	memcpy( outFrameResult.memDebug.ppuMemory, ppu.nt, KB( 2 ) );
 #if DEBUG_ADDR
-	outFrameResult.dbgLog			= &cpu.dbgLog;
+	outFrameResult.dbgLog = &cpu.dbgLog;
 #endif
-	outFrameResult.dbgInfo			= dbgInfo;
-	outFrameResult.romHeader		= cart->h;
-	outFrameResult.mirrorMode		= static_cast<wtMirrorMode>( GetMirrorMode() );
-	outFrameResult.mapperId			= GetMapperId();
+	outFrameResult.dbgInfo = dbgInfo;
+	outFrameResult.romHeader = cart->h;
+	outFrameResult.mirrorMode = static_cast<wtMirrorMode>( GetMirrorMode() );
+	outFrameResult.mapperId = GetMapperId();
 
-	if( apu.frameOutput != nullptr )
+	if ( apu.frameOutput != nullptr )
 	{
 		outFrameResult.soundOutput = *apu.frameOutput;
 		apu.GetDebugInfo( outFrameResult.apuDebug );
@@ -350,18 +357,17 @@ void wtSystem::GetFrameResult( wtFrameResult& outFrameResult )
 }
 
 
-void wtSystem::GetState( wtState& state )
+void wtSystem::GetState( cpuDebug_t& state )
 {
-	static_assert( sizeof( wtState ) == 4104, "Update wtSystem::GetState()" );
-
 	state.A = cpu.A;
 	state.X = cpu.X;
 	state.Y = cpu.Y;
 	state.P = cpu.P;
 	state.PC = cpu.PC;
 	state.SP = cpu.SP;
-	memcpy( state.cpuMemory, memory, wtState::CpuMemorySize );
-	memcpy( state.ppuMemory, ppu.nt, KB(2) );
+	state.resetVector = cpu.resetVector;
+	state.nmiVector = cpu.nmiVector;
+	state.irqVector = cpu.irqVector;
 }
 
 
@@ -380,33 +386,33 @@ const APU& wtSystem::GetAPU() const
 void wtSystem::InitConfig( config_t& config )
 {
 	// System
-	config.sys.restoreFrame		= 0;
-	config.sys.nextScaline		= 0;
-	config.sys.replay			= false;
-	config.sys.record			= false;
-	config.sys.requestLoadState	= false;
-	config.sys.requestSaveState	= false;
+	config.sys.restoreFrame = 0;
+	config.sys.nextScaline = 0;
+	config.sys.replay = false;
+	config.sys.record = false;
+	config.sys.requestLoadState = false;
+	config.sys.requestSaveState = false;
 
 	// CPU
-	config.cpu.traceFrameCount	= 0;
+	config.cpu.traceFrameCount = 0;
 
 	// PPU
-	config.ppu.chrPalette		= 0;
-	config.ppu.showBG			= true;
-	config.ppu.showSprite		= true;
-	config.ppu.spriteLimit		= PPU::SecondarySprites;
+	config.ppu.chrPalette = 0;
+	config.ppu.showBG = true;
+	config.ppu.showSprite = true;
+	config.ppu.spriteLimit = PPU::SecondarySprites;
 
 	// APU
-	config.apu.frequencyScale	= 1.0f;
-	config.apu.volume			= 1.0f;
-	config.apu.waveShift		= 0;
-	config.apu.disableSweep		= false;
-	config.apu.disableEnvelope	= false;
-	config.apu.mutePulse1		= false;
-	config.apu.mutePulse2		= false;
-	config.apu.muteTri			= false;
-	config.apu.muteNoise		= false;
-	config.apu.muteDMC			= false;
+	config.apu.frequencyScale = 1.0f;
+	config.apu.volume = 1.0f;
+	config.apu.waveShift = 0;
+	config.apu.disableSweep = false;
+	config.apu.disableEnvelope = false;
+	config.apu.mutePulse1 = false;
+	config.apu.mutePulse2 = false;
+	config.apu.muteTri = false;
+	config.apu.muteNoise = false;
+	config.apu.muteDMC = false;
 }
 
 
@@ -442,16 +448,16 @@ void wtSystem::RequestDmcTransfer() const
 
 void wtSystem::SaveSRam()
 {
-	if( ( cart.get() != nullptr ) && cart->HasSave() )
+	if ( ( cart.get() != nullptr ) && cart->HasSave() )
 	{
-		uint8_t saveBuffer[ KB(8) ];
-		for( int32_t i = 0; i < KB(8); ++i ) {
+		uint8_t saveBuffer[ KB( 8 ) ];
+		for ( int32_t i = 0; i < KB( 8 ); ++i ) {
 			saveBuffer[ i ] = cart->mapper->ReadRom( 0x6000 + i );
 		}
 
 		std::ofstream saveFile;
 		saveFile.open( baseFileName + L".sav", ios::binary );
-		saveFile.write( reinterpret_cast<char*>( saveBuffer ), KB(8) );
+		saveFile.write( reinterpret_cast<char*>( saveBuffer ), KB( 8 ) );
 		saveFile.close();
 	}
 }
@@ -461,20 +467,20 @@ void wtSystem::LoadSRam()
 {
 	if ( ( cart.get() != nullptr ) && cart->HasSave() )
 	{
-		uint8_t saveBuffer[ KB(2) ];
+		uint8_t saveBuffer[ KB( 2 ) ];
 
 		std::ifstream saveFile;
 		saveFile.open( baseFileName + L".sav", ios::binary );
 
-		if( !saveFile.good() ) {
+		if ( !saveFile.good() ) {
 			return;
 		}
 
-		saveFile.read( reinterpret_cast<char*>( saveBuffer ), KB(2) );
+		saveFile.read( reinterpret_cast<char*>( saveBuffer ), KB( 2 ) );
 		saveFile.close();
 
-		for ( int32_t i = 0; i < KB(2); ++i ) {
-			cart->mapper->Write( 0x6000, i, saveBuffer[ i ] );
+		for ( int32_t i = 0; i < KB( 2 ); ++i ) {
+			cart->mapper->Write( 0x6000 + i, saveBuffer[ i ] );
 		}
 	}
 }
@@ -490,7 +496,7 @@ void wtSystem::RecordSate( wtStateBlob& state )
 
 void wtSystem::RestoreState( const wtStateBlob& state )
 {
-	if( !state.IsValid() ) {
+	if ( !state.IsValid() ) {
 		return;
 	}
 
@@ -517,7 +523,7 @@ void wtSystem::LoadState()
 	std::ifstream loadFile;
 	loadFile.open( baseFileName + L".st", ios::binary | ios::in );
 
-	if( !loadFile.good() ) {
+	if ( !loadFile.good() ) {
 		loadFile.close();
 		return;
 	}
@@ -542,18 +548,18 @@ bool wtSystem::Run( const masterCycles_t& nextCycle )
 	static constexpr masterCycles_t ticks( CpuClockDivide );
 
 #if DEBUG_ADDR == 1
-	if( config->cpu.traceFrameCount && !cpu.IsLogOpen() ) {
+	if ( config->cpu.traceFrameCount && !cpu.IsLogOpen() ) {
 		cpu.resetLog = true;
 		cpu.logFrameCount = config->cpu.traceFrameCount;
 		cpu.logFrameTotal = cpu.logFrameCount;
 	}
 
-	if( cpu.resetLog ) {
+	if ( cpu.resetLog ) {
 		cpu.dbgLog.Reset( cpu.logFrameTotal );
 		cpu.resetLog = false;
 	}
 
-	if( cpu.IsLogOpen() && !cpu.logFile.is_open() && cpu.logToFile ) {
+	if ( cpu.IsLogOpen() && !cpu.logFile.is_open() && cpu.logToFile ) {
 		cpu.logFile.open( fileName + L".log" );
 	}
 #endif
@@ -584,10 +590,11 @@ bool wtSystem::Run( const masterCycles_t& nextCycle )
 
 #if DEBUG_ADDR == 1
 	if ( !cpu.IsLogOpen() ) {
-		if( cpu.logToFile ) {
+		if ( cpu.logToFile ) {
 			cpu.logFile.close();
 		}
-	} else {
+	}
+	else {
 		cpu.logFrameCount--;
 		cpu.dbgLog.NewFrame();
 	}
@@ -603,25 +610,25 @@ string wtSystem::GetPrgBankDissambly( const uint8_t bankNum )
 	uint8_t* bankMem = cart->GetPrgRomBank( bankNum );
 	uint16_t curByte = 0;
 
-	while( curByte < KB(16) )
+	while ( curByte < KB( 16 ) )
 	{
 		stringstream hexString;
 		const uint32_t instrAddr = curByte;
-		const uint32_t opCode = bankMem[curByte];
+		const uint32_t opCode = bankMem[ curByte ];
 
-		opInfo_t instrInfo = cpu.opLUT[opCode];
+		opInfo_t instrInfo = cpu.opLUT[ opCode ];
 		const uint32_t operandCnt = instrInfo.operands;
 		const char* mnemonic = instrInfo.mnemonic;
 
 		if ( operandCnt == 1 )
 		{
-			const uint32_t op0 = bankMem[curByte + 1];
+			const uint32_t op0 = bankMem[ curByte + 1 ];
 			hexString << uppercase << setfill( '0' ) << setw( 2 ) << hex << opCode << " " << setw( 2 ) << op0;
 		}
 		else if ( operandCnt == 2 )
 		{
-			const uint32_t op0 = bankMem[curByte + 1];
-			const uint32_t op1 = bankMem[curByte + 2];
+			const uint32_t op0 = bankMem[ curByte + 1 ];
+			const uint32_t op1 = bankMem[ curByte + 2 ];
 			hexString << uppercase << setfill( '0' ) << setw( 2 ) << hex << opCode << " " << setw( 2 ) << op0 << " " << setw( 2 ) << op1;
 		}
 		else
@@ -632,19 +639,19 @@ string wtSystem::GetPrgBankDissambly( const uint8_t bankNum )
 		debugStream << "0x" << right << uppercase << setfill( '0' ) << setw( 4 ) << hex << instrAddr << setfill( ' ' ) << "  " << setw( 10 ) << left << hexString.str() << mnemonic << std::endl;
 
 		curByte += 1 + operandCnt;
-		assert( curByte <= ( KB(16) + operandCnt + 1 ) );
+		assert( curByte <= ( KB( 16 ) + operandCnt + 1 ) );
 	}
 
 	return debugStream.str();
 }
 
 
-void wtSystem::GenerateRomDissambly( string prgRomAsm[128] )
+void wtSystem::GenerateRomDissambly( string prgRomAsm[ 128 ] )
 {
 	assert( cart->h.prgRomBanks <= 128 );
-	for( uint32_t bankNum = 0; bankNum < cart->h.prgRomBanks; ++bankNum )
+	for ( uint32_t bankNum = 0; bankNum < cart->h.prgRomBanks; ++bankNum )
 	{
-		prgRomAsm[bankNum] = GetPrgBankDissambly( bankNum );
+		prgRomAsm[ bankNum ] = GetPrgBankDissambly( bankNum );
 	}
 }
 
@@ -665,16 +672,30 @@ void wtSystem::GetChrRomPalette( const uint8_t paletteId, RGBA palette[ 4 ] )
 }
 
 
-void wtSystem::GenerateChrRomTables( wtPatternTableImage chrRom[32] )
+void wtSystem::GetGrayscalePalette( RGBA palette[ 4 ] )
+{
+	palette[ 0 ] = DefaultPalette[ 0x30 ];
+	palette[ 1 ] = DefaultPalette[ 0x10 ];
+	palette[ 2 ] = DefaultPalette[ 0x00 ];
+	palette[ 3 ] = DefaultPalette[ 0x0D ];
+}
+
+
+void wtSystem::GenerateChrRomTables( wtPatternTableImage chrRom[ 32 ] )
 {
 	assert( cart->GetChrBankCount() <= 32 );
 
-	RGBA palette[4];
-	GetChrRomPalette( config->ppu.chrPalette, palette );
+	RGBA palette[ 4 ];
+	if ( config->ppu.chrPalette == -1 ) {
+		GetGrayscalePalette( palette );
+	}
+	else {
+		GetChrRomPalette( config->ppu.chrPalette, palette );
+	}
 
 	assert( cart->h.chrRomBanks <= 32 );
 	for ( uint32_t bankNum = 0; bankNum < cart->h.chrRomBanks; ++bankNum ) {
-		ppu.DrawDebugPatternTables( chrRom[bankNum], palette, bankNum );
+		ppu.DrawDebugPatternTables( chrRom[ bankNum ], palette, bankNum, true );
 	}
 }
 
@@ -700,11 +721,11 @@ void wtSystem::RunStateControl( const bool newFrame, masterCycles_t& nextCycle )
 	const uint32_t stateIx = static_cast<uint32_t>( ( config->sys.restoreFrame / 100.0f ) * states.size() ) - 1;
 	replayFinished = ( stateIx >= ( states.size() - 1 ) ) || ( states.size() == 0 );
 	if ( config->sys.replay && !replayFinished )
-	{		
+	{
 		if ( newFrame || ( config->sys.restoreFrame == 1 ) )
 		{
 			frameBuffer[ currentFrame ].Clear();
-			
+
 			RestoreState( states[ stateIx ] );
 			nextCycle = sysCycles + std::chrono::duration_cast<masterCycles_t>( frameRate_t( 1 ) );
 		}
@@ -743,9 +764,10 @@ int wtSystem::RunFrame()
 	masterCycles_t cyclesPerFrame;
 
 #if defined( _DEBUG ) // hack for slow fps
-	if( elapsed > std::chrono::duration_cast<chrono::nanoseconds>( chrono::milliseconds( 17 ) ) ) {
-		cyclesPerFrame = std::chrono::duration_cast<masterCycles_t>( frameRate_t(1) );
-	} else
+	if ( elapsed > std::chrono::duration_cast<chrono::nanoseconds>( chrono::milliseconds( 17 ) ) ) {
+		cyclesPerFrame = std::chrono::duration_cast<masterCycles_t>( frameRate_t( 1 ) );
+	}
+	else
 #endif
 	{
 		cyclesPerFrame = std::chrono::duration_cast<masterCycles_t>( elapsed );
@@ -754,7 +776,7 @@ int wtSystem::RunFrame()
 	masterCycles_t nextCycle = sysCycles + cyclesPerFrame;
 
 	bool toggledLastFrame = false;
-	if( toggledFrame ) {
+	if ( toggledFrame ) {
 		toggledLastFrame = true;
 		toggledFrame = false;
 	}
@@ -777,7 +799,7 @@ int wtSystem::RunFrame()
 	dbgInfo.framePerRun += frameNumber - previousFrameNumber;
 	dbgInfo.runInvocations++;
 
-	if ( headless )	{
+	if ( headless ) {
 		return isRunning;
 	}
 
@@ -787,22 +809,23 @@ int wtSystem::RunFrame()
 		return false;
 	}
 
-	RGBA palette[4];
-	for( uint32_t i = 0; i < 4; ++i )
+	RGBA palette[ 4 ];
+	for ( uint32_t i = 0; i < 4; ++i )
 	{
-		palette[i] = ppu.palette[ppu.ReadVram( PPU::PaletteBaseAddr + i )];
+		palette[ i ] = ppu.palette[ ppu.ReadVram( PPU::PaletteBaseAddr + i ) ];
 	}
 
-	ppu.DrawDebugPatternTables( patternTable0, palette, 0 );
-	ppu.DrawDebugPatternTables( patternTable1, palette, 1 );
+	ppu.DrawDebugPatternTables( patternTable0, palette, 0, false );
+	ppu.DrawDebugPatternTables( patternTable1, palette, 1, false );
 
 	RGBA pickedPalette[ 4 ];
 	GetChrRomPalette( ( ppu.dbgInfo.spritePicked.palette >> 2 ) + 4, pickedPalette );
 	ppu.DrawDebugObject( &pickedObj8x16, pickedPalette, ppu.dbgInfo.spritePicked );
 
 	bool debugNT = debugNTEnable && ( ( frameNumber % 60 ) == 0 );
-	if( debugNT )
+	if ( debugNT ) {
 		ppu.DrawDebugNametable( nameTableSheet );
+	}
 	ppu.DrawDebugPalette( paletteDebug );
 
 	DebugPrintFlushLog();

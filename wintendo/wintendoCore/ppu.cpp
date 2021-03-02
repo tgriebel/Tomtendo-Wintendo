@@ -75,7 +75,7 @@ uint8_t PPU::PPUSTATUS()
 {
 	regStatus.latched = regStatus.current;
 	regStatus.latched.sem.vBlank = 0;
-	regStatus.latched.sem.lastReadLsb = 0;
+	//regStatus.latched.sem.lastReadLsb = 0;
 	regStatus.hasLatch = true;
 	registers[PPUREG_ADDR] = 0;
 	registers[PPUREG_DATA] = 0;
@@ -458,7 +458,6 @@ uint8_t PPU::GetChrRomBank8x8( const uint32_t tileId, const uint8_t plane, const
 	const uint16_t chrRomBase = tileId * tileBytes;
 	const uint16_t bankAddr = bankId * wtSystem::ChrRomSize;
 	const uint8_t* bank = system->cart->GetChrRomBank( bankId );
-
 	return bank[ chrRomBase + row + 8 * ( plane & 0x01 ) ];
 }
 
@@ -603,8 +602,9 @@ void PPU::DrawTile( wtNameTableImage& imageBuffer, const wtRect& imageRect, cons
 }
 
 
-void PPU::DrawChrRomTile( wtRawImageInterface* imageBuffer, const wtRect& imageRect, const RGBA dbgPalette[4], const uint32_t tileId, const uint32_t ptrnTableId, const bool is8x16, const bool isUpper )
+void PPU::DrawChrRomTile( wtRawImageInterface* imageBuffer, const wtRect& imageRect, const RGBA dbgPalette[4], const uint32_t tileId, const uint32_t tableId, const bool cartBank, const bool is8x16, const bool isUpper )
 {
+	// TODO: fork into two functions--one for cart banks, the other for mapped banks
 	for ( uint32_t y = 0; y < PPU::TilePixels; ++y )
 	{
 		for ( uint32_t x = 0; x < PPU::TilePixels; ++x )
@@ -616,16 +616,25 @@ void PPU::DrawChrRomTile( wtRawImageInterface* imageBuffer, const wtRect& imageR
 
 			uint8_t chrRom0;
 			uint8_t chrRom1;
-			if( is8x16 )
+
+			if( cartBank )
 			{
-				// FIXME: read from cart banks like 8x8
-				chrRom0 = GetChrRom8x16( tileId, 0, chrRomPoint.y, isUpper );
-				chrRom1 = GetChrRom8x16( tileId, 1, chrRomPoint.y, isUpper );
+				assert( !is8x16 );
+				chrRom0 = GetChrRomBank8x8( tileId, 0, tableId, chrRomPoint.y );
+				chrRom1 = GetChrRomBank8x8( tileId, 1, tableId, chrRomPoint.y );
 			}
 			else
 			{
-				chrRom0 = GetChrRomBank8x8( tileId, 0, ptrnTableId, chrRomPoint.y );
-				chrRom1 = GetChrRomBank8x8( tileId, 1, ptrnTableId, chrRomPoint.y );
+				if ( is8x16 )
+				{
+					chrRom0 = GetChrRom8x16( tileId, 0, chrRomPoint.y, isUpper );
+					chrRom1 = GetChrRom8x16( tileId, 1, chrRomPoint.y, isUpper );
+				}
+				else
+				{
+					chrRom0 = GetChrRom8x8( tileId, 0, tableId, chrRomPoint.y );
+					chrRom1 = GetChrRom8x8( tileId, 1, tableId, chrRomPoint.y );
+				}
 			}
 
 			const uint16_t chrRomColor = GetChrRomPalette( chrRom0, chrRom1, chrRomPoint.x );
@@ -748,13 +757,13 @@ bool PPU::DrawSpritePixel( wtDisplayImage& imageBuffer, const wtRect& imageRect,
 }
 
 
-void PPU::DrawDebugPatternTables( wtPatternTableImage& imageBuffer, const RGBA dbgPalette[4], const uint32_t tableID )
+void PPU::DrawDebugPatternTables( wtPatternTableImage& imageBuffer, const RGBA dbgPalette[4], const uint32_t tableID, const bool isCartbank )
 {
 	for ( int32_t tileY = 0; tileY < 16; ++tileY )
 	{
 		for ( int32_t tileX = 0; tileX < 16; ++tileX )
 		{
-			DrawChrRomTile( &imageBuffer, wtRect{ (int32_t)PPU::TilePixels * tileX, (int32_t)PPU::TilePixels * tileY, PPU::PatternTableWidth, PPU::PatternTableHeight }, dbgPalette, (int32_t)( tileX + 16 * tileY ), tableID );
+			DrawChrRomTile( &imageBuffer, wtRect{ (int32_t)PPU::TilePixels * tileX, (int32_t)PPU::TilePixels * tileY, PPU::PatternTableWidth, PPU::PatternTableHeight }, dbgPalette, (int32_t)( tileX + 16 * tileY ), tableID, isCartbank );
 		}
 	}
 }
@@ -764,9 +773,9 @@ void PPU::DrawDebugObject( wtRawImageInterface* imageBuffer, const RGBA dbgPalet
 {
 	imageBuffer->Clear();
 	const int32_t tileHeight = attrib.is8x16 ? 2 : 1;
-	DrawChrRomTile( imageBuffer, wtRect{ 0, 0, (int32_t)PPU::TilePixels, PPU::TilePixels }, dbgPalette, attrib.tileId, attrib.tableId, attrib.is8x16, false );
+	DrawChrRomTile( imageBuffer, wtRect{ 0, 0, (int32_t)PPU::TilePixels, PPU::TilePixels }, dbgPalette, attrib.tileId, attrib.tableId, false, attrib.is8x16, false );
 	if( attrib.is8x16 ) {
-		DrawChrRomTile( imageBuffer, wtRect{ 0, (int32_t)PPU::TilePixels, (int32_t)PPU::TilePixels, PPU::TilePixels }, dbgPalette, attrib.tileId, attrib.tableId, attrib.is8x16, true );
+		DrawChrRomTile( imageBuffer, wtRect{ 0, (int32_t)PPU::TilePixels, (int32_t)PPU::TilePixels, PPU::TilePixels }, dbgPalette, attrib.tileId, attrib.tableId, false, attrib.is8x16, true );
 	}
 }
 

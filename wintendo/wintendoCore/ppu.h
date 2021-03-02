@@ -269,7 +269,7 @@ public:
 	void			WriteReg( const uint16_t addr, const uint8_t value );
 	uint8_t			ReadReg( uint16_t address );
 
-	void			DrawDebugPatternTables( wtPatternTableImage& imageBuffer, const RGBA dbgPalette[4], const uint32_t tableID );
+	void			DrawDebugPatternTables( wtPatternTableImage& imageBuffer, const RGBA dbgPalette[4], const uint32_t tableID, const bool isCartbank );
 	void			DrawDebugObject( wtRawImageInterface* imageBuffer, const RGBA dbgPalette[ 4 ], const spriteAttrib_t& attrib );
 	void			DrawDebugNametable( wtNameTableImage& nameTableSheet );
 	void			DrawDebugPalette( wtPaletteImage& imageBuffer );
@@ -355,7 +355,7 @@ private:
 
 	void			DrawBlankScanline( wtDisplayImage& imageBuffer, const wtRect& imageRect, const uint8_t scanY );
 	void			DrawTile( wtNameTableImage& imageBuffer, const wtRect& imageRect, const wtPoint& nametableTile, const uint32_t ntId, const uint32_t ptrnTableId );
-	void			DrawChrRomTile( wtRawImageInterface* imageBuffer, const wtRect& imageRect, const RGBA palette[4], const uint32_t tileId, const uint32_t ptrnTableId, const bool is8x16 = false, const bool isUpper = false );
+	void			DrawChrRomTile( wtRawImageInterface* imageBuffer, const wtRect& imageRect, const RGBA palette[4], const uint32_t tileId, const uint32_t tableId, const bool cartBank, const bool is8x16 = false, const bool isUpper = false );
 	bool			DrawSpritePixel( wtDisplayImage& imageBuffer, const wtRect& imageRect, const spriteAttrib_t attribs, const wtPoint& point, const uint8_t bgPixel );
 
 	bool			BgDataFetchEnabled();

@@ -65,9 +65,9 @@ public:
 		oldChrBankMode( -1 ),
 		bankDataInit( false ),
 		bank0(0),
-		bank1(0),
-		bank2(0),
-		bank3(0)
+		bank1(1),
+		bank2(2),
+		bank3(3)
 	{
 		mapperId = _mapperId;
 		bankSelect.byte = 0;
@@ -110,6 +110,21 @@ public:
 
 	uint8_t	ReadRom( const uint16_t addr ) override
 	{	
+		//uint8_t bank = 0;
+		//switch ( ( addr >> 13 ) & 3 )
+		//{
+		//	case 0: bank = bank0; break;
+		//	case 1: bank = bank1; break;
+		//	case 2: bank = bank2; break;
+		//	case 3: bank = bank3; break;
+		//}
+
+		//const uint32_t address = ( bank << 13 ) | (uint32_t)( addr & 0x0FFF );
+		//if ( InRange( addr, 0x8000, 0xFFFF ) )
+		//{
+		//	return system->cart->GetPrgRomBankAddr( address );
+		//}
+
 		if ( InRange( addr, 0x8000, 0x9FFF ) )
 		{
 			const uint16_t bankAddr = ( addr - 0x8000 );
@@ -141,7 +156,7 @@ public:
 
 	uint8_t	ReadChrRom( const uint16_t addr ) override
 	{
-		if ( InRange( addr, 0x0000, 0x03FF ) && system->cart->HasChrRam() ) {
+		if ( system->cart->HasChrRam() && InRange( addr, 0x0000, 0x1FFF ) ) {
 			return chrRam[ addr ];
 		}
 		else if ( InRange( addr, 0x0000, 0x03FF ) ) {
@@ -181,9 +196,8 @@ public:
 		return 0;
 	}
 
-	uint8_t Write( const uint16_t addr, const uint16_t offset, const uint8_t value ) override
+	uint8_t Write( const uint16_t address, const uint8_t value ) override
 	{
-		const uint16_t address = ( addr + offset );
 		bool swapPrgBanks = false;
 		bool swapChrBanks = false;
 
@@ -193,9 +207,10 @@ public:
 			return 0;
 		}
 
+		const bool isOdd = ( address & 0x01 );
 		if ( InRange( address, 0x8000, 0x9FFF ) )
-		{
-			if( ( address % 2 ) == 0 )
+		{		
+			if( !isOdd )
 			{
 				bankSelect.byte = value;
 
@@ -235,7 +250,7 @@ public:
 		}
 		else if ( InRange( address, 0xA000, 0xBFFF ) )
 		{
-			if ( ( address % 2 ) == 0 )
+			if ( !isOdd )
 			{
 				if( !system->cart->h.controlBits0.fourScreenMirror )
 				{
@@ -249,7 +264,7 @@ public:
 		}
 		else if ( InRange( address, 0xC000, 0xDFFF ) )
 		{
-			if ( ( address % 2 ) == 0 )	{
+			if ( !isOdd ) {
 				irqLatch = value;
 			} else {
 				irqCounter = 0;
@@ -257,14 +272,7 @@ public:
 		}
 		else if ( InRange( address, 0xE000, 0xFFFF ) )
 		{
-			if ( ( address % 2 ) == 0 )
-			{
-				irqEnable = false;
-			}
-			else
-			{
-				irqEnable = true;
-			}
+			irqEnable = isOdd;
 		}
 
 		if( swapPrgBanks )
