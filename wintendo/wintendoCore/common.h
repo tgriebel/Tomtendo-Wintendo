@@ -116,19 +116,16 @@ public:
 
 class wtCart
 {
-public:
-	// WARNING: This data is directly copied into right
-	wtRomHeader				h;
-	uint8_t*				rom;
-	// Fine to add data after here
-	size_t					size;
-	unique_ptr<wtMapper>	mapper;
-
 private:
+	uint8_t*				rom;
+	size_t					size;
 	size_t					prgSize;
 	size_t					chrSize;
 
 public:
+	wtRomHeader				h;
+	unique_ptr<wtMapper>	mapper;
+
 	wtCart()
 	{
 		memset( &h, 0, sizeof( wtRomHeader ) );
@@ -140,7 +137,6 @@ public:
 	{
 		rom = new uint8_t[ romSize ];
 
-		assert( romSize <= 1 * MB_1 );
 		memcpy( &h, &header, sizeof( wtRomHeader ) );
 		memcpy( rom, romData, romSize );
 		size = romSize;
@@ -156,7 +152,7 @@ public:
 	~wtCart()
 	{
 		memset( &h, 0, sizeof( wtRomHeader ) );
-		if( rom == nullptr )
+		if( rom != nullptr )
 		{
 			delete[] rom ;
 			rom = nullptr;

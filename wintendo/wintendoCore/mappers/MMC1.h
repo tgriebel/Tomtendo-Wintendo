@@ -208,6 +208,7 @@ public:
 
 	uint8_t Write( const uint16_t address, const uint8_t value ) override
 	{
+		//assert( address >= wtSystem::SramBase );
 		if ( InRange( address, wtSystem::SramBase, wtSystem::SramEnd ) ) {
 			const uint16_t sramAddr = ( address - wtSystem::SramBase );
 			prgRamBank[ sramAddr ] = value;
