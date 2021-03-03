@@ -29,6 +29,7 @@ private:
 	uint8_t			chrBank1Reg;
 	uint8_t			prgBankReg;
 
+	bool			ramEnabled;
 	uint8_t			bank0;
 	uint8_t			bank1;
 	uint8_t			chrBank0;
@@ -61,8 +62,7 @@ private:
 	{
 		uint16_t mode = ( address >> 13 ) & 3; // Only bits 13-14 decoded
 
-		const bool hasChrRom = system->cart->h.chrRomBanks > 0;
-		const uint32_t chrRomStart = system->cart->h.prgRomBanks * KB( 16 );
+		const bool hasChrRom = system->cart->HasChrRam();
 		uint16_t chrRomBankSize = KB( 8 );
 
 		if ( mode == 0 ) // Control
@@ -131,7 +131,8 @@ public:
 		chrBank1Reg( 0 ),
 		prgBankReg( 0 ),
 		bank0( 0 ),
-		bank1( 0 )
+		bank1( 0 ),
+		ramEnabled( true )
 	{
 		ctrlReg.byte = CtrlRegDefault;
 		mapperId = _mapperId;
@@ -241,6 +242,7 @@ public:
 		serializer.Next8b( chrBank1Reg, mode );
 		serializer.Next8b( bank0, mode );
 		serializer.Next8b( bank1, mode );
+		serializer.NextBool( ramEnabled, mode );
 		serializer.Next8b( chrBank0, mode );
 		serializer.Next8b( chrBank1, mode );
 

@@ -311,7 +311,7 @@ public:
 
 		system					= nullptr;
 
-		currentScanline			= PRERENDER_SCANLINE;
+		currentScanline			= 0;
 
 		vramWritePending		= false;
 

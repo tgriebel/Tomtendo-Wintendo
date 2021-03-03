@@ -10,6 +10,20 @@ void OpDebugInfo::ToString( std::string& buffer, const bool registerDebug ) cons
 {
 	std::stringstream debugStream;
 
+	if( nmi )
+	{
+		debugStream << "[NMI - Cycle:" << cpuCycles.count() << "]\n";
+		buffer +=  debugStream.str();
+		return;
+	}
+
+	if ( irq )
+	{
+		debugStream << "[IRQ - Cycle:" << cpuCycles.count() << "]\n";
+		buffer += debugStream.str();
+		return;
+	}
+
 	int disassemblyBytes[6] = { byteCode, op0, op1,'\0' };
 	stringstream hexString;
 

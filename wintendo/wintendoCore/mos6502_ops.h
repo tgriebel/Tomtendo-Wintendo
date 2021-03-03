@@ -348,12 +348,7 @@ OP_DEF( JSR )
 
 OP_DEF( BRK )
 {
-	// http://www.thealmightyguru.com/Games/Hacking/Wiki/index.php?title=BRK
-//	assert( 0 ); // TODO: Test
-	P.bit.b = 1;
-//	IRQ();
-//	interruptRequestNMI = true;
-	halt = true;
+	interruptRequestNMI = true;
 }
 
 

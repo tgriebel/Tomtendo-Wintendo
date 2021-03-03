@@ -156,6 +156,10 @@ public:
 	uint8_t			op0;
 	uint8_t			op1;
 
+	bool			irq;
+	bool			nmi;
+	bool			oam;
+
 	const char*		mnemonic;
 
 	regDebugInfo_t	regInfo;
@@ -185,6 +189,10 @@ public:
 
 		op0				= 0;
 		op1				= 0;
+
+		irq				= false;
+		nmi				= false;
+		oam				= false;
 
 		mnemonic		= "";
 		operands		= 0;
