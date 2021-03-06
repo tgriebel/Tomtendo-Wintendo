@@ -249,7 +249,7 @@ void APU::ClockEnvelope( envelope_t& envelope, const uint8_t volume, const bool 
 
 void APU::ClockSweep( PulseChannel& pulse )
 {
-	if ( system->config->apu.disableSweep || !pulse.regRamp.sem.enabled ) { // TODO: avoid checking enable here since more matters?
+	if ( system->config->apu.disableSweep || !pulse.regRamp.sem.enabled ) { // TODO: avoid checking enable here since more conditions matter
 		pulse.period.Reload( pulse.regTune.sem0.timer );
 		return;
 	}
@@ -446,10 +446,13 @@ void APU::ClockDmc()
 		dmc.bitCnt = 8;
 		if ( dmc.regCtrl.sem.loop )
 		{
-			// TODO: Restart		
+			// TODO: Restart	
+			assert( 0 ); // implement
 		}
 		else if ( dmc.regCtrl.sem.irqEnable && dmc.irq ) {
-			//	TODO: system->RequestIRQ();h
+			//	TODO: 
+			assert( 0 ); // untested
+			system->RequestIRQ();
 		}
 
 		if ( dmc.emptyBuffer ) {
