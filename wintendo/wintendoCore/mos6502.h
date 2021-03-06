@@ -143,6 +143,7 @@ public:
 	wtLog				dbgLog;
 
 	// TODO: move to system
+	mutable uint16_t	irqAddr;
 	mutable bool		interruptRequestNMI;
 	mutable bool		interruptRequest;
 	mutable bool		oamInProcess;
@@ -179,7 +180,7 @@ public:
 
 		P.byte = 0;
 		P.bit.i = 1;
-		P.bit.b = 1;
+		P.bit.b = 0;
 
 		instructionCycles = cpuCycle_t( 0 );
 		cycle = cpuCycle_t(0); // FIXME? Test log starts cycles at 7. Is there a BRK at power up?
@@ -233,7 +234,7 @@ private:
 	static bool	CheckZero( const uint16_t checkValue );
 	static bool	CheckOverflow( const uint16_t src, const uint16_t temp, const uint8_t finalValue );
 
-	void		NMI();
+	void		NMI( const uint16_t addr );
 	void		IRQ();
 
 	void		IndexedAbsolute( const uint8_t& reg, cpuAddrInfo_t& addrInfo );

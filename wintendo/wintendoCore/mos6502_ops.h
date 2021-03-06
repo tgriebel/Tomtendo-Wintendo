@@ -348,6 +348,7 @@ OP_DEF( JSR )
 
 OP_DEF( BRK )
 {
+	irqAddr = irqVector;
 	interruptRequestNMI = true;
 }
 
@@ -452,6 +453,7 @@ OP_DEF( ROR )
 OP_DEF( Illegal )
 {
 	assert( 0 );
+	halt = true;
 }
 
 
@@ -469,7 +471,7 @@ OP_DEF( SKW )
 
 inline void BuildOpLUT()
 {
-	OP_ADDR( 0x00,	BRK,		None,				0, 7 )
+	OP_ADDR( 0x00,	BRK,		None,				1, 7 )
 	OP_ADDR( 0x01,	ORA,		IndexedIndirect,	1, 6 )
 	OP_ADDR( 0x02,	Illegal,	None,				0, 0 )
 	OP_ADDR( 0x03,	Illegal,	None,				0, 0 )
