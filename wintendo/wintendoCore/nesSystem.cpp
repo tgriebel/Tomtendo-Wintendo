@@ -54,7 +54,7 @@ void wtSystem::DebugPrintFlushLog()
 }
 
 
-int wtSystem::Init( const wstring& filePath )
+int wtSystem::Init( const wstring& filePath, const uint32_t resetVectorManual )
 {
 	Reset();
 
@@ -71,7 +71,7 @@ int wtSystem::Init( const wstring& filePath )
 	cpu.Reset();
 	cpu.RegisterSystem( this );
 
-	LoadProgram();
+	LoadProgram( resetVectorManual );
 	fileName = filePath;
 
 	const size_t offset = fileName.find( L".nes", 0 );
@@ -422,9 +422,17 @@ void wtSystem::SetConfig( config_t& systemConfig )
 }
 
 
+void wtSystem::RequestNMI( const uint16_t vector ) const
+{
+	cpu.interruptRequestNMI = true;
+	cpu.irqAddr = vector;
+}
+
+
 void wtSystem::RequestNMI() const
 {
 	cpu.interruptRequestNMI = true;
+	cpu.irqAddr = cpu.nmiVector;
 }
 
 

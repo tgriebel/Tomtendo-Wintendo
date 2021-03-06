@@ -168,7 +168,7 @@ public:
 	uint8_t			GetMapperId() const;
 	uint8_t			GetMirrorMode() const;
 
-	int				Init( const wstring& filePath );
+	int				Init( const wstring& filePath, const uint32_t resetVectorManual = 0x10000 );
 	void			Shutdown();
 	void			LoadProgram( const uint32_t resetVectorManual = 0x10000 );
 	void			Serialize( Serializer& serializer, const serializeMode_t mode );
@@ -186,6 +186,7 @@ public:
 	const PPU&		GetPPU() const;
 	const APU&		GetAPU() const;
 	void			SetConfig( config_t& cfg );
+	void			RequestNMI( const uint16_t vector ) const;
 	void			RequestNMI() const;
 	void			RequestIRQ() const;
 	void			RequestDMA() const;
