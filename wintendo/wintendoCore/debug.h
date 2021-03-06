@@ -6,103 +6,101 @@
 #include "common.h"
 
 #if DEBUG_ADDR == 1
-#define DEBUG_ADDR_INDEXED_ZERO if( IsLogOpen() )										\
+#define DEBUG_ADDR_INDEXED_ZERO( _info )												\
+	if( IsLogOpen() )																	\
 	{																					\
 		OpDebugInfo& dbgInfo	= dbgLog.GetLogLine();									\
-		dbgInfo.addrMode		= static_cast<uint8_t>( ( &reg == &X ) ? addrMode_t::IndexedZeroX : addrMode_t::IndexedZeroY );	\
-		dbgInfo.address			= address;												\
-		dbgInfo.targetAddress	= targetAddress;										\
-		dbgInfo.memValue		= system->ReadMemory( address );						\
-		dbgInfo.isXReg			= ( &reg == &X );										\
+		dbgInfo.address			= _info.addr;											\
+		dbgInfo.targetAddress	= _info.targetAddr;										\
+		dbgInfo.memValue		= _info.value;											\
 	}
 
-#define DEBUG_ADDR_INDEXED_ABS if( IsLogOpen() )										\
+#define DEBUG_ADDR_INDEXED_ABS( _info )													\
+	if( IsLogOpen() )																	\
 	{																					\
 		OpDebugInfo& dbgInfo	= dbgLog.GetLogLine();									\
-		dbgInfo.addrMode		= static_cast<uint8_t>( ( &reg == &X ) ? addrMode_t::IndexedAbsoluteX : addrMode_t::IndexedAbsoluteY );	\
-		dbgInfo.address			= address;												\
-		dbgInfo.targetAddress	= targetAddress;										\
-		dbgInfo.memValue		= system->ReadMemory( address );						\
-		dbgInfo.isXReg			= ( &reg == &X );										\
+		dbgInfo.address			= _info.addr;											\
+		dbgInfo.targetAddress	= _info.targetAddr;										\
+		dbgInfo.memValue		= _info.value;											\
 	}
 
-#define DEBUG_ADDR_ZERO if( cpu.IsLogOpen() )											\
+#define DEBUG_ADDR_ZERO( _info )														\
+	if( cpu.IsLogOpen() )																\
 	{																					\
 		OpDebugInfo& dbgInfo	= cpu.dbgLog.GetLogLine();								\
-		dbgInfo.addrMode		= static_cast<uint8_t>( addrMode_t::Zero );				\
-		dbgInfo.address			= address;												\
-		dbgInfo.memValue		= cpu.system->ReadMemory( address );					\
+		dbgInfo.address			= _info.addr;											\
+		dbgInfo.memValue		= _info.value;											\
 	}
 
-#define DEBUG_ADDR_ABS if( cpu.IsLogOpen() )											\
+#define DEBUG_ADDR_ABS( _info )															\
+	if( cpu.IsLogOpen() )																\
 	{																					\
 		OpDebugInfo& dbgInfo	= cpu.dbgLog.GetLogLine();								\
-		dbgInfo.addrMode		= static_cast<uint8_t>( addrMode_t::Absolute );			\
-		dbgInfo.address			= address;												\
-		dbgInfo.memValue		= cpu.system->ReadMemory( address );					\
+		dbgInfo.address			= _info.addr;											\
+		dbgInfo.memValue		= _info.value;											\
 	}
 
-#define DEBUG_ADDR_IMMEDIATE if( cpu.IsLogOpen() )										\
+#define DEBUG_ADDR_IMMEDIATE( _info )													\
+	if( cpu.IsLogOpen() )																\
 	{																					\
 		OpDebugInfo& dbgInfo	= cpu.dbgLog.GetLogLine();								\
-		dbgInfo.addrMode		= static_cast<uint8_t>( addrMode_t::Immediate );		\
-		dbgInfo.address			= address;												\
+		dbgInfo.address			= _info.addr;											\
 		dbgInfo.memValue		= cpu.ReadOperand(0);									\
 	}
 
-#define DEBUG_ADDR_INDIRECT_INDEXED if( cpu.IsLogOpen() )								\
+#define DEBUG_ADDR_INDIRECT_INDEXED( _info )											\
+	if( cpu.IsLogOpen() )																\
 	{																					\
 		OpDebugInfo& dbgInfo	= cpu.dbgLog.GetLogLine();								\
-		dbgInfo.addrMode		= static_cast<uint8_t>( addrMode_t::IndirectIndexed );	\
-		dbgInfo.address			= address;												\
-		dbgInfo.memValue		= cpu.system->ReadMemory( offset );						\
+		dbgInfo.address			= _info.addr;											\
+		dbgInfo.targetAddress	= _info.targetAddr;										\
+		dbgInfo.memValue		= _info.value;											\
 		dbgInfo.operand			= cpu.ReadOperand( 0 );									\
-		dbgInfo.offset			= offset;												\
+		dbgInfo.offset			= _info.offset;											\
 	}
 
-#define DEBUG_ADDR_INDEXED_INDIRECT if( cpu.IsLogOpen() )								\
+#define DEBUG_ADDR_INDEXED_INDIRECT( _info )											\
+	if( cpu.IsLogOpen() )																\
 	{																					\
 		OpDebugInfo& dbgInfo	= cpu.dbgLog.GetLogLine();								\
-		dbgInfo.addrMode		= static_cast<uint8_t>( addrMode_t::IndexedIndirect );	\
-		dbgInfo.address			= address;												\
-		dbgInfo.memValue		= cpu.system->ReadMemory( address );					\
+		dbgInfo.address			= _info.addr;											\
+		dbgInfo.memValue		= _info.value;											\
 		dbgInfo.operand			= cpu.ReadOperand( 0 );									\
-		dbgInfo.targetAddress	= targetAddress;										\
+		dbgInfo.targetAddress	= _info.targetAddr;										\
 	}
 
-#define DEBUG_ADDR_ACCUMULATOR if( cpu.IsLogOpen() )									\
+#define DEBUG_ADDR_ACCUMULATOR( _info )													\
+	if( cpu.IsLogOpen() )																\
 	{																					\
-		OpDebugInfo& dbgInfo	= cpu.dbgLog.GetLogLine();								\
-		dbgInfo.addrMode		= static_cast<uint8_t>( addrMode_t::Accumulator );		\
 	}
 
-#define DEBUG_ADDR_JMP if( IsLogOpen() )												\
-	{																					\
-		OpDebugInfo& dbgInfo	= dbgLog.GetLogLine();									\
-		dbgInfo.addrMode		= static_cast<uint8_t>( addrMode_t::Jmp );				\
-		dbgInfo.address			= PC;													\
-	}
-
-#define DEBUG_ADDR_JMPI if( IsLogOpen() )												\
+#define DEBUG_ADDR_JMP( _PC )															\
+	if( IsLogOpen() )																	\
 	{																					\
 		OpDebugInfo& dbgInfo	= dbgLog.GetLogLine();									\
-		dbgInfo.addrMode		= static_cast<uint8_t>( addrMode_t::JmpIndirect );		\
-		dbgInfo.offset			= addr;													\
-		dbgInfo.address			= PC;													\
+		dbgInfo.address			= _PC;													\
 	}
 
-#define DEBUG_ADDR_JSR if( IsLogOpen() )												\
+#define DEBUG_ADDR_JMPI( _offset, _PC )													\
+	if( IsLogOpen() )																	\
 	{																					\
 		OpDebugInfo& dbgInfo	= dbgLog.GetLogLine();									\
-		dbgInfo.addrMode		= static_cast<uint8_t>( addrMode_t::Jsr );				\
-		dbgInfo.address			= PC;													\
+		dbgInfo.offset			= _offset;												\
+		dbgInfo.address			= _PC;													\
 	}
 
-#define DEBUG_ADDR_BRANCH if( IsLogOpen() )												\
+#define DEBUG_ADDR_JSR( _PC )															\
+	if( IsLogOpen() )																	\
 	{																					\
 		OpDebugInfo& dbgInfo	= dbgLog.GetLogLine();									\
-		dbgInfo.addrMode		= static_cast<uint8_t>( addrMode_t::Branch );			\
-		dbgInfo.address			= branchedPC;											\
+		dbgInfo.address			= _PC;													\
+	}
+
+#define DEBUG_ADDR_BRANCH( _PC )														\
+	if( IsLogOpen() )																	\
+	{																					\
+		OpDebugInfo& dbgInfo	= dbgLog.GetLogLine();									\
+		dbgInfo.address			= _PC;													\
 	}
 
 #define DEBUG_CPU_LOG 0;
@@ -139,41 +137,42 @@ class OpDebugInfo
 {
 public:
 
+	regDebugInfo_t	regInfo;
+	const char*		mnemonic;
+	int32_t			curScanline;
+	cpuCycle_t		cpuCycles;
+	ppuCycle_t		ppuCycles;
+	cpuCycle_t		instrCycles;
+
 	uint32_t		loadCnt;
 	uint32_t		storeCnt;
 
-	uint8_t			addrMode;
-	bool			isXReg;
-	uint8_t			memValue;
-	uint8_t			operand;
+	uint16_t		instrBegin;
 	uint16_t		address;
 	uint16_t		offset;
 	uint16_t		targetAddress;
+
+	uint8_t			opType;
+	uint8_t			addrMode;
+	uint8_t			memValue;
+	uint8_t			operand;
 	uint8_t			byteCode;
-	uint16_t		instrBegin;
 
 	uint8_t			operands;
 	uint8_t			op0;
 	uint8_t			op1;
 
+	bool			isXReg;
 	bool			irq;
 	bool			nmi;
 	bool			oam;
-
-	const char*		mnemonic;
-
-	regDebugInfo_t	regInfo;
-
-	int32_t			curScanline;
-	cpuCycle_t		cpuCycles;
-	ppuCycle_t		ppuCycles;
-	cpuCycle_t		instrCycles;
 	
 	OpDebugInfo()
 	{
 		loadCnt			= 0;
 		storeCnt		= 0;
 
+		opType			= 0;
 		addrMode		= 0;
 		isXReg			= false;
 		memValue		= 0;

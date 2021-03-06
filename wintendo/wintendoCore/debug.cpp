@@ -17,6 +17,24 @@ static void PrintHex( std::stringstream& debugStream, const uint32_t value, cons
 }
 
 
+static std::string GetOpName( const OpDebugInfo& info )
+{
+	std::string name;
+	if( info.opType == (uint8_t)opType_t::SKB )
+	{
+		name += "*NOP";
+	}
+	else
+	{
+		name += " ";
+		name += info.mnemonic[ 0 ];
+		name += info.mnemonic[ 1 ];
+		name += info.mnemonic[ 2 ];
+	}
+	return name;
+}
+
+
 void OpDebugInfo::ToString( std::string& buffer, const bool registerDebug ) const
 {
 	std::stringstream debugStream;
@@ -58,10 +76,12 @@ void OpDebugInfo::ToString( std::string& buffer, const bool registerDebug ) cons
 	}
 
 	PrintHex( debugStream, instrBegin, 4, false );
-	debugStream << setfill( ' ' ) << "  " << setw( 10 ) << left << hexString.str();
-	debugStream << mnemonic[0] << mnemonic[ 1 ] << mnemonic[ 2 ] << " ";
+	debugStream << setfill( ' ' ) << "  " << setw( 9 ) << left << hexString.str();
+	debugStream << GetOpName( *this ) << " ";
 	
 	const addrMode_t mode = static_cast<addrMode_t>( addrMode );
+
+	const bool isXReg = ( mode == addrMode_t::IndexedAbsoluteX ) || ( mode == addrMode_t::IndexedZeroX );
 
 	switch ( mode )
 	{
@@ -107,7 +127,7 @@ void OpDebugInfo::ToString( std::string& buffer, const bool registerDebug ) cons
 		debugStream << "),Y = ";
 		PrintHex( debugStream, address, 4, false );
 		debugStream << " @ ";
-		PrintHex( debugStream, offset, 4, false );
+		PrintHex( debugStream, targetAddress, 4, false );
 		debugStream << " = ";
 		PrintHex( debugStream, static_cast<uint32_t>( memValue ), 2, false );
 		break;

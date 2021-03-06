@@ -319,8 +319,7 @@ OP_DEF( ORA )
 OP_DEF( JMP )
 {
 	PC = ReadAddressOperand();
-
-	DEBUG_ADDR_JMP
+	DEBUG_ADDR_JMP( PC )
 }
 
 
@@ -328,8 +327,7 @@ OP_DEF( JMPI )
 {
 	const uint16_t addr = ReadAddressOperand();
 	PC = JumpImmediateAddr( addr );
-
-	DEBUG_ADDR_JMPI
+	DEBUG_ADDR_JMPI( addr, PC )
 }
 
 
@@ -342,7 +340,7 @@ OP_DEF( JSR )
 
 	PC = ReadAddressOperand();
 
-	DEBUG_ADDR_JSR
+	DEBUG_ADDR_JSR( PC )
 }
 
 
@@ -452,8 +450,8 @@ OP_DEF( ROR )
 
 OP_DEF( Illegal )
 {
-	assert( 0 );
-	halt = true;
+//	assert( 0 );
+//	halt = true;
 }
 
 
@@ -475,7 +473,7 @@ inline void BuildOpLUT()
 	OP_ADDR( 0x01,	ORA,		IndexedIndirect,	1, 6 )
 	OP_ADDR( 0x02,	Illegal,	None,				0, 0 )
 	OP_ADDR( 0x03,	Illegal,	None,				0, 0 )
-	OP_ADDR( 0x04,	SKB,		None,				0, 3 )
+	ILLEGAL( 0x04,	SKB,		None,				0, 3 )
 	OP_ADDR( 0x05,	ORA,		Zero,				1, 3 )
 	OP_ADDR( 0x06,	ASL,		Zero,				1, 5 )
 	OP_ADDR( 0x07,	Illegal,	None,				0, 0 )
@@ -487,7 +485,7 @@ inline void BuildOpLUT()
 	OP_ADDR( 0x0D,	ORA,		Absolute,			2, 4 )
 	OP_ADDR( 0x0E,	ASL,		Absolute,			2, 6 )
 	OP_ADDR( 0x0F,	Illegal,	None,				0, 0 )
-	OP_JUMP( 0x10,	BPL,							1, 2 )
+	OP_JUMP( 0x10,	BPL,		Branch,				1, 2 )
 	OP_ADDR( 0x11,	ORA,		IndirectIndexed,	1, 5 )
 	OP_ADDR( 0x12,	Illegal,	None,				0, 0 )
 	OP_ADDR( 0x13,	Illegal,	None,				0, 0 )
@@ -503,7 +501,7 @@ inline void BuildOpLUT()
 	OP_ADDR( 0x1D,	ORA,		IndexedAbsoluteX,	2, 4 )
 	OP_ADDR( 0x1E,	ASL,		IndexedAbsoluteX,	2, 7 )
 	OP_ADDR( 0x1F,	Illegal,	None,				0, 0 )
-	OP_JUMP( 0x20,	JSR,							2, 6 )
+	OP_JUMP( 0x20,	JSR,		Jsr,				2, 6 )
 	OP_ADDR( 0x21,	AND,		IndexedIndirect,	1, 6 )
 	OP_ADDR( 0x22,	Illegal,	None,				0, 0 )
 	OP_ADDR( 0x23,	Illegal,	None,				0, 0 )
@@ -519,7 +517,7 @@ inline void BuildOpLUT()
 	OP_ADDR( 0x2D,	AND,		Absolute,			2, 4 )
 	OP_ADDR( 0x2E,	ROL,		Absolute,			2, 6 )
 	OP_ADDR( 0x2F,	Illegal,	None,				0, 0 )
-	OP_JUMP( 0x30,	BMI,							1, 2 )
+	OP_JUMP( 0x30,	BMI,		Branch,				1, 2 )
 	OP_ADDR( 0x31,	AND,		IndirectIndexed,	1, 5 )
 	OP_ADDR( 0x32,	Illegal,	None,				0, 0 )
 	OP_ADDR( 0x33,	Illegal,	None,				0, 0 )
@@ -535,7 +533,7 @@ inline void BuildOpLUT()
 	OP_ADDR( 0x3D,	AND,		IndexedAbsoluteX,	2, 4 )
 	OP_ADDR( 0x3E,	ROL,		IndexedAbsoluteX,	2, 7 )
 	OP_ADDR( 0x3F,	Illegal,	None,				0, 0 )
-	OP_JUMP( 0x40,	RTI,							0, 6 )
+	OP_JUMP( 0x40,	RTI,		Return,				0, 6 )
 	OP_ADDR( 0x41,	EOR,		IndexedIndirect,	1, 6 )
 	OP_ADDR( 0x42,	Illegal,	None,				0, 0 )
 	OP_ADDR( 0x43,	Illegal,	None,				0, 0 )
@@ -547,11 +545,11 @@ inline void BuildOpLUT()
 	OP_ADDR( 0x49,	EOR,		Immediate,			1, 2 )
 	OP_ADDR( 0x4A,	LSR,		Accumulator,		0, 2 )
 	OP_ADDR( 0x4B,	Illegal,	None,				0, 0 )
-	OP_JUMP( 0x4C,	JMP,							2, 3 )
+	OP_JUMP( 0x4C,	JMP,		Jmp,				2, 3 )
 	OP_ADDR( 0x4D,	EOR,		Absolute,			2, 4 )
 	OP_ADDR( 0x4E,	LSR,		Absolute,			2, 6 )
 	OP_ADDR( 0x4F,	Illegal,	None,				0, 0 )
-	OP_JUMP( 0x50,	BVC,							1, 2 )
+	OP_JUMP( 0x50,	BVC,		Branch,				1, 2 )
 	OP_ADDR( 0x51,	EOR,		IndirectIndexed,	1, 5 )
 	OP_ADDR( 0x52,	Illegal,	None,				0, 0 )
 	OP_ADDR( 0x53,	Illegal,	None,				0, 0 )
@@ -567,7 +565,7 @@ inline void BuildOpLUT()
 	OP_ADDR( 0x5D,	EOR,		IndexedAbsoluteX,	2, 4 )
 	OP_ADDR( 0x5E,	LSR,		IndexedAbsoluteX,	2, 7 )
 	OP_ADDR( 0x5F,	Illegal,	None,				0, 0 )
-	OP_JUMP( 0x60,	RTS,							0, 6 )
+	OP_JUMP( 0x60,	RTS,		Return,				0, 6 )
 	OP_ADDR( 0x61,	ADC,		IndexedIndirect,	1, 6 )
 	OP_ADDR( 0x62,	Illegal,	None,				0, 0 )
 	OP_ADDR( 0x63,	Illegal,	None,				0, 0 )
@@ -579,11 +577,11 @@ inline void BuildOpLUT()
 	OP_ADDR( 0x69,	ADC,		Immediate,			1, 2 )
 	OP_ADDR( 0x6A,	ROR,		Accumulator,		0, 2 )
 	OP_ADDR( 0x6B,	Illegal,	None,				0, 0 )
-	OP_JUMP( 0x6C,	JMPI,							2, 5 )
+	OP_JUMP( 0x6C,	JMPI,		JmpIndirect,		2, 5 )
 	OP_ADDR( 0x6D,	ADC,		Absolute,			2, 4 )
 	OP_ADDR( 0x6E,	ROR,		Absolute,			2, 6 )
 	OP_ADDR( 0x6F,	Illegal,	None,				0, 0 )
-	OP_JUMP( 0x70,	BVS,							1, 2 )
+	OP_JUMP( 0x70,	BVS,		Branch,				1, 2 )
 	OP_ADDR( 0x71,	ADC,		IndirectIndexed,	1, 5 )
 	OP_ADDR( 0x72,	Illegal,	None,				0, 0 )
 	OP_ADDR( 0x73,	Illegal,	None,				0, 0 )
@@ -615,7 +613,7 @@ inline void BuildOpLUT()
 	OP_ADDR( 0x8D,	STA,		Absolute,			2, 4 )
 	OP_ADDR( 0x8E,	STX,		Absolute,			2, 4 )
 	OP_ADDR( 0x8F,	Illegal,	None,				0, 0 )
-	OP_JUMP( 0x90,	BCC,							1, 2 )
+	OP_JUMP( 0x90,	BCC,		Branch,				1, 2 )
 	OP_ADDR( 0x91,	STA,		IndirectIndexed,	1, 6 )
 	OP_ADDR( 0x92,	Illegal,	None,				0, 0 )
 	OP_ADDR( 0x93,	Illegal,	None,				0, 0 )
@@ -647,7 +645,7 @@ inline void BuildOpLUT()
 	OP_ADDR( 0xAD,	LDA,		Absolute,			2, 4 )
 	OP_ADDR( 0xAE,	LDX,		Absolute,			2, 4 )
 	OP_ADDR( 0xAF,	Illegal,	None,				0, 0 )
-	OP_JUMP( 0xB0,	BCS,							1, 2 )
+	OP_JUMP( 0xB0,	BCS,		Branch,				1, 2 )
 	OP_ADDR( 0xB1,	LDA,		IndirectIndexed,	1, 5 )
 	OP_ADDR( 0xB2,	Illegal,	None,				0, 0 )
 	OP_ADDR( 0xB3,	Illegal,	None,				0, 0 )
@@ -679,7 +677,7 @@ inline void BuildOpLUT()
 	OP_ADDR( 0xCD,	CMP,		Absolute,			2, 4 )
 	OP_ADDR( 0xCE,	DEC,		Absolute,			2, 6 )
 	OP_ADDR( 0xCF,	Illegal,	None,				0, 0 )
-	OP_JUMP( 0xD0,	BNE,							1, 2 )
+	OP_JUMP( 0xD0,	BNE,		Branch,				1, 2 )
 	OP_ADDR( 0xD1,	CMP,		IndirectIndexed,	1, 5 )
 	OP_ADDR( 0xD2,	Illegal,	None,				0, 0 )
 	OP_ADDR( 0xD3,	Illegal,	None,				0, 0 )
@@ -711,7 +709,7 @@ inline void BuildOpLUT()
 	OP_ADDR( 0xED,	SBC,		Absolute,			2, 4 )
 	OP_ADDR( 0xEE,	INC,		Absolute,			2, 6 )
 	OP_ADDR( 0xEF,	Illegal,	None,				0, 0 )
-	OP_JUMP( 0xF0,	BEQ,							1, 2 )
+	OP_JUMP( 0xF0,	BEQ,		Branch,				1, 2 )
 	OP_ADDR( 0xF1,	SBC,		IndirectIndexed,	1, 5 )
 	OP_ADDR( 0xF2,	Illegal,	None,				0, 0 )
 	OP_ADDR( 0xF3,	Illegal,	None,				0, 0 )

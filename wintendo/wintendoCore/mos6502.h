@@ -17,7 +17,16 @@ struct	DisassemblerMapTuple;
 class	wtSystem;
 struct	cpuAddrInfo_t;
 
-enum struct addrMode_t : uint8_t
+enum class opType_t : uint8_t
+{
+	ADC, AND, ASL, BCC, BCS, BEQ, BIT, BMI, BNE, BPL, BRK, BVC, BVS, CLC,
+	CLD, CLI, CLV, CMP, CPX, CPY, DEC, DEX, DEY, EOR, INC, INX, INY, JMP,
+	JSR, LDA, LDX, LDY, LSR, NOP, ORA, PHA, PHP, PLA, PLP, ROL, ROR, RTI,
+	RTS, SBC, SEC, SED, SEI, STA, STX, STY, TAX, TAY, TSX, TXA, TXS, TYA,
+	SKB, SKW, Illegal, JMPI,
+};
+
+enum class addrMode_t : uint8_t
 {
 	None,
 	Absolute,
@@ -33,44 +42,52 @@ enum struct addrMode_t : uint8_t
 	Jmp,
 	JmpIndirect,
 	Jsr,
-	Branch
+	Return,
+	Branch,
 };
 
 typedef void( Cpu6502::* OpCodeFn )();
 struct opInfo_t
 {
+	OpCodeFn	func;
 	const char*	mnemonic;
+	opType_t	type;
+	addrMode_t	addrMode;
 	uint8_t		operands;
 	uint8_t		baseCycles;
 	uint8_t		pcInc;
-	OpCodeFn	func;
+	bool		illegal;
 };
 
-#define OP_DECL( name )									template <class AddrModeT>										\
+#define OP_DECL( name )									template <class AddrModeT>												\
 														void name();
 
-#define OP_DEF( name )									template <class AddrModeT>										\
+#define OP_DEF( name )									template <class AddrModeT>												\
 														void name()
 
-#define ADDR_MODE_DECL( name )							struct addrMode_t##name											\
-														{																\
-															static const addrMode_t addrMode = addrMode_t::##name;		\
-															Cpu6502& cpu;												\
-															addrMode_t##name( Cpu6502& cpui ) : cpu( cpui ) {};			\
-															inline void operator()( cpuAddrInfo_t& addrInfo );			\
+#define ADDR_MODE_DECL( name )							struct addrMode##name													\
+														{																		\
+															static const addrMode_t addrMode = addrMode_t::##name;				\
+															Cpu6502& cpu;														\
+															addrMode##name( Cpu6502& cpui ) : cpu( cpui ) {};					\
+															inline void operator()( cpuAddrInfo_t& addrInfo );					\
 														};
 
-#define ADDR_MODE_DEF( name )							void Cpu6502::addrMode_t##name::operator()( cpuAddrInfo_t& addrInfo )
+#define ADDR_MODE_DEF( name )							void Cpu6502::addrMode##name::operator() ( cpuAddrInfo_t& addrInfo )
 
-#define _OP_ADDR( num, name, address, ops, advance, cycles ){															\
-															opLUT[num].mnemonic = #name;								\
-															opLUT[num].operands = ops;									\
-															opLUT[num].baseCycles = cycles;								\
-															opLUT[num].pcInc = advance;									\
-															opLUT[num].func = &Cpu6502::##name<addrMode_t##address>;	\
+#define _OP_ADDR( num, name, addrFunc, addrressMode, ops, advance, cycles, isIllegal ) {										\
+															opLUT[num].mnemonic		= #name;									\
+															opLUT[num].type			= opType_t::##name;							\
+															opLUT[num].addrMode		= addrMode_t::##addrressMode;				\
+															opLUT[num].operands		= ops;										\
+															opLUT[num].baseCycles	= cycles;									\
+															opLUT[num].pcInc		= advance;									\
+															opLUT[num].func			= &Cpu6502::##name<addrMode##addrFunc>;		\
+															opLUT[num].illegal		= isIllegal;								\
 														}
-#define OP_ADDR( num, name, address, ops, cycles )		_OP_ADDR(num, name, address, ops, ops, cycles)
-#define OP_JUMP( num, name, ops, cycles )				_OP_ADDR(num, name, None, ops, 0, cycles)
+#define OP_ADDR( num, name, addrMode, ops, cycles )		_OP_ADDR( num,	name,	addrMode,	addrMode,	ops,	ops,	cycles,	false )
+#define ILLEGAL( num, name, addrMode, ops, cycles )		_OP_ADDR( num,	name,	addrMode,	addrMode,	ops,	ops,	cycles,	true )
+#define OP_JUMP( num, name, addrMode, ops, cycles )		_OP_ADDR( num,	name,	None,		addrMode,	ops,	0,		cycles,	false )
 
 
 enum statusBit_t
@@ -109,11 +126,15 @@ union statusReg_t
 
 struct cpuAddrInfo_t
 {
+	cpuAddrInfo_t() : addr( ~0x00 ), targetAddr( ~0x00 ), offset( 0 ), value( 0 ) {}
+
+	cpuAddrInfo_t( const uint32_t _addr, const uint32_t _targetAddr, const uint16_t _offset, const uint8_t _value ) :
+		addr( _addr ), targetAddr( _targetAddr ), offset( _offset ), value( _value ) {}
+
 	uint32_t	addr;
-	uint8_t		offset;
+	uint32_t	targetAddr;
+	uint16_t	offset;
 	uint8_t		value;
-	bool		isAccumulator;
-	bool		isImmediate;
 };
 
 class OpDebugInfo;
