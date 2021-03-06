@@ -83,6 +83,7 @@ void Cpu6502::Serialize( Serializer& serializer, const serializeMode_t mode )
 	serializer.Next16b( nmiVector,											mode );
 	serializer.Next16b( irqVector,											mode );
 	serializer.Next16b( resetVector,										mode );
+	serializer.Next16b( irqAddr,											mode );
 	serializer.Next8b( *reinterpret_cast<uint8_t*>( &interruptRequestNMI ),	mode );
 	serializer.Next8b( *reinterpret_cast<uint8_t*>( &interruptRequest ),	mode );
 	serializer.Next8b( *reinterpret_cast<uint8_t*>( &oamInProcess ),		mode );
