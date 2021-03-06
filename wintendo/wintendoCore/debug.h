@@ -9,7 +9,7 @@
 #define DEBUG_ADDR_INDEXED_ZERO if( IsLogOpen() )										\
 	{																					\
 		OpDebugInfo& dbgInfo	= dbgLog.GetLogLine();									\
-		dbgInfo.addrMode		= static_cast<uint8_t>( ( &reg == &X ) ? addrMode_t::IndexedAbsoluteX : addrMode_t::IndexedAbsoluteY );	\
+		dbgInfo.addrMode		= static_cast<uint8_t>( ( &reg == &X ) ? addrMode_t::IndexedZeroX : addrMode_t::IndexedZeroY );	\
 		dbgInfo.address			= address;												\
 		dbgInfo.targetAddress	= targetAddress;										\
 		dbgInfo.memValue		= system->ReadMemory( address );						\

@@ -6,20 +6,31 @@
 #include "debug.h"
 #include "mos6502.h"
 
+static void PrintHex( std::stringstream& debugStream, const uint32_t value, const uint32_t charCount, const bool markup )
+{
+	std::ios_base::fmtflags flags = debugStream.flags();
+	if( markup ) {
+		debugStream << "$";
+	}
+	debugStream << setfill( '0' ) << setw( charCount ) << uppercase << hex << right << value << left;
+	debugStream.setf( flags );
+}
+
+
 void OpDebugInfo::ToString( std::string& buffer, const bool registerDebug ) const
 {
 	std::stringstream debugStream;
 
 	if( nmi )
 	{
-		debugStream << "[NMI - Cycle:" << cpuCycles.count() << "]\n";
+		debugStream << "[NMI - Cycle:" << cpuCycles.count() << "]";
 		buffer +=  debugStream.str();
 		return;
 	}
 
 	if ( irq )
 	{
-		debugStream << "[IRQ - Cycle:" << cpuCycles.count() << "]\n";
+		debugStream << "[IRQ - Cycle:" << cpuCycles.count() << "]";
 		buffer += debugStream.str();
 		return;
 	}
@@ -29,64 +40,87 @@ void OpDebugInfo::ToString( std::string& buffer, const bool registerDebug ) cons
 
 	if ( operands == 1 )
 	{
-		hexString << uppercase << setfill( '0' ) << setw( 2 ) << hex << disassemblyBytes[0] << " " << setw( 2 ) << disassemblyBytes[1];
+		PrintHex( hexString, disassemblyBytes[ 0 ], 2, false );
+		hexString << " ";
+		PrintHex( hexString, disassemblyBytes[ 1 ], 2, false );
 	}
 	else if ( operands == 2 )
 	{
-		hexString << uppercase << setfill( '0' ) << setw( 2 ) << hex << disassemblyBytes[0] << " " << setw( 2 ) << disassemblyBytes[1] << " " << setw( 2 ) << disassemblyBytes[2];
+		PrintHex( hexString, disassemblyBytes[ 0 ], 2, false );
+		hexString << " ";
+		PrintHex( hexString, disassemblyBytes[ 1 ], 2, false );
+		hexString << " ";
+		PrintHex( hexString, disassemblyBytes[ 2 ], 2, false );
 	}
 	else
 	{
-		hexString << uppercase << setfill( '0' ) << setw( 2 ) << hex << disassemblyBytes[0];
+		PrintHex( hexString, disassemblyBytes[ 0 ], 2, false );
 	}
 
-	debugStream << uppercase << setfill( '0' ) << setw( 4 ) << hex << instrBegin << setfill( ' ' ) << "  " << setw( 10 ) << left << hexString.str() << mnemonic << " ";
+	PrintHex( debugStream, instrBegin, 4, false );
+	debugStream << setfill( ' ' ) << "  " << setw( 10 ) << left << hexString.str();
+	debugStream << mnemonic[0] << mnemonic[ 1 ] << mnemonic[ 2 ] << " ";
 	
 	const addrMode_t mode = static_cast<addrMode_t>( addrMode );
 
 	switch ( mode )
 	{
-	default:
+	default: break;
 	case addrMode_t::Absolute:
-		debugStream << uppercase << "$" << setfill( '0' ) << setw( 4 ) << address;
-		debugStream << " = " << setfill( '0' ) << setw( 2 ) << hex << static_cast<uint32_t>( memValue );
+		PrintHex( debugStream, address, 4, true );
+		debugStream << " = ";
+		PrintHex( debugStream, static_cast<uint32_t>( memValue ), 2, false );
 		break;
 
 	case addrMode_t::Zero:
-		debugStream << uppercase << "$" << setfill( '0' ) << setw( 2 ) << address;
-		debugStream << " = " << setfill( '0' ) << setw( 2 ) << hex << static_cast<uint32_t>( memValue );
+		PrintHex( debugStream, address, 2, true );
+		debugStream << " = ";
+		PrintHex( debugStream, static_cast<uint32_t>( memValue ), 2, false );
 		break;
 
 	case addrMode_t::IndexedAbsoluteX:
 	case addrMode_t::IndexedAbsoluteY:
-		debugStream << uppercase << "$" << setw( 4 ) << hex << targetAddress << ",";
-		debugStream << isXReg ? "X" : "Y";
-		debugStream << setfill( '0' ) << " @ " << setw( 4 ) << hex << address;
-		debugStream << " = " << setw( 2 ) << hex << static_cast<uint32_t>( memValue );
+		PrintHex( debugStream, targetAddress, 4, true );
+		debugStream << "," << ( isXReg ? "X" : "Y" ) << " @ ";
+		PrintHex( debugStream, address, 4, false );
+		debugStream << " = ";
+		PrintHex( debugStream, static_cast<uint32_t>( memValue ), 2, false );
 		break;
 
 	case addrMode_t::IndexedZeroX:
 	case addrMode_t::IndexedZeroY:
-		debugStream << uppercase << "$" << setw( 2 ) << hex << targetAddress << ",";
-		debugStream << isXReg ? "X" : "Y";
-		debugStream << setfill( '0' ) << " @ " << setw( 2 ) << hex << address;
-		debugStream << " = " << setw( 2 ) << hex << static_cast<uint32_t>( memValue );
+		PrintHex( debugStream, targetAddress, 2, true );
+		debugStream << "," << ( isXReg ? "X" : "Y" ) << " @ ";
+		PrintHex( debugStream, address, 2, false );
+		debugStream << " = ";
+		PrintHex( debugStream, static_cast<uint32_t>( memValue ), 2, false );
 		break;
 
 	case addrMode_t::Immediate:
-		debugStream << uppercase << "#$" << setfill( '0' ) << setw( 2 ) << hex << static_cast<uint32_t>( memValue );
+		debugStream << "#";
+		PrintHex( debugStream, static_cast<uint32_t>( memValue ), 2, true );
 		break;
 
 	case addrMode_t::IndirectIndexed:
-		debugStream << uppercase << "($" << setfill( '0' ) << setw( 2 ) << static_cast<uint32_t>( operand ) << "),Y = ";
-		debugStream << setw( 4 ) << hex << address;
-		debugStream << " @ " << setw( 4 ) << hex << offset << " = " << setw( 2 ) << hex << static_cast<uint32_t>( memValue );
+		debugStream << "(";
+		PrintHex( debugStream, static_cast<uint32_t>( operand ), 2, true );
+		debugStream << "),Y = ";
+		PrintHex( debugStream, address, 4, false );
+		debugStream << " @ ";
+		PrintHex( debugStream, offset, 4, false );
+		debugStream << " = ";
+		PrintHex( debugStream, static_cast<uint32_t>( memValue ), 2, false );
 		break;
 
 	case addrMode_t::IndexedIndirect:
-		debugStream << uppercase << "($" << setfill( '0' ) << setw( 2 ) << static_cast<uint32_t>( operand ) << ",X) @ ";
-		debugStream << setw( 2 ) << static_cast<uint32_t>( targetAddress );
-		debugStream << " = " << setw( 4 ) << address << " = " << setw( 2 ) << static_cast<uint32_t>( memValue );
+		debugStream << "(";
+		PrintHex( debugStream, static_cast<uint32_t>( operand ), 2, true );
+		debugStream << ",X) @ ";
+		PrintHex( debugStream, static_cast<uint32_t>( targetAddress ), 2, false );
+		debugStream << " = ";
+		PrintHex( debugStream, address, 4, false );
+		debugStream << " = ";
+		PrintHex( debugStream, static_cast<uint32_t>( memValue ), 2, false );
 		break;
 
 	case addrMode_t::Accumulator:
@@ -94,39 +128,46 @@ void OpDebugInfo::ToString( std::string& buffer, const bool registerDebug ) cons
 		break;
 
 	case addrMode_t::Jmp:
-		debugStream << uppercase << setfill( '0' ) << "$" << setw( 2 ) << hex << address;
+		PrintHex( debugStream, address, 2, true );
 		break;
 
 	case addrMode_t::JmpIndirect:
-		debugStream << uppercase << setfill( '0' ) << "($" << setw( 4 ) << hex << offset;
-		debugStream << ") = " << setw( 4 ) << hex << address;
+		debugStream << "(";
+		PrintHex( debugStream, offset, 4, true );
+		debugStream << ") = ";
+		PrintHex( debugStream, address, 4, false );
 		break;
 
 	case addrMode_t::Jsr:
-		debugStream << uppercase << "$" << setfill( '0' ) << setw( 2 ) << hex << address;
+		PrintHex( debugStream, address, 4, true );
 		break;
 
 	case addrMode_t::Branch:
-		debugStream << uppercase << "$" << setfill( '0' ) << setw( 2 ) << hex << address;
+		PrintHex( debugStream, address, 2, true );
 		break;
 	}
 
 	if ( registerDebug )
 	{
 		debugStream.seekg( 0, ios::end );
-		const size_t alignment = 60;
+		const size_t alignment = 50;
 		const size_t width = ( alignment - debugStream.tellg() );
 		debugStream.seekg( 0, ios::beg );
 
 		debugStream << setfill( ' ' ) << setw( width ) << right;
-		debugStream << uppercase << "A:" << setfill( '0' ) << setw( 2 ) << hex << static_cast<int>( regInfo.A ) << setw( 1 ) << " ";
-		debugStream << uppercase << "X:" << setfill( '0' ) << setw( 2 ) << hex << static_cast<int>( regInfo.X ) << setw( 1 ) << " ";
-		debugStream << uppercase << "Y:" << setfill( '0' ) << setw( 2 ) << hex << static_cast<int>( regInfo.Y ) << setw( 1 ) << " ";
-		debugStream << uppercase << "P:" << setfill( '0' ) << setw( 2 ) << hex << static_cast<int>( regInfo.P ) << setw( 1 ) << " ";
-		debugStream << uppercase << "SP:" << setfill( '0' ) << setw( 2 ) << hex << static_cast<int>( regInfo.SP ) << setw( 1 ) << " ";
-		debugStream << uppercase << "PPU:" << setfill( ' ' ) << setw( 3 ) << dec << ppuCycles.count() << setw( 1 ) << " ";
-		debugStream << uppercase << "SL:" << setfill( ' ' ) << setw( 3 ) << dec << ( curScanline + 1 ) << " ";
-		debugStream << uppercase << "CYC:" << dec << cpuCycles.count() << "\0";
+		debugStream << uppercase << "A:";
+		PrintHex( debugStream, static_cast<int>( regInfo.A ), 2, false );
+		debugStream << uppercase << " X:";
+		PrintHex( debugStream, static_cast<int>( regInfo.X ), 2, false );
+		debugStream << uppercase << " Y:";
+		PrintHex( debugStream, static_cast<int>( regInfo.Y ), 2, false );
+		debugStream << uppercase << " P:";
+		PrintHex( debugStream, static_cast<int>( regInfo.P ), 2, false );
+		debugStream << uppercase << " SP:";
+		PrintHex( debugStream, static_cast<int>( regInfo.SP ), 2, false );
+		//debugStream << uppercase << "PPU:" << setfill( ' ' ) << setw( 3 ) << dec << ppuCycles.count() << setw( 1 ) << " ";
+		//debugStream << uppercase << "SL:" << setfill( ' ' ) << setw( 3 ) << dec << ( curScanline + 1 ) << " ";
+		//debugStream << uppercase << "CYC:" << dec << cpuCycles.count() << "\0";
 	}
 
 	buffer += debugStream.str();
