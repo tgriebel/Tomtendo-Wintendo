@@ -51,12 +51,13 @@ struct opInfo_t
 {
 	OpCodeFn	func;
 	const char*	mnemonic;
-	opType_t	type;
-	addrMode_t	addrMode;
-	uint8_t		operands;
-	uint8_t		baseCycles;
-	uint8_t		pcInc;
-	bool		illegal;
+	opType_t	type		: 7;
+	addrMode_t	addrMode	: 5;
+	uint8_t		operands	: 2;
+	uint8_t		baseCycles	: 4;
+	uint8_t		pcInc		: 2;
+	bool		illegal		: 1;
+	bool		extraCycle	: 1;
 };
 
 #define OP_DECL( name )									template <class AddrModeT>												\
@@ -75,7 +76,8 @@ struct opInfo_t
 
 #define ADDR_MODE_DEF( name )							void Cpu6502::addrMode##name::operator() ( cpuAddrInfo_t& addrInfo )
 
-#define _OP_ADDR( num, name, addrFunc, addrressMode, ops, advance, cycles, isIllegal ) {										\
+#define _OP_ADDR( num, name, addrFunc, addrressMode, ops, advance, cycles, hasExtraCycle, isIllegal )							\
+														{																		\
 															opLUT[num].mnemonic		= #name;									\
 															opLUT[num].type			= opType_t::##name;							\
 															opLUT[num].addrMode		= addrMode_t::##addrressMode;				\
@@ -84,10 +86,11 @@ struct opInfo_t
 															opLUT[num].pcInc		= advance;									\
 															opLUT[num].func			= &Cpu6502::##name<addrMode##addrFunc>;		\
 															opLUT[num].illegal		= isIllegal;								\
+															opLUT[num].extraCycle	= hasExtraCycle;							\
 														}
-#define OP_ADDR( num, name, addrMode, ops, cycles )		_OP_ADDR( num,	name,	addrMode,	addrMode,	ops,	ops,	cycles,	false )
-#define ILLEGAL( num, name, addrMode, ops, cycles )		_OP_ADDR( num,	name,	addrMode,	addrMode,	ops,	ops,	cycles,	true )
-#define OP_JUMP( num, name, addrMode, ops, cycles )		_OP_ADDR( num,	name,	None,		addrMode,	ops,	0,		cycles,	false )
+#define OP_ADDR( num, name, addrMode, ops, cycles, extraCycle )	_OP_ADDR( num,	name,	addrMode,	addrMode,	ops,	ops,	cycles,	extraCycle, false )
+#define ILLEGAL( num, name, addrMode, ops, cycles, extraCycle )	_OP_ADDR( num,	name,	addrMode,	addrMode,	ops,	ops,	cycles,	extraCycle, true )
+#define OP_JUMP( num, name, addrMode, ops, cycles, extraCycle )	_OP_ADDR( num,	name,	None,		addrMode,	ops,	0,		cycles,	extraCycle, false )
 
 
 enum statusBit_t
