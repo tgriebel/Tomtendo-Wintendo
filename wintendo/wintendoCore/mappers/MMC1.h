@@ -19,6 +19,15 @@ private:
 		uint8_t byte;
 	};
 
+	enum Revision 
+	{
+		SNROM,
+		SOROM,
+		SUROM,
+		SXROM,
+	};
+	Revision revision;
+
 	static const uint8_t ClearBit = 0x80;
 	static const uint8_t CtrlRegDefault = 0x0C;
 

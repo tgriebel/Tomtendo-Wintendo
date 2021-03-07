@@ -20,13 +20,18 @@ static void PrintHex( std::stringstream& debugStream, const uint32_t value, cons
 static std::string GetOpName( const OpDebugInfo& info )
 {
 	std::string name;
-	if( info.opType == (uint8_t)opType_t::SKB )
+	if( info.isIllegal ) {
+		name += "*";
+	} else {
+		name += " ";
+	}
+
+	if( ( info.opType == (uint8_t)opType_t::SKB ) || ( info.opType == (uint8_t)opType_t::SKW ) )
 	{
-		name += "*NOP";
+		name += "NOP";
 	}
 	else
 	{
-		name += " ";
 		name += info.mnemonic[ 0 ];
 		name += info.mnemonic[ 1 ];
 		name += info.mnemonic[ 2 ];
@@ -123,7 +128,7 @@ void OpDebugInfo::ToString( std::string& buffer, const bool registerDebug ) cons
 
 	case addrMode_t::IndirectIndexed:
 		debugStream << "(";
-		PrintHex( debugStream, static_cast<uint32_t>( operand ), 2, true );
+		PrintHex( debugStream, static_cast<uint32_t>( op0 ), 2, true );
 		debugStream << "),Y = ";
 		PrintHex( debugStream, address, 4, false );
 		debugStream << " @ ";
@@ -134,7 +139,7 @@ void OpDebugInfo::ToString( std::string& buffer, const bool registerDebug ) cons
 
 	case addrMode_t::IndexedIndirect:
 		debugStream << "(";
-		PrintHex( debugStream, static_cast<uint32_t>( operand ), 2, true );
+		PrintHex( debugStream, static_cast<uint32_t>( op0 ), 2, true );
 		debugStream << ",X) @ ";
 		PrintHex( debugStream, static_cast<uint32_t>( targetAddress ), 2, false );
 		debugStream << " = ";

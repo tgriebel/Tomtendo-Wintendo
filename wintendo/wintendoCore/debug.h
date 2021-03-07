@@ -55,7 +55,6 @@
 		dbgInfo.address			= _info.addr;											\
 		dbgInfo.targetAddress	= _info.targetAddr;										\
 		dbgInfo.memValue		= _info.value;											\
-		dbgInfo.operand			= cpu.ReadOperand( 0 );									\
 		dbgInfo.offset			= _info.offset;											\
 	}
 
@@ -65,7 +64,6 @@
 		OpDebugInfo& dbgInfo	= cpu.dbgLog.GetLogLine();								\
 		dbgInfo.address			= _info.addr;											\
 		dbgInfo.memValue		= _info.value;											\
-		dbgInfo.operand			= cpu.ReadOperand( 0 );									\
 		dbgInfo.targetAddress	= _info.targetAddr;										\
 	}
 
@@ -155,14 +153,13 @@ public:
 	uint8_t			opType;
 	uint8_t			addrMode;
 	uint8_t			memValue;
-	uint8_t			operand;
 	uint8_t			byteCode;
 
 	uint8_t			operands;
 	uint8_t			op0;
 	uint8_t			op1;
 
-	bool			isXReg;
+	bool			isIllegal;
 	bool			irq;
 	bool			nmi;
 	bool			oam;
@@ -174,9 +171,7 @@ public:
 
 		opType			= 0;
 		addrMode		= 0;
-		isXReg			= false;
 		memValue		= 0;
-		operand			= 0;
 		address			= 0;
 		offset			= 0;
 		targetAddress	= 0;
@@ -189,6 +184,7 @@ public:
 		op0				= 0;
 		op1				= 0;
 
+		isIllegal		= false;
 		irq				= false;
 		nmi				= false;
 		oam				= false;

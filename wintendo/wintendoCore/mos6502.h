@@ -23,7 +23,7 @@ enum class opType_t : uint8_t
 	CLD, CLI, CLV, CMP, CPX, CPY, DEC, DEX, DEY, EOR, INC, INX, INY, JMP,
 	JSR, LDA, LDX, LDY, LSR, NOP, ORA, PHA, PHP, PLA, PLP, ROL, ROR, RTI,
 	RTS, SBC, SEC, SED, SEI, STA, STX, STY, TAX, TAY, TSX, TXA, TXS, TYA,
-	SKB, SKW, Illegal, JMPI,
+	JMPI, Illegal, SKB, SKW, LAX, SAX, DCP, ISB, SLO, RLA, SRE, RRA,
 };
 
 enum class addrMode_t : uint8_t
