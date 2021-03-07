@@ -46,14 +46,14 @@ void OpDebugInfo::ToString( std::string& buffer, const bool registerDebug ) cons
 
 	if( nmi )
 	{
-		debugStream << "[NMI - Cycle:" << cpuCycles.count() << "]";
+		debugStream << "[NMI - Cycle:" << cpuCycles << "]";
 		buffer +=  debugStream.str();
 		return;
 	}
 
 	if ( irq )
 	{
-		debugStream << "[IRQ - Cycle:" << cpuCycles.count() << "]";
+		debugStream << "[IRQ - Cycle:" << cpuCycles << "]";
 		buffer += debugStream.str();
 		return;
 	}
@@ -190,9 +190,9 @@ void OpDebugInfo::ToString( std::string& buffer, const bool registerDebug ) cons
 		PrintHex( debugStream, static_cast<int>( regInfo.P ), 2, false );
 		debugStream << uppercase << " SP:";
 		PrintHex( debugStream, static_cast<int>( regInfo.SP ), 2, false );
-		//debugStream << uppercase << "PPU:" << setfill( ' ' ) << setw( 3 ) << dec << ppuCycles.count() << setw( 1 ) << " ";
-		//debugStream << uppercase << "SL:" << setfill( ' ' ) << setw( 3 ) << dec << ( curScanline + 1 ) << " ";
-		//debugStream << uppercase << "CYC:" << dec << cpuCycles.count() << "\0";
+		debugStream << uppercase << " PPU:" << setfill( ' ' ) << setw( 3 ) <<  dec << right << curScanline;
+		debugStream << uppercase << "," << setfill( ' ' ) << setw( 3 ) << dec << ppuCycles;
+		debugStream << uppercase << " CYC:" << dec << cpuCycles << "\0";
 	}
 
 	buffer += debugStream.str();

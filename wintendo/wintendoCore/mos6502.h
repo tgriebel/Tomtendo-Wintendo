@@ -180,6 +180,7 @@ public:
 	opInfo_t			opLUT[NumInstructions];
 
 private:
+	// TODO: make 'execution state' struct which has per op variables with short lifetimes such as these
 	cpuCycle_t			instructionCycles;
 	uint8_t				opCode;
 	bool				halt;
@@ -201,10 +202,10 @@ public:
 
 		P.byte = 0;
 		P.bit.i = 1;
-		P.bit.b = 0;
+		P.bit.b = 1;
 
 		instructionCycles = cpuCycle_t( 0 );
-		cycle = cpuCycle_t(0); // FIXME? Test log starts cycles at 7. Is there a BRK at power up?
+		cycle = cpuCycle_t( 7 ); // FIXME: +7 is a hack to match test log, +21 on PPU
 
 		interruptRequestNMI = false;
 		interruptRequest = false;

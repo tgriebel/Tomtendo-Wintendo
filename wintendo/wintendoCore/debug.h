@@ -138,9 +138,9 @@ public:
 	regDebugInfo_t	regInfo;
 	const char*		mnemonic;
 	int32_t			curScanline;
-	cpuCycle_t		cpuCycles;
-	ppuCycle_t		ppuCycles;
-	cpuCycle_t		instrCycles;
+	uint64_t		cpuCycles;
+	uint64_t		ppuCycles;
+	uint64_t		instrCycles;
 
 	uint32_t		loadCnt;
 	uint32_t		storeCnt;
@@ -177,9 +177,9 @@ public:
 		targetAddress	= 0;
 		instrBegin		= 0;
 		curScanline		= 0;
-		cpuCycles		= cpuCycle_t( 0 );
-		ppuCycles		= ppuCycle_t( 0 );
-		instrCycles		= cpuCycle_t( 0 );
+		cpuCycles		= 0;
+		ppuCycles		= 0;
+		instrCycles		= 0;
 
 		op0				= 0;
 		op1				= 0;
