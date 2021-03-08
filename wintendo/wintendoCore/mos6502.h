@@ -16,6 +16,7 @@ struct	InstructionMapTuple;
 struct	DisassemblerMapTuple;
 class	wtSystem;
 struct	cpuAddrInfo_t;
+struct	opState_t;
 
 enum class opType_t : uint8_t
 {
@@ -46,7 +47,7 @@ enum class addrMode_t : uint8_t
 	Branch,
 };
 
-typedef void( Cpu6502::* OpCodeFn )();
+typedef void( Cpu6502::* OpCodeFn )( opState_t& opState );
 struct opInfo_t
 {
 	OpCodeFn	func;
@@ -61,20 +62,20 @@ struct opInfo_t
 };
 
 #define OP_DECL( name )									template <class AddrModeT>												\
-														void name();
+														void name( opState_t& o );
 
 #define OP_DEF( name )									template <class AddrModeT>												\
-														void name()
+														void name( opState_t& o )
 
 #define ADDR_MODE_DECL( name )							struct addrMode##name													\
 														{																		\
 															static const addrMode_t addrMode = addrMode_t::##name;				\
 															Cpu6502& cpu;														\
-															addrMode##name( Cpu6502& cpui ) : cpu( cpui ) {};					\
-															inline void operator()( cpuAddrInfo_t& addrInfo );					\
+															addrMode##name( Cpu6502& _cpu ) : cpu( _cpu ) {};					\
+															inline void operator()( struct opState_t& opState );				\
 														};
 
-#define ADDR_MODE_DEF( name )							void Cpu6502::addrMode##name::operator() ( cpuAddrInfo_t& addrInfo )
+#define ADDR_MODE_DEF( name )							void Cpu6502::addrMode##name::operator() ( struct opState_t& opState )
 
 #define _OP_ADDR( num, name, addrFunc, addrressMode, ops, advance, cycles, hasExtraCycle, isIllegal )							\
 														{																		\
@@ -140,6 +141,18 @@ struct cpuAddrInfo_t
 	uint8_t		value;
 };
 
+
+struct opState_t
+{
+	opState_t() : addrInfo(), opCycles( 0 ), opCode( 0 ) {}
+
+	cpuAddrInfo_t	addrInfo;
+	cpuCycle_t		opCycles;
+	uint8_t			opCode;
+	bool			extraCycle;
+};
+
+
 class OpDebugInfo;
 class wtLog;
 
@@ -183,9 +196,6 @@ public:
 	opInfo_t			opLUT[NumInstructions];
 
 private:
-	// TODO: make 'execution state' struct which has per op variables with short lifetimes such as these
-	cpuCycle_t			instructionCycles;
-	uint8_t				opCode;
 	bool				halt;
 
 	cpuCycle_t			dbgStartCycle;
@@ -207,7 +217,6 @@ public:
 		P.bit.i = 1;
 		P.bit.b = 1;
 
-		instructionCycles = cpuCycle_t( 0 );
 		cycle = cpuCycle_t( 7 ); // FIXME: +7 is a hack to match test log, +21 on PPU
 
 		interruptRequestNMI = false;
@@ -262,8 +271,8 @@ private:
 	void		NMI( const uint16_t addr );
 	void		IRQ();
 
-	void		IndexedAbsolute( const uint8_t& reg, cpuAddrInfo_t& addrInfo );
-	void		IndexedZero( const uint8_t& reg, cpuAddrInfo_t& addrInfo );
+	void		IndexedAbsolute( opState_t& opState, const uint8_t& reg );
+	void		IndexedZero( opState_t& opState, const uint8_t& reg );
 
 	void		Push( const uint8_t value );
 	void		PushWord( const uint16_t value );
@@ -278,14 +287,14 @@ private:
 
 	uint16_t	CombineIndirect( const uint8_t lsb, const uint8_t msb, const uint32_t wrap );
 
-	uint8_t		AddressCrossesPage( const uint16_t address, const uint16_t offset );
-	uint8_t		Branch( const bool takeBranch );
+	uint8_t		AddressCrossesPage( opState_t& opState, const uint16_t address, const uint16_t offset );
+	void		Branch( opState_t& opState, const bool takeBranch );
 	
 	template <class AddrFunctor>
-	uint8_t		Read();
+	uint8_t		Read( opState_t& opState );
 
 	template <class AddrFunctor>
-	void		Write( const uint8_t value );
+	void		Write( opState_t& opState, const uint8_t value );
 
-	cpuCycle_t	OpLookup( const uint16_t instrBegin, const uint8_t opCode );
+	void		OpExec( opState_t& opState, const uint16_t instrAddr, const uint8_t opCode );
 };

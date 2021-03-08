@@ -41,7 +41,7 @@ OP_DEF( CLD )
 
 OP_DEF( CMP )
 {
-	const uint16_t result = ( A - Read<AddrModeT>() );
+	const uint16_t result = ( A - Read<AddrModeT>( o ) );
 
 	P.bit.c = !CheckCarry( result );
 	SetAluFlags( result );
@@ -49,7 +49,7 @@ OP_DEF( CMP )
 
 OP_DEF( CPX )
 {
-	const uint16_t result = ( X - Read<AddrModeT>() );
+	const uint16_t result = ( X - Read<AddrModeT>( o ) );
 
 	P.bit.c = !CheckCarry( result );
 	SetAluFlags( result );
@@ -57,7 +57,7 @@ OP_DEF( CPX )
 
 OP_DEF( CPY )
 {
-	const uint16_t result = ( Y - Read<AddrModeT>() );
+	const uint16_t result = ( Y - Read<AddrModeT>( o ) );
 
 	P.bit.c = !CheckCarry( result );
 	SetAluFlags( result );
@@ -65,35 +65,35 @@ OP_DEF( CPY )
 
 OP_DEF( LDA )
 {
-	A = Read<AddrModeT>();
+	A = Read<AddrModeT>( o );
 	SetAluFlags( A );
 }
 
 OP_DEF( LDX )
 {
-	X = Read<AddrModeT>();
+	X = Read<AddrModeT>( o );
 	SetAluFlags( X );
 }
 
 OP_DEF( LDY )
 {
-	Y = Read<AddrModeT>();
+	Y = Read<AddrModeT>( o );
 	SetAluFlags( Y );
 }
 
 OP_DEF( STA )
 {
-	Write<AddrModeT>( A );
+	Write<AddrModeT>( o, A );
 }
 
 OP_DEF( STX )
 {
-	Write<AddrModeT>( X );
+	Write<AddrModeT>( o, X );
 }
 
 OP_DEF( STY )
 {
-	Write<AddrModeT>( Y );
+	Write<AddrModeT>( o, Y );
 }
 
 OP_DEF( TXS )
@@ -134,7 +134,7 @@ OP_DEF( TSX )
 OP_DEF( ADC )
 {
 	// http://nesdev.com/6502.txt, "INSTRUCTION OPERATION - ADC"
-	const uint8_t M = Read<AddrModeT>();
+	const uint8_t M = Read<AddrModeT>( o );
 	const uint16_t src = A;
 	const uint16_t carry = ( P.bit.c ) ? 1 : 0;
 	const uint16_t temp = A + M + carry;
@@ -150,7 +150,7 @@ OP_DEF( ADC )
 
 OP_DEF( SBC )
 {
-	uint8_t M = Read<AddrModeT>();
+	uint8_t M = Read<AddrModeT>( o );
 	const uint16_t carry = ( P.bit.c ) ? 0 : 1;
 	const uint16_t result = A - M - carry;
 
@@ -188,17 +188,17 @@ OP_DEF( DEY )
 
 OP_DEF( INC )
 {
-	const uint8_t result = Read<AddrModeT>() + 1;
+	const uint8_t result = Read<AddrModeT>( o ) + 1;
 
-	Write<AddrModeT>( result );
+	Write<AddrModeT>( o, result );
 	SetAluFlags( result );
 }
 
 OP_DEF( DEC )
 {
-	const uint8_t result = Read<AddrModeT>() - 1;
+	const uint8_t result = Read<AddrModeT>( o ) - 1;
 
-	Write<AddrModeT>( result );
+	Write<AddrModeT>( o, result );
 	SetAluFlags( result );
 }
 
@@ -232,33 +232,33 @@ OP_DEF( NOP )
 
 OP_DEF( ASL )
 {
-	uint8_t M = Read<AddrModeT>();
+	uint8_t M = Read<AddrModeT>( o );
 
 	P.bit.c = !!( M & 0x80 );
 	M <<= 1;
-	Write<AddrModeT>( M );
+	Write<AddrModeT>( o, M );
 	SetAluFlags( M );
 }
 
 OP_DEF( LSR )
 {
-	uint8_t M = Read<AddrModeT>();
+	uint8_t M = Read<AddrModeT>( o );
 
 	P.bit.c = ( M & 0x01 );
 	M >>= 1;
-	Write<AddrModeT>( M );
+	Write<AddrModeT>( o, M );
 	SetAluFlags( M );
 }
 
 OP_DEF( AND )
 {
-	A &= Read<AddrModeT>();
+	A &= Read<AddrModeT>( o );
 	SetAluFlags( A );
 }
 
 OP_DEF( BIT )
 {
-	const uint8_t M = Read<AddrModeT>();
+	const uint8_t M = Read<AddrModeT>( o );
 
 	P.bit.z = !( A & M );
 	P.bit.n = CheckSign( M );
@@ -267,13 +267,13 @@ OP_DEF( BIT )
 
 OP_DEF( EOR )
 {
-	A ^= Read<AddrModeT>();
+	A ^= Read<AddrModeT>( o );
 	SetAluFlags( A );
 }
 
 OP_DEF( ORA )
 {
-	A |= Read<AddrModeT>();
+	A |= Read<AddrModeT>( o );
 	SetAluFlags( A );
 }
 
@@ -318,7 +318,7 @@ OP_DEF( RTS )
 
 OP_DEF( RTI )
 {
-	PLP<AddrModeT>();
+	PLP<AddrModeT>( o );
 
 	const uint8_t loByte = Pull();
 	const uint8_t hiByte = Pull();
@@ -328,47 +328,47 @@ OP_DEF( RTI )
 
 OP_DEF( BMI )
 {
-	Branch( P.bit.n );
+	Branch( o, P.bit.n );
 }
 
 OP_DEF( BVS )
 {
-	Branch( P.bit.v );
+	Branch( o, P.bit.v );
 }
 
 OP_DEF( BCS )
 {
-	Branch( P.bit.c );
+	Branch( o, P.bit.c );
 }
 
 OP_DEF( BEQ )
 {
-	Branch( P.bit.z );
+	Branch( o, P.bit.z );
 }
 
 OP_DEF( BPL )
 {
-	Branch( !P.bit.n );
+	Branch( o, !P.bit.n );
 }
 
 OP_DEF( BVC )
 {
-	Branch( !P.bit.v );
+	Branch( o, !P.bit.v );
 }
 
 OP_DEF( BCC )
 {
-	Branch( !P.bit.c );
+	Branch( o, !P.bit.c );
 }
 
 OP_DEF( BNE )
 {
-	Branch( !P.bit.z );
+	Branch( o, !P.bit.z );
 }
 
 OP_DEF( ROL )
 {
-	uint16_t temp = Read<AddrModeT>() << 1;
+	uint16_t temp = Read<AddrModeT>( o ) << 1;
 	temp = ( P.bit.c ) ? temp | 0x0001 : temp;
 
 	P.bit.c = CheckCarry( temp );
@@ -377,18 +377,18 @@ OP_DEF( ROL )
 
 	SetAluFlags( temp );
 
-	Write<AddrModeT>( temp & 0xFF );
+	Write<AddrModeT>( o, temp & 0xFF );
 }
 
 OP_DEF( ROR )
 {
-	uint16_t temp = ( P.bit.c ) ? Read<AddrModeT>() | 0x0100 : Read<AddrModeT>();
+	uint16_t temp = ( P.bit.c ) ? Read<AddrModeT>( o ) | 0x0100 : Read<AddrModeT>( o );
 
 	P.bit.c = ( temp & 0x01 );
 	temp >>= 1;
 	SetAluFlags( temp );
 
-	Write<AddrModeT>( temp & 0xFF );
+	Write<AddrModeT>( o, temp & 0xFF );
 }
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -404,17 +404,17 @@ OP_DEF( Illegal )
 
 OP_DEF( SKB )
 {
-	Read<AddrModeT>();
+	Read<AddrModeT>( o );
 }
 
 OP_DEF( SKW )
 {
-	Read<AddrModeT>();
+	Read<AddrModeT>( o );
 }
 
 OP_DEF( LAX )
 {
-	const uint8_t value = Read<AddrModeT>();
+	const uint8_t value = Read<AddrModeT>( o );
 	A = value;
 	X = value;
 	SetAluFlags( value );
@@ -423,13 +423,13 @@ OP_DEF( LAX )
 OP_DEF( SAX )
 {
 	const uint8_t value = ( A & X );
-	Write<AddrModeT>( value );
+	Write<AddrModeT>( o, value );
 }
 
 OP_DEF( DCP )
 {
-	const uint8_t dec = ( Read<AddrModeT>() - 1 );
-	Write<AddrModeT>( dec );
+	const uint8_t dec = ( Read<AddrModeT>( o ) - 1 );
+	Write<AddrModeT>( o, dec );
 
 	const uint16_t cmp = ( A - dec );
 	P.bit.c = !CheckCarry( cmp );
@@ -438,8 +438,8 @@ OP_DEF( DCP )
 
 OP_DEF( ISB )
 {
-	const uint8_t inc = ( Read<AddrModeT>() + 1 );
-	Write<AddrModeT>( inc );
+	const uint8_t inc = ( Read<AddrModeT>( o ) + 1 );
+	Write<AddrModeT>( o, inc );
 
 	const uint16_t carry = ( P.bit.c ) ? 0 : 1;
 	const uint16_t result = A - inc - carry;
@@ -454,24 +454,24 @@ OP_DEF( ISB )
 
 OP_DEF( SLO )
 {
-	uint8_t M = Read<AddrModeT>();
+	uint8_t M = Read<AddrModeT>( o );
 
 	P.bit.c = !!( M & 0x80 );
 	M <<= 1;
-	Write<AddrModeT>( M );
+	Write<AddrModeT>( o, M );
 	A |= M;
 	SetAluFlags( A );
 }
 
 OP_DEF( RLA )
 {
-	uint16_t rol = Read<AddrModeT>() << 1;
+	uint16_t rol = Read<AddrModeT>( o ) << 1;
 	rol = ( P.bit.c ) ? rol | 0x0001 : rol;
 
 	P.bit.c = CheckCarry( rol );
 	rol &= 0xFF;
 	rol = rol & 0xFF;
-	Write<AddrModeT>( static_cast<uint8_t>( rol ) );
+	Write<AddrModeT>( o, static_cast<uint8_t>( rol ) );
 
 	A &= rol;
 	SetAluFlags( A );
@@ -479,10 +479,10 @@ OP_DEF( RLA )
 
 OP_DEF( SRE )
 {
-	uint8_t M = Read<AddrModeT>();
+	uint8_t M = Read<AddrModeT>( o );
 	P.bit.c = ( M & 0x01 );
 	M >>= 1;
-	Write<AddrModeT>( M );
+	Write<AddrModeT>( o, M );
 
 	A ^= M;
 	SetAluFlags( A );
@@ -490,11 +490,11 @@ OP_DEF( SRE )
 
 OP_DEF( RRA )
 {
-	uint16_t ror = ( P.bit.c ) ? Read<AddrModeT>() | 0x0100 : Read<AddrModeT>();
+	uint16_t ror = ( P.bit.c ) ? Read<AddrModeT>( o ) | 0x0100 : Read<AddrModeT>( o );
 	P.bit.c = ( ror & 0x01 );
 	ror >>= 1;
 	ror = ror & 0xFF;
-	Write<AddrModeT>( static_cast<uint8_t>( ror ) );
+	Write<AddrModeT>( o, static_cast<uint8_t>( ror ) );
 
 	const uint16_t src = A;
 	const uint16_t carry = ( P.bit.c ) ? 1 : 0;
