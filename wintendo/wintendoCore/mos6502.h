@@ -259,6 +259,7 @@ private:
 	ADDR_MODE_DECL( IndexedAbsoluteY )
 	ADDR_MODE_DECL( IndexedZeroX )
 	ADDR_MODE_DECL( IndexedZeroY )
+	ADDR_MODE_DECL( JmpIndirect )
 	uint16_t	JumpImmediateAddr( const uint16_t addr );
 
 	cpuCycle_t	Exec();
@@ -296,5 +297,5 @@ private:
 	template <class AddrFunctor>
 	void		Write( opState_t& opState, const uint8_t value );
 
-	void		OpExec( opState_t& opState, const uint16_t instrAddr, const uint8_t opCode );
+	cpuCycle_t	OpExec( const uint16_t instrAddr, const uint8_t opCode );
 };
