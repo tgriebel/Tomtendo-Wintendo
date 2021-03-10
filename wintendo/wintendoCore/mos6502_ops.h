@@ -135,28 +135,26 @@ OP_DEF( ADC )
 {
 	// http://nesdev.com/6502.txt, "INSTRUCTION OPERATION - ADC"
 	const uint8_t M = Read<AddrModeT>( o );
-	const uint16_t src = A;
-	const uint16_t carry = ( P.bit.c ) ? 1 : 0;
-	const uint16_t temp = A + M + carry;
+	const uint16_t C = ( P.bit.c ) ? 1 : 0;
+	const uint16_t result = A + M + C;
 
-	A = ( temp & 0xFF );
+	P.bit.v = !CheckSign( A ^ M ) && CheckSign( A ^ result );
+	P.bit.z = CheckZero( result & 0xFF );
+	P.bit.n = CheckSign( result );
+	P.bit.c = CheckCarry( result );
 
-	P.bit.z = CheckZero( temp );
-	P.bit.v = CheckOverflow( M, temp, A );
-	SetAluFlags( A );
-
-	P.bit.c = ( temp > 0xFF );
+	A = ( result & 0xFF );
 }
 
 OP_DEF( SBC )
 {
-	uint8_t M = Read<AddrModeT>( o );
-	const uint16_t carry = ( P.bit.c ) ? 0 : 1;
-	const uint16_t result = A - M - carry;
+	const uint8_t M = Read<AddrModeT>( o );
+	const uint16_t C = ( P.bit.c ) ? 0 : 1;
+	const uint16_t result = A - M - C;
 
-	SetAluFlags( result );
-
-	P.bit.v = ( CheckSign( A ^ result ) && CheckSign( A ^ M ) );
+	P.bit.v = CheckSign( A ^ result ) && CheckSign( A ^ M );
+	P.bit.z = CheckZero( result & 0xFF );
+	P.bit.n = CheckSign( result );
 	P.bit.c = !CheckCarry( result );
 
 	A = result & 0xFF;
