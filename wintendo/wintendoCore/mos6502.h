@@ -153,6 +153,19 @@ struct opState_t
 };
 
 
+struct cpuDebug_t
+{
+	uint8_t			X;
+	uint8_t			Y;
+	uint8_t			A;
+	uint8_t			SP;
+	statusReg_t		P;
+	uint16_t		PC;
+	uint16_t		resetVector;
+	uint16_t		nmiVector;
+	uint16_t		irqVector;
+};
+
 class OpDebugInfo;
 class wtLog;
 
@@ -227,7 +240,7 @@ public:
 		halt = false;
 
 		resetLog = false;
-		dbgLog.Reset(0);
+		dbgLog.Reset( 1 );
 	}
 
 	Cpu6502()
@@ -239,7 +252,8 @@ public:
 
 	bool Step( const cpuCycle_t& nextCycle );
 	void RegisterSystem( wtSystem* sys );
-	bool IsLogOpen() const;
+	bool IsTraceLogOpen() const;
+	void StartTraceLog( const uint32_t frameCount );
 
 	void Serialize( Serializer& serializer, const serializeMode_t mode );
 

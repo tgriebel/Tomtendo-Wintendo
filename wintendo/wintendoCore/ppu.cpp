@@ -1009,7 +1009,7 @@ void PPU::Render()
 		const uint8_t colorIx = ReadVram( PPU::PaletteBaseAddr );
 
 		pixelColor.rgba = palette[ colorIx ];
-		system->frameBuffer[ system->currentFrame ].Set( imageIx, pixelColor );
+		system->frameBuffer[ system->currentFrameIx ].Set( imageIx, pixelColor );
 	}
 	else
 	{
@@ -1030,7 +1030,7 @@ void PPU::Render()
 			//pixelColor.rgba.blue = static_cast<uint8_t>( 255.0f * scanlineValue );
 			//pixelColor.rgba.green = static_cast<uint8_t>( 255.0f * scanlineValue );
 		}
-		system->frameBuffer[ system->currentFrame ].Set( imageIx, pixelColor );
+		system->frameBuffer[ system->currentFrameIx ].Set( imageIx, pixelColor );
 	}
 
 	uint8_t spriteCount = secondaryOamSpriteCnt;
@@ -1044,7 +1044,7 @@ void PPU::Render()
 		if ( ( beamPosition.x >= ( attribs.x + 8 ) ) || ( beamPosition.x < attribs.x ) )
 			continue;
 
-		wtDisplayImage& fb = system->frameBuffer[ system->currentFrame ];
+		wtDisplayImage& fb = system->frameBuffer[ system->currentFrameIx ];
 		if ( DrawSpritePixel( fb, imageRect, attribs, beamPosition, bgPixel & 0x03 ) )
 			break;
 	}

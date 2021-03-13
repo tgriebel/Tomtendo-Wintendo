@@ -44,11 +44,13 @@ static void LoadNesFile( const std::wstring& fileName, unique_ptr<wtCart>& outCa
 void wtSystem::DebugPrintFlushLog()
 {
 #if DEBUG_ADDR == 1
-	if ( !cpu.IsLogOpen() && cpu.logToFile )
+	if ( !cpu.IsTraceLogOpen() && cpu.logToFile )
 	{
 		string dbgString;
+		cpu.logFile.open( fileName + L".log" );
 		cpu.dbgLog.ToString( dbgString, 0, 0, true );
 		cpu.logFile << dbgString << endl;
+		cpu.logFile.close();
 	}
 #endif
 }
@@ -324,7 +326,7 @@ void wtSystem::WriteInput( const uint16_t address, const uint8_t value )
 
 void wtSystem::GetFrameResult( wtFrameResult& outFrameResult )
 {
-	outFrameResult.frameBuffer = frameBuffer[ finishedFrame ];
+	outFrameResult.frameBuffer = frameBuffer[ finishedFrameIx ];
 	outFrameResult.nameTableSheet = nameTableSheet;
 	outFrameResult.paletteDebug = paletteDebug;
 	outFrameResult.patternTable0 = patternTable0;
@@ -336,7 +338,10 @@ void wtSystem::GetFrameResult( wtFrameResult& outFrameResult )
 	memcpy( outFrameResult.memDebug.cpuMemory, memory, memDebug_t::CpuMemorySize );
 	memcpy( outFrameResult.memDebug.ppuMemory, ppu.nt, KB( 2 ) );
 #if DEBUG_ADDR
-	outFrameResult.dbgLog = &cpu.dbgLog;
+	outFrameResult.dbgLog = nullptr;
+	if( cpu.dbgLog.IsFinished() ) {
+		outFrameResult.dbgLog = &cpu.dbgLog;
+	}
 #endif
 	outFrameResult.dbgInfo = dbgInfo;
 	outFrameResult.romHeader = cart->h;
@@ -351,9 +356,8 @@ void wtSystem::GetFrameResult( wtFrameResult& outFrameResult )
 	}
 
 	outFrameResult.currentFrame = frameNumber;
-	outFrameResult.savedState = savedState;
-	outFrameResult.loadedState = loadedState;
-	outFrameResult.replayFinished = replayFinished;
+	outFrameResult.stateCount = static_cast<uint64_t>( states.size() );
+	outFrameResult.stateCode = playbackState.replayState;
 }
 
 
@@ -385,17 +389,6 @@ const APU& wtSystem::GetAPU() const
 
 void wtSystem::InitConfig( config_t& config )
 {
-	// System
-	config.sys.restoreFrame = 0;
-	config.sys.nextScaline = 0;
-	config.sys.replay = false;
-	config.sys.record = false;
-	config.sys.requestLoadState = false;
-	config.sys.requestSaveState = false;
-
-	// CPU
-	config.cpu.traceFrameCount = 0;
-
 	// PPU
 	config.ppu.chrPalette = 0;
 	config.ppu.showBG = true;
@@ -555,23 +548,6 @@ bool wtSystem::Run( const masterCycles_t& nextCycle )
 
 	static constexpr masterCycles_t ticks( CpuClockDivide );
 
-#if DEBUG_ADDR == 1
-	if ( config->cpu.traceFrameCount && !cpu.IsLogOpen() ) {
-		cpu.resetLog = true;
-		cpu.logFrameCount = config->cpu.traceFrameCount;
-		cpu.logFrameTotal = cpu.logFrameCount;
-	}
-
-	if ( cpu.resetLog ) {
-		cpu.dbgLog.Reset( cpu.logFrameTotal );
-		cpu.resetLog = false;
-	}
-
-	if ( cpu.IsLogOpen() && !cpu.logFile.is_open() && cpu.logToFile ) {
-		cpu.logFile.open( fileName + L".log" );
-	}
-#endif
-
 	// cpu.Begin(); // TODO
 	// ppu.Begin(); // TODO
 	apu.Begin();
@@ -597,12 +573,8 @@ bool wtSystem::Run( const masterCycles_t& nextCycle )
 #endif // #if DEBUG_MODE == 1
 
 #if DEBUG_ADDR == 1
-	if ( !cpu.IsLogOpen() ) {
-		if ( cpu.logToFile ) {
-			cpu.logFile.close();
-		}
-	}
-	else {
+	if ( cpu.IsTraceLogOpen() )
+	{
 		cpu.logFrameCount--;
 		cpu.dbgLog.NewFrame();
 	}
@@ -710,54 +682,55 @@ void wtSystem::GenerateChrRomTables( wtPatternTableImage chrRom[ 32 ] )
 
 void wtSystem::RunStateControl( const bool newFrame, masterCycles_t& nextCycle )
 {
-	loadedState = false;
-	savedState = false;
-	if ( config->sys.requestSaveState )
-	{
-		wtStateBlob state;
-		RecordSate( state );
-		SaveSate();
-		savedState = true;
+	if( !newFrame ) {
+		return;
 	}
 
-	if ( config->sys.requestLoadState )
+	const replayStateCode_t stateCode = playbackState.replayState;
+	if ( stateCode == replayStateCode_t::REPLAY )
 	{
-		LoadState();
-		loadedState = true;
-	}
-
-	const uint32_t stateIx = static_cast<uint32_t>( ( config->sys.restoreFrame / 100.0f ) * states.size() ) - 1;
-	replayFinished = ( stateIx >= ( states.size() - 1 ) ) || ( states.size() == 0 );
-	if ( config->sys.replay && !replayFinished )
-	{
-		if ( newFrame || ( config->sys.restoreFrame == 1 ) )
+		const bool replayFinished = ( playbackState.currentFrame >= static_cast<int64_t>( states.size() ) );
+		if ( replayFinished )
 		{
-			frameBuffer[ currentFrame ].Clear();
+			playbackState.replayState = replayStateCode_t::FINISHED;
+		}
+		else
+		{
+			frameBuffer[ currentFrameIx ].Clear();
+			RestoreState( states[ playbackState.currentFrame ] );
 
-			RestoreState( states[ stateIx ] );
+			playbackState.currentFrame += playbackState.pause ? 0 : 1;
 			nextCycle = sysCycles + std::chrono::duration_cast<masterCycles_t>( frameRate_t( 1 ) );
 		}
 	}
-	else if ( config->sys.record && newFrame )
+	else if ( stateCode == replayStateCode_t::RECORD )
 	{
-		states.push_back( wtStateBlob() );
-		RecordSate( states.back() );
+		if( playbackState.currentFrame < playbackState.finalFrame )
+		{
+			if( states.size() >= MaxStates ) {
+				states.pop_front();
+			}
 
-		if ( states.size() >= MaxStates ) {
-			states.pop_front();
+			states.push_back( wtStateBlob() );
+			RecordSate( states.back() );
+			++playbackState.currentFrame;
 		}
 	}
-
-	if ( config->sys.replay && replayFinished ) {
+	else if ( stateCode == replayStateCode_t::FINISHED )
+	{
 		states.clear();
+		playbackState.replayState = replayStateCode_t::LIVE;
+		playbackState.startFrame = -1;
+		playbackState.currentFrame = -1;
+		playbackState.finalFrame = -1;
 	}
 }
 
 
 void wtSystem::ToggleFrame()
 {
-	finishedFrame = currentFrame;
-	currentFrame = ( currentFrame + 1 ) % 2;
+	finishedFrameIx = currentFrameIx;
+	currentFrameIx = ( currentFrameIx + 1 ) % 2;
 	frameNumber++;
 	toggledFrame = true;
 }
@@ -765,6 +738,8 @@ void wtSystem::ToggleFrame()
 
 int wtSystem::RunFrame()
 {
+	ProcessCommands();
+
 	const timePoint_t currentTime = chrono::steady_clock::now();
 	const std::chrono::nanoseconds elapsed = ( currentTime - previousTime );
 	previousTime = std::chrono::steady_clock::now();

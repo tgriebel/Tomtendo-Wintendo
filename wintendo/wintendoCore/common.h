@@ -219,20 +219,13 @@ struct debugTiming_t
 
 struct config_t
 {
-	struct System
-	{
-		int32_t		restoreFrame;
-		int32_t		nextScaline;
-		bool		replay;
-		bool		record;
-		bool		requestSaveState;
-		bool		requestLoadState;
-	} sys;
+	//struct System
+	//{
+	//} sys;
 
-	struct CPU
-	{
-		int32_t		traceFrameCount;
-	} cpu;
+	//struct CPU
+	//{
+	//} cpu;
 
 	struct APU
 	{

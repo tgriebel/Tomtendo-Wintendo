@@ -202,12 +202,13 @@ void OpDebugInfo::ToString( std::string& buffer, const bool registerDebug ) cons
 void wtLog::Reset( const uint32_t targetCount )
 {
 	log.clear();
-	totalCount = targetCount;
+	totalCount = ( 1 + targetCount );
 	frameIx = 0;
 	log.resize( totalCount );
 	for ( size_t frameIndex = 0; frameIndex < totalCount; ++frameIndex ) {
 		log[ frameIndex ].reserve( 10000 );
 	}
+	NewFrame();
 }
 
 
@@ -251,7 +252,15 @@ uint32_t wtLog::GetRecordCount() const
 bool wtLog::IsFull() const
 {
 	assert( totalCount > 0 );
-	return ( totalCount <= 1 ) || ( frameIx >= ( totalCount - 1 ) );
+	return ( ( totalCount <= 1 ) || ( frameIx >= ( totalCount - 1 ) ) );
+}
+
+
+bool wtLog::IsFinished() const
+{
+	// This needs to be improved, but sufficient for now
+	// Right now it's a weak condition
+	return ( IsFull() && log[ frameIx ].size() > 0 );
 }
 
 

@@ -16,12 +16,15 @@
 #include "apu.h"
 #include "bitmap.h"
 #include "input.h"
+#include "command.h"
+#include "playback.h"
 #include "serializer.h"
 
 struct cpuDebug_t;
 struct wtFrameResult;
 struct debugTiming_t;
 struct config_t;
+struct command_t;
 
 class wtSystem
 {
@@ -64,12 +67,10 @@ public:
 	// TODO: Need to abstract memory access for mappers
 	unique_ptr<wtCart>	cart;
 
-	uint32_t			finishedFrame;
-	uint32_t			currentFrame;
+	uint32_t			finishedFrameIx;
+	uint32_t			currentFrameIx;
 	uint64_t			frameNumber;
 	uint64_t			previousFrameNumber;
-	bool				savedState;
-	bool				loadedState;
 	bool				toggledFrame;
 	wtDisplayImage		frameBuffer[2];
 
@@ -106,6 +107,8 @@ private:
 	uint32_t					firstState;
 	bool						strobeOn;
 	uint8_t						btnShift[ 2 ];
+	std::deque<sysCmd_t>		commands;
+	playbackState_t				playbackState;
 
 public:
 	wtSystem()
@@ -131,8 +134,6 @@ public:
 		headless = false;
 		debugNTEnable = true;
 
-		loadedState = false;
-		savedState = false;
 		replayFinished = true;
 		toggledFrame = false;
 
@@ -153,11 +154,14 @@ public:
 		pickedObj8x16.Clear();
 
 		states.clear();
+		playbackState.currentFrame = 0;
+		playbackState.replayState = replayStateCode_t::LIVE;
+		playbackState.finalFrame = INT64_MAX;
 
 		currentState = 0;
 		firstState = 1;
-		currentFrame = 0;
-		finishedFrame = 1;
+		currentFrameIx = 0;
+		finishedFrameIx = 1;
 		frameNumber = 0;
 		previousTime = chrono::steady_clock::now();
 	}
@@ -197,6 +201,9 @@ public:
 	bool			MouseInRegion( const wtRect& region );
 	static void		InitConfig( config_t& cfg );
 
+	// command.cpp
+	void			SubmitCommand( const sysCmd_t& cmd );
+
 	// Implemented in "mapper.h"
 	unique_ptr<wtMapper> AssignMapper( const uint32_t mapperId );
 
@@ -210,26 +217,15 @@ private:
 	void			SaveSRam();
 	void			LoadSRam();
 
+	// command.cpp
+	void			ProcessCommands();
+
 	static bool		IsInputRegister( const uint16_t address );
 	static bool		IsPpuRegister( const uint16_t address );
 	static bool		IsApuRegister( const uint16_t address );
 	static bool		IsCartMemory( const uint16_t address );
 	static bool		IsPhysicalMemory( const uint16_t address );
 	static bool		IsDMA( const uint16_t address );
-};
-
-
-struct cpuDebug_t
-{
-	uint8_t				X;
-	uint8_t				Y;
-	uint8_t				A;
-	uint8_t				SP;
-	statusReg_t			P;
-	uint16_t			PC;
-	uint16_t			resetVector;
-	uint16_t			nmiVector;
-	uint16_t			irqVector;
 };
 
 
@@ -246,12 +242,11 @@ struct memDebug_t
 struct wtFrameResult
 {
 	uint64_t					currentFrame;
+	uint64_t					stateCount;
+	replayStateCode_t			stateCode;
 	wtDisplayImage				frameBuffer;
 	apuOutput_t					soundOutput;
 	bool						sndReady;
-	bool						savedState;
-	bool						loadedState;
-	bool						replayFinished;
 
 	// Debug
 	debugTiming_t				dbgInfo;

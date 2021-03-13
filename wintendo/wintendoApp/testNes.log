@@ -8978,7 +8978,7 @@ C659  05 11     ORA $11 = 00                    A:00 X:FF Y:15 P:27 SP:FD PPU:23
 C65B  F0 0E     BEQ $C66B                       A:00 X:FF Y:15 P:27 SP:FD PPU:233, 74 CYC:26509
 C66B  20 89 C6  JSR $C689                       A:00 X:FF Y:15 P:27 SP:FD PPU:233, 83 CYC:26512
 C689  A9 02     LDA #$02                        A:00 X:FF Y:15 P:27 SP:FB PPU:233,101 CYC:26518
-C68B  8D 15 40  STA $4015 = 20                  A:02 X:FF Y:15 P:25 SP:FB PPU:233,107 CYC:26520
+C68B  8D 15 40  STA $4015 = 00                  A:02 X:FF Y:15 P:25 SP:FB PPU:233,107 CYC:26520
 C68E  A9 3F     LDA #$3F                        A:02 X:FF Y:15 P:25 SP:FB PPU:233,119 CYC:26524
 C690  8D 04 40  STA $4004 = 00                  A:3F X:FF Y:15 P:25 SP:FB PPU:233,125 CYC:26526
 C693  A9 9A     LDA #$9A                        A:3F X:FF Y:15 P:25 SP:FB PPU:233,137 CYC:26530
@@ -9161,37 +9161,37 @@ C5F4  40        RTI                             A:B9 X:FF Y:15 P:26 SP:FC PPU:23
 [NMI - Cycle:27288]
 C5F4  40        RTI                             A:B9 X:FF Y:15 P:26 SP:FC PPU:240, 24 CYC:27288
 007F  69 00     ADC #$00                        A:B9 X:FF Y:15 P:26 SP:FF PPU:240, 42 CYC:27294
-0081  02        Ill                             A:B9 X:FF Y:15 P:E4 SP:FF PPU:240, 48 CYC:27296
-0082  00 03     BRK                             A:B9 X:FF Y:15 P:E4 SP:FF PPU:240, 48 CYC:27296
+0081  02        Ill                             A:B9 X:FF Y:15 P:A4 SP:FF PPU:240, 48 CYC:27296
+0082  00 03     BRK                             A:B9 X:FF Y:15 P:A4 SP:FF PPU:240, 48 CYC:27296
 [NMI - Cycle:27303]
-C5F4  40        RTI                             A:B9 X:FF Y:15 P:E4 SP:FC PPU:240, 69 CYC:27303
-0084  03 00    *SLO ($00,X) @ FF = 0047 = 9B    A:B9 X:FF Y:15 P:E4 SP:FF PPU:240, 87 CYC:27309
-0086  00 00     BRK                             A:BF X:FF Y:15 P:E5 SP:FF PPU:240,111 CYC:27317
+C5F4  40        RTI                             A:B9 X:FF Y:15 P:A4 SP:FC PPU:240, 69 CYC:27303
+0084  03 00    *SLO ($00,X) @ FF = 0047 = 9B    A:B9 X:FF Y:15 P:A4 SP:FF PPU:240, 87 CYC:27309
+0086  00 00     BRK                             A:BF X:FF Y:15 P:A5 SP:FF PPU:240,111 CYC:27317
 [NMI - Cycle:27324]
-C5F4  40        RTI                             A:BF X:FF Y:15 P:E5 SP:FC PPU:240,132 CYC:27324
-0088  00 BB     BRK                             A:BF X:FF Y:15 P:E5 SP:FF PPU:240,150 CYC:27330
+C5F4  40        RTI                             A:BF X:FF Y:15 P:A5 SP:FC PPU:240,132 CYC:27324
+0088  00 BB     BRK                             A:BF X:FF Y:15 P:A5 SP:FF PPU:240,150 CYC:27330
 [NMI - Cycle:27337]
-C5F4  40        RTI                             A:BF X:FF Y:15 P:E5 SP:FC PPU:240,171 CYC:27337
-008A  03 00    *SLO ($00,X) @ FF = 0047 = 36    A:BF X:FF Y:15 P:E5 SP:FF PPU:240,189 CYC:27343
-008C  00 00     BRK                             A:FF X:FF Y:15 P:E4 SP:FF PPU:240,213 CYC:27351
+C5F4  40        RTI                             A:BF X:FF Y:15 P:A5 SP:FC PPU:240,171 CYC:27337
+008A  03 00    *SLO ($00,X) @ FF = 0047 = 36    A:BF X:FF Y:15 P:A5 SP:FF PPU:240,189 CYC:27343
+008C  00 00     BRK                             A:FF X:FF Y:15 P:A4 SP:FF PPU:240,213 CYC:27351
 [NMI - Cycle:27358]
-C5F4  40        RTI                             A:FF X:FF Y:15 P:E4 SP:FC PPU:240,234 CYC:27358
-008E  00 00     BRK                             A:FF X:FF Y:15 P:E4 SP:FF PPU:240,252 CYC:27364
+C5F4  40        RTI                             A:FF X:FF Y:15 P:A4 SP:FC PPU:240,234 CYC:27358
+008E  00 00     BRK                             A:FF X:FF Y:15 P:A4 SP:FF PPU:240,252 CYC:27364
 [NMI - Cycle:27371]
-C5F4  40        RTI                             A:FF X:FF Y:15 P:E4 SP:FC PPU:240,273 CYC:27371
-0090  00 00     BRK                             A:FF X:FF Y:15 P:E4 SP:FF PPU:240,291 CYC:27377
+C5F4  40        RTI                             A:FF X:FF Y:15 P:A4 SP:FC PPU:240,273 CYC:27371
+0090  00 00     BRK                             A:FF X:FF Y:15 P:A4 SP:FF PPU:240,291 CYC:27377
 [NMI - Cycle:27384]
-C5F4  40        RTI                             A:FF X:FF Y:15 P:E4 SP:FC PPU:240,312 CYC:27384
-0092  00 00     BRK                             A:FF X:FF Y:15 P:E4 SP:FF PPU:240,330 CYC:27390
+C5F4  40        RTI                             A:FF X:FF Y:15 P:A4 SP:FC PPU:240,312 CYC:27384
+0092  00 00     BRK                             A:FF X:FF Y:15 P:A4 SP:FF PPU:240,330 CYC:27390
 [NMI - Cycle:27397]
-C5F4  40        RTI                             A:FF X:FF Y:15 P:E4 SP:FC PPU:241, 10 CYC:27397
-0094  00 00     BRK                             A:FF X:FF Y:15 P:E4 SP:FF PPU:241, 28 CYC:27403
+C5F4  40        RTI                             A:FF X:FF Y:15 P:A4 SP:FC PPU:241, 10 CYC:27397
+0094  00 00     BRK                             A:FF X:FF Y:15 P:A4 SP:FF PPU:241, 28 CYC:27403
 [NMI - Cycle:27410]
-C5F4  40        RTI                             A:FF X:FF Y:15 P:E4 SP:FC PPU:241, 49 CYC:27410
-0096  00 FF     BRK                             A:FF X:FF Y:15 P:E4 SP:FF PPU:241, 67 CYC:27416
+C5F4  40        RTI                             A:FF X:FF Y:15 P:A4 SP:FC PPU:241, 49 CYC:27410
+0096  00 FF     BRK                             A:FF X:FF Y:15 P:A4 SP:FF PPU:241, 67 CYC:27416
 [NMI - Cycle:27423]
-C5F4  40        RTI                             A:FF X:FF Y:15 P:E4 SP:FC PPU:241, 88 CYC:27423
-0098  FF 00 00 *ISB $0000,X @ 00FF = 47         A:FF X:FF Y:15 P:E4 SP:FF PPU:241,106 CYC:27429
+C5F4  40        RTI                             A:FF X:FF Y:15 P:A4 SP:FC PPU:241, 88 CYC:27423
+0098  FF 00 00 *ISB $0000,X @ 00FF = 47         A:FF X:FF Y:15 P:A4 SP:FF PPU:241,106 CYC:27429
 009B  00 00     BRK                             A:B6 X:FF Y:15 P:A5 SP:FF PPU:241,127 CYC:27436
 [NMI - Cycle:27443]
 C5F4  40        RTI                             A:B6 X:FF Y:15 P:A5 SP:FC PPU:241,148 CYC:27443

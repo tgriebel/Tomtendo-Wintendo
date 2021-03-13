@@ -75,6 +75,12 @@
     <ClInclude Include="debug.h">
       <Filter>Source Files\Debug</Filter>
     </ClInclude>
+    <ClInclude Include="command.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="playback.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -106,6 +112,9 @@
     </ClCompile>
     <ClCompile Include="debug.cpp">
       <Filter>Source Files\Debug</Filter>
+    </ClCompile>
+    <ClCompile Include="command.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
