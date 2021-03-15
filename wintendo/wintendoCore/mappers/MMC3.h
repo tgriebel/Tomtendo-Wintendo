@@ -28,9 +28,6 @@ private:
 	uint8_t		irqLatch;
 	uint8_t		irqCounter;
 	bool		irqEnable;
-	int8_t		oldPrgBankMode;
-	int8_t		oldChrBankMode;
-	bool		bankDataInit;
 
 	uint8_t		bank0;
 	uint8_t		bank1;
@@ -55,15 +52,56 @@ private:
 		return 0;
 	}
 
+	void SetPrgBanks()
+	{
+		if ( bankSelect.sem.prgRomBankMode )
+		{
+			bank0 = 0x3E;
+			bank1 = R[ 7 ];
+			bank2 = R[ 6 ];
+			bank3 = 0x3F;
+		}
+		else
+		{
+			bank0 = R[ 6 ];
+			bank1 = R[ 7 ];
+			bank2 = 0x3E;
+			bank3 = 0x3F;
+		}
+	}
+
+	void SetChrBanks()
+	{
+		if ( bankSelect.sem.chrA12Inversion )
+		{
+			chrBank0 = R[ 2 ];
+			chrBank1 = R[ 3 ];
+			chrBank2 = R[ 4 ];
+			chrBank3 = R[ 5 ];
+			chrBank4 = R[ 0 ];
+			chrBank5 = R[ 0 ] + 1;
+			chrBank6 = R[ 1 ];
+			chrBank7 = R[ 1 ] + 1;
+		}
+		else
+		{
+			chrBank0 = R[ 0 ];
+			chrBank1 = R[ 0 ] + 1;
+			chrBank2 = R[ 1 ];
+			chrBank3 = R[ 1 ] + 1;
+			chrBank4 = R[ 2 ];
+			chrBank5 = R[ 3 ];
+			chrBank6 = R[ 4 ];
+			chrBank7 = R[ 5 ];
+		}
+	}
+
 public:
 
 	MMC3( const uint32_t _mapperId ) :
 		irqLatch( 0x00 ),
 		irqCounter( 0x00 ),
 		irqEnable( false ),
-		oldPrgBankMode( -1 ),
-		oldChrBankMode( -1 ),
-		bankDataInit( false ),
 		bank0(0),
 		bank1(1),
 		bank2(2),
@@ -71,14 +109,18 @@ public:
 	{
 		mapperId = _mapperId;
 		bankSelect.byte = 0;
+
+		memset( R, 0, 8 );
+		memset( prgRamBank, 0, KB( 8 ) );
+		memset( chrRam, 0, PPU::PatternTableMemorySize );
 	}
 
 	uint8_t OnLoadCpu() override
 	{
-		bank0 = 0,
-		bank1 = 1,
-		bank2 = ( 2 * system->cart->h.prgRomBanks ) - 2;
-		bank3 = ( 2 * system->cart->h.prgRomBanks ) - 1;
+		bank0 = 0x00;
+		bank1 = 0x01;
+		bank2 = 0x3E;
+		bank3 = 0x3F; // always fixed
 
 		return 0;
 	}
@@ -125,6 +167,8 @@ public:
 		//	return system->cart->GetPrgRomBankAddr( address );
 		//}
 
+		SetPrgBanks();
+
 		if ( InRange( addr, 0x8000, 0x9FFF ) )
 		{
 			const uint16_t bankAddr = ( addr - 0x8000 );
@@ -156,11 +200,13 @@ public:
 
 	uint8_t	ReadChrRom( const uint16_t addr ) override
 	{
+		SetChrBanks();
+
 		if ( system->cart->HasChrRam() && InRange( addr, 0x0000, 0x1FFF ) ) {
 			return chrRam[ addr ];
 		}
 		else if ( InRange( addr, 0x0000, 0x03FF ) ) {
-			return system->cart->GetChrRomBank( chrBank0, KB_1 )[ addr ];
+			return system->cart->GetChrRomBank( chrBank0, KB_1 )[ addr - 0x0000 ];
 		}
 		else if ( InRange( addr, 0x0400, 0x07FF ) ) {
 			return system->cart->GetChrRomBank( chrBank1, KB_1 )[ addr - 0x0400 ];
@@ -198,9 +244,6 @@ public:
 
 	uint8_t Write( const uint16_t address, const uint8_t value ) override
 	{
-		bool swapPrgBanks = false;
-		bool swapChrBanks = false;
-
 		if ( InRange( address, wtSystem::SramBase, wtSystem::SramEnd ) ) {
 			const uint16_t sramAddr = ( address - wtSystem::SramBase );
 			prgRamBank[ sramAddr ] = value;
@@ -213,18 +256,6 @@ public:
 			if( !isOdd )
 			{
 				bankSelect.byte = value;
-
-				if( bankSelect.sem.prgRomBankMode != oldPrgBankMode )
-				{
-					swapPrgBanks = bankDataInit;
-					oldPrgBankMode = bankSelect.sem.prgRomBankMode;
-				}
-
-				if ( bankSelect.sem.chrA12Inversion != oldChrBankMode )
-				{
-					swapChrBanks = bankDataInit;
-					oldChrBankMode = bankSelect.sem.chrA12Inversion;
-				}
 			}
 			else
 			{
@@ -242,10 +273,6 @@ public:
 						R[bankSelect.sem.bankReg] = value & 0x3F;
 					break;
 				}
-
-				bankDataInit = true;
-				swapPrgBanks = true;
-				swapChrBanks = true;
 			}
 		}
 		else if ( InRange( address, 0xA000, 0xBFFF ) )
@@ -274,55 +301,6 @@ public:
 		{
 			irqEnable = isOdd;
 		}
-
-		if( swapPrgBanks )
-		{
-			const uint8_t lastBank = ( 2 * system->cart->h.prgRomBanks ) - 1;
-			const uint8_t secondLastBank = ( 2 * system->cart->h.prgRomBanks ) - 2;
-
-			if ( bankSelect.sem.prgRomBankMode )
-			{
-				bank0 = secondLastBank;
-				bank1 = R[ 7 ];
-				bank2 = R[ 6 ];
-				bank3 = lastBank;
-			}
-			else
-			{
-				bank0 = R[ 6 ];
-				bank1 = R[ 7 ];
-				bank2 = secondLastBank;
-				bank3 = lastBank;
-			}
-
-		}
-
-		if( swapChrBanks )
-		{
-			const uint32_t chrRomStart = system->cart->h.prgRomBanks * KB(16);
-			if ( bankSelect.sem.chrA12Inversion )
-			{
-				chrBank0 = R[ 2 ];
-				chrBank1 = R[ 3 ];
-				chrBank2 = R[ 4 ];
-				chrBank3 = R[ 5 ];
-				chrBank4 = R[ 0 ];
-				chrBank5 = R[ 0 ] + 1;
-				chrBank6 = R[ 1 ];
-				chrBank7 = R[ 1 ] + 1;
-			}
-			else
-			{
-				chrBank0 = R[ 0 ];
-				chrBank1 = R[ 0 ] + 1;
-				chrBank2 = R[ 1 ];
-				chrBank3 = R[ 1 ] + 1;
-				chrBank4 = R[ 2 ];
-				chrBank5 = R[ 3 ];
-				chrBank6 = R[ 4 ];
-				chrBank7 = R[ 5 ];
-			}
-		}
 		
 		return 0;
 	}
@@ -345,9 +323,6 @@ public:
 		serializer.Next8b( chrBank6, mode );
 		serializer.Next8b( chrBank7, mode );
 		serializer.NextBool( irqEnable, mode );
-		serializer.NextBool( bankDataInit, mode );
-		serializer.NextChar( oldPrgBankMode, mode );
-		serializer.NextChar( oldChrBankMode, mode );
 		serializer.NextArray( reinterpret_cast<uint8_t*>( &R[ 0 ] ), 8 * sizeof( R[ 0 ] ), mode );
 		serializer.NextArray( reinterpret_cast<uint8_t*>( &prgRamBank[ 0 ] ), KB(8), mode );
 		serializer.NextArray( reinterpret_cast<uint8_t*>( &chrRam[ 0 ] ), PPU::PatternTableMemorySize, mode );
