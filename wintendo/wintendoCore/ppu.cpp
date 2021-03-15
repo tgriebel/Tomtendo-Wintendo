@@ -1075,7 +1075,11 @@ ppuCycle_t PPU::Exec()
 		vramAccessed = false;
 	}
 
-	// Scanline Work
+	///////////////////////////////////////////////////////////////////////////
+	//                                                                       //
+	//                            Scanline Work                              //
+	//                                                                       //
+	///////////////////////////////////////////////////////////////////////////
 	// Scanlines take multiple cycles
 	if ( currentScanline == POSTRENDER_SCANLINE )
 	{
@@ -1137,6 +1141,11 @@ ppuCycle_t PPU::Exec()
 		//return execCycles;
 	}
 
+	///////////////////////////////////////////////////////////////////////////
+	//                                                                       //
+	//                               Cycle Work                              //
+	//                                                                       //
+	///////////////////////////////////////////////////////////////////////////
 	if ( cycleCount == 0 )
 	{
 		// Idle cycle
