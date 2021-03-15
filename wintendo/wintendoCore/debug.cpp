@@ -40,7 +40,7 @@ static std::string GetOpName( const OpDebugInfo& info )
 }
 
 
-void OpDebugInfo::ToString( std::string& buffer, const bool registerDebug ) const
+void OpDebugInfo::ToString( std::string& buffer, const bool registerDebug, const bool cycleDebug ) const
 {
 	std::stringstream debugStream;
 
@@ -190,6 +190,10 @@ void OpDebugInfo::ToString( std::string& buffer, const bool registerDebug ) cons
 		PrintHex( debugStream, static_cast<int>( regInfo.P ), 2, false );
 		debugStream << uppercase << " SP:";
 		PrintHex( debugStream, static_cast<int>( regInfo.SP ), 2, false );
+	}
+
+	if( cycleDebug )
+	{
 		debugStream << uppercase << " PPU:" << setfill( ' ' ) << setw( 3 ) <<  dec << right << curScanline;
 		debugStream << uppercase << "," << setfill( ' ' ) << setw( 3 ) << dec << ppuCycles;
 		debugStream << uppercase << " CYC:" << dec << cpuCycles << "\0";
@@ -270,7 +274,7 @@ void wtLog::ToString( std::string& buffer, const uint32_t frameBegin, const uint
 	{
 		for ( const OpDebugInfo& dbgInfo : GetLogFrame( i ) )
 		{
-			dbgInfo.ToString( buffer, true );
+			dbgInfo.ToString( buffer, true, false );
 			buffer += "\n";
 		}
 	}

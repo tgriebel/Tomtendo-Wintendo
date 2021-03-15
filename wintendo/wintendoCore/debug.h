@@ -196,7 +196,7 @@ public:
 		regInfo			= { 0, 0, 0, 0, 0, 0 };
 	}
 
-	void ToString( std::string& buffer, const bool registerDebug = true ) const;
+	void ToString( std::string& buffer, const bool registerDebug = true, const bool cycleDebug = true ) const;
 };
 
 using logFrame_t = std::vector<OpDebugInfo>;
