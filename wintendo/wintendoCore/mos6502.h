@@ -254,6 +254,7 @@ public:
 	void RegisterSystem( wtSystem* sys );
 	bool IsTraceLogOpen() const;
 	void StartTraceLog( const uint32_t frameCount );
+	void StopTraceLog();
 
 	void Serialize( Serializer& serializer, const serializeMode_t mode );
 

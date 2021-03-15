@@ -8,6 +8,7 @@ enum class sysCmdType_t
 	RECORD,
 	REPLAY,
 	START_TRACE,
+	STOP_TRACE,
 };
 
 struct sysCmd_t

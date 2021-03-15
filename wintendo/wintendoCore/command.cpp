@@ -61,6 +61,14 @@ void wtSystem::ProcessCommands()
 			}
 			break;
 
+			case sysCmdType_t::STOP_TRACE:
+			{
+				if ( cpu.IsTraceLogOpen() ) {
+					cpu.StopTraceLog();
+				}
+			}
+			break;
+
 			default: break;
 		}
 		commands.pop_front();
