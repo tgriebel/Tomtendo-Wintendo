@@ -16,7 +16,7 @@
 #pragma comment(lib, "D3D12")
 #pragma comment(lib, "D3DCompiler")
 
-inline void SetName( ID3D12Object* pObject, LPCWSTR name )
+static inline void SetName( ID3D12Object* pObject, LPCWSTR name )
 {
 	pObject->SetName( name );
 }
@@ -24,7 +24,7 @@ inline void SetName( ID3D12Object* pObject, LPCWSTR name )
 #define NAME_D3D12_OBJECT(x) SetName((x).Get(), L#x)
 #define NAME_D3D12_OBJECT_INDEXED(x, n) SetNameIndexed((x)[n].Get(), L#x, n)
 
-inline std::string HrToString( HRESULT hr )
+static inline  std::string HrToString( HRESULT hr )
 {
 	char s_str[64] = {};
 	sprintf_s( s_str, "HRESULT of 0x%08X", static_cast<UINT>( hr ) );
@@ -42,7 +42,7 @@ private:
 };
 
 
-inline void ThrowIfFailed( HRESULT hr )
+static inline void ThrowIfFailed( HRESULT hr )
 {
 	if ( FAILED( hr ) )
 	{
@@ -52,7 +52,7 @@ inline void ThrowIfFailed( HRESULT hr )
 
 
 template <class T>
-void SafeRelease( T** ppT )
+static inline void SafeRelease( T** ppT )
 {
     if ( *ppT )
     {
@@ -62,7 +62,7 @@ void SafeRelease( T** ppT )
 }
 
 // https://docs.microsoft.com/en-us/windows/win32/api/d3d12/nf-d3d12-d3d12createdevice
-void GetHardwareAdapter( IDXGIFactory4* pFactory, IDXGIAdapter1** ppAdapter )
+static inline void GetHardwareAdapter( IDXGIFactory4* pFactory, IDXGIAdapter1** ppAdapter )
 {
     *ppAdapter = nullptr;
     for ( UINT adapterIndex = 0; ; ++adapterIndex )

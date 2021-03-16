@@ -7,6 +7,7 @@
 #include <thread>
 #include <chrono>
 #include "bitmap.h"
+#include "util.h"
 #include "serializer.h"
 
 #define NES_MODE			(1)
@@ -461,114 +462,6 @@ private:
 	uint32_t		byteCount;
 	masterCycles_t	cycle;
 };
-
-
-template< uint16_t B >
-class wtShiftReg
-{
-public:
-
-	wtShiftReg()
-	{
-		Clear();
-	}
-
-	void Shift( const bool bitValue )
-	{
-		reg >>= 1;
-		reg &= LMask;
-		reg |= ( static_cast<uint32_t>( bitValue ) << ( Bits - 1 ) ) & ~LMask;
-
-		++shifts;
-	}
-
-	uint32_t GetShiftCnt() const
-	{
-		return shifts;
-	}
-
-	bool IsFull() const
-	{
-		return ( shifts >= Bits );
-	}
-
-	bool GetBitValue( const uint16_t bit ) const
-	{
-		return ( ( reg >> bit ) & 0x01 );
-	}
-
-	uint32_t GetValue() const
-	{
-		return reg & Mask;
-	}
-
-	void Set( const uint32_t value )
-	{
-		reg = value;
-		shifts = 0;
-	}
-
-	void Clear()
-	{
-		reg = 0;
-		shifts = 0;
-	}
-
-private:
-	uint32_t reg;
-	uint32_t shifts;
-	static const uint16_t Bits = B;
-
-	static constexpr uint32_t CalcMask()
-	{
-		uint32_t mask = 0x02;
-		for ( uint32_t i = 1; i < B; ++i )
-		{
-			mask <<= 1;
-		}
-		return ( mask - 1 );
-	}
-
-	static const uint32_t Mask = CalcMask();
-	static const uint32_t LMask = ( Mask >> 1 );
-	static const uint32_t RMask = ~0x01ul;
-};
-
-
-template < uint16_t B >
-class BitCounter
-{
-public:
-	BitCounter() {
-		Reload();
-	}
-
-	void Inc() {
-		bits++;
-	}
-
-	void Dec() {
-		bits--;
-	}
-
-	void Reload( uint16_t value = 0 )
-	{
-		bits = value;
-		unused = 0;
-	}
-
-	uint16_t Value() {
-		return bits;
-	}
-
-	bool IsZero() {
-		return ( Value() == 0 );
-	}
-private:
-	uint16_t bits	: B;
-	uint16_t unused	: ( 16 - B );
-};
-
 
 inline uint16_t Combine( const uint8_t lsb, const uint8_t msb )
 {

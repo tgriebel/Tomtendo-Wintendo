@@ -106,3 +106,5 @@ public:
 };
 
 extern VoiceCallback voiceCallback;
+
+void LogApu( wtFrameResult& frameResult );

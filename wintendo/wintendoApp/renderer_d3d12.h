@@ -14,8 +14,11 @@
 using namespace DirectX;
 using Microsoft::WRL::ComPtr;
 
-static const uint32_t				FrameCount = 3;
-static const uint32_t				FrameResultCount = FrameCount;//( FrameCount + 1 );
+static inline std::wstring GetAssetFullPath( LPCWSTR assetName )
+{
+	std::wstring shaderPath( L"Shaders/" );
+	return shaderPath + assetName;
+}
 
 struct DisplayConstantBuffer
 {
@@ -48,7 +51,7 @@ struct Vertex
 };
 
 
-struct wtApp_D3D12TextureResource
+struct wtAppTextureD3D12
 {
 	CD3DX12_CPU_DESCRIPTOR_HANDLE	cpuHandle;
 	CD3DX12_GPU_DESCRIPTOR_HANDLE	gpuHandle;
@@ -56,7 +59,8 @@ struct wtApp_D3D12TextureResource
 	ComPtr<ID3D12Resource>			srv;
 	ComPtr<ID3D12Resource>			uploadBuffer;
 
-	const wtRawImageInterface* srcImage;
+	uint32_t						width;
+	uint32_t						height;
 	D3D12_RESOURCE_ALLOCATION_INFO	allocInfo;
 	D3D12_RESOURCE_DESC				desc;
 };
@@ -147,4 +151,51 @@ enum ShaderResources
 	SHADER_RESOURES_TEXTURE_CNT = SHADER_RESOURES_CHRBANK0 + SHADER_RESOURES_CHRBANK_CNT,
 	SHADER_RESOURES_CBV0 = SHADER_RESOURES_TEXTURE_CNT,
 	SHADER_RESOURES_COUNT,
+};
+
+
+class wtRenderer
+{
+public:
+	ComPtr<IDXGIAdapter1>					dxgiAdapter;
+	ComPtr<IDXGIFactory4>					dxgiFactory;
+	ComPtr<ID3D12Device>					d3d12device;
+	bool									initD3D12 = false;
+
+	swapChain_t								swapChain;
+	view_t									view;
+	pipeline_t								pipeline;
+	command_t								cmd;
+	sync_t									sync = { 0 };
+	uint32_t								currentFrame = 0;
+	uint32_t								finishedFrame = 0;
+	uint64_t								frameNumber = 0;
+	wtAppDisplay							appDisplay;
+	wtFrameResult*							fr;
+	wtAppInterface_t*						app;
+
+	std::vector<wtAppTextureD3D12>			textureResources[ FrameCount ];
+
+	void									WaitForGpu();
+	void									AdvanceNextFrame();
+
+	void									CreateFrameBuffers();
+	void									CreatePSO();
+	void									CreateCommandLists();
+	void									CreateVertexBuffers();
+	void									CreateConstantBuffers();
+	void									CreateTextureResources( const uint32_t frameIx );
+	void									CreateSyncObjects();
+	void									CreateD3D12Pipeline();
+
+	uint32_t								InitD3D12();
+	void									InitImgui();
+	void									UpdateD3D12();
+	void									DestroyD3D12();
+
+	void									IssueTextureCopyCommands();
+	void									BuildImguiCommandList();
+	void									BuildDrawCommandList();
+	void									ExecuteDrawCommands();
+	void									SubmitFrame();
 };

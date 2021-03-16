@@ -195,3 +195,31 @@ bool wtAudioEngine::AudioSubmit()
 	pXAudio2->CommitChanges( XAUDIO2_COMMIT_ALL );
 	return true;
 }
+
+
+void LogApu( wtFrameResult& frameResult )
+{
+	stringstream sndLogName;
+	sndLogName << "apuLogs/" << "snd" << frameResult.currentFrame << ".csv";
+
+	ofstream sndLog;
+	sndLog.open( sndLogName.str(), ios::out | ios::binary );
+
+	const wtSampleQueue& pulse1 = frameResult.soundOutput.dbgPulse1;
+	const wtSampleQueue& pulse2 = frameResult.soundOutput.dbgPulse2;
+	const wtSampleQueue& triangle = frameResult.soundOutput.dbgTri;
+	const wtSampleQueue& noise = frameResult.soundOutput.dbgNoise;
+	const wtSampleQueue& dmc = frameResult.soundOutput.dbgDmc;
+	const wtSampleQueue& master = frameResult.soundOutput.master;
+
+	sndLog << "ix,pulse1,pulse2,triangle,noise,dmc,master\n";
+
+	const uint32_t sampleCnt = master.GetSampleCnt();
+	for ( uint32_t i = 0; i < sampleCnt; ++i )
+	{
+		sndLog << i << "," << pulse1.Peek( i ) << "," << pulse2.Peek( i ) << "," << triangle.Peek( i );
+		sndLog << "," << noise.Peek( i ) << "," << dmc.Peek( i ) << "," << master.Peek( i ) << "\n";
+	}
+
+	sndLog.close();
+}

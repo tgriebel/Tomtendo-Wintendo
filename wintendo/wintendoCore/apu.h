@@ -37,155 +37,8 @@ static const uint16_t DmcLUT[ ANALOG_MODE_COUNT ][ 16 ] =
 	{ 398, 354, 316, 298, 276, 236, 210, 198, 176, 148, 132, 118,  98,  78,  66,  50 }, // PAL LUT
 };
 
-
-class wtSampleQueue
-{
-public:
-	wtSampleQueue()
-	{
-		Reset();
-	}
-
-	float Peek( const uint32_t sampleIx ) const
-	{
-		const int32_t index = ( begin + sampleIx ) % ApuBufferSize;
-		if ( ( index >= end ) || ( sampleIx >= GetSampleCnt() ) ) {
-			return 0.0f;
-		}
-		return samples[ index ];
-	}
-
-	void EnqueFIFO( const float sample )
-	{
-		if ( IsFull() ) {
-			Deque();
-		}
-		Enque( sample );
-	}
-
-	void Enque( const float sample )
-	{
-		if ( IsFull() )
-			return;
-
-		if ( begin == -1 )
-		{
-			begin = 0;
-		}
-
-		end = ( end + 1 ) % ApuBufferSize;
-		samples[end] = sample;
-	}
-
-	float Deque()
-	{
-		if ( IsEmpty() )
-			return 0.0f;
-
-		const float retValue = samples[begin];
-		samples[begin] = 0;
-		if ( begin == end )
-		{
-			begin = -1;
-			end = -1;
-		}
-		else
-		{
-			begin = ( begin + 1 ) % ApuBufferSize;
-		}
-
-		return retValue;
-	}
-
-	bool IsEmpty() const
-	{
-		return ( GetSampleCnt() == 0 );
-	}
-
-	bool IsFull()
-	{
-		return ( GetSampleCnt() == ( ApuBufferSize - 1 ) );
-	}
-
-	uint32_t GetSampleCnt() const
-	{
-		if ( ( begin == -1 ) || ( end == -1 ) )
-		{
-			return 0;
-		}
-		else if ( end >= begin )
-		{
-			return ( ( end - begin ) + 1 );
-		}
-		else
-		{
-			return ( ApuBufferSize - ( begin - end ) + 1 );
-		}
-	}
-
-	void Reset()
-	{
-		begin = -1;
-		end = -1;
-	}
-
-private:
-	float	samples[ApuBufferSize];
-	int32_t	begin;
-	int32_t	end;
-};
-
-
-class wtSoundBuffer
-{
-public:
-	void Clear()
-	{
-		Reset();
-		for( uint32_t i = 0; i < ApuBufferSize; ++i )
-		{
-			samples[i] = 0;
-		}
-	}
-
-	void Reset()
-	{
-		currentIndex = 0;
-		memset( samples, 0xFF, sizeof( samples[0] ) * ApuBufferSize );
-	}
-
-	void Write( const float sample )
-	{
-		samples[currentIndex] = sample;
-		currentIndex++;
-		assert( currentIndex <= ApuBufferSize );
-	}
-
-	float Read( const uint32_t index ) const
-	{
-		assert( index <= ApuBufferSize );
-		return samples[index];
-	}
-
-	const float* GetRawBuffer()
-	{
-		return &samples[0];
-	}
-
-	uint32_t GetSampleCnt() const
-	{
-		return currentIndex;
-	}
-
-	bool IsFull() const
-	{
-		return ( currentIndex == ApuBufferSize );
-	}
-
-private:
-	float		samples[ApuBufferSize];
-	uint32_t	currentIndex;
-};
+using wtSampleQueue = wtQueue< float, ApuBufferSize >;
+using wtSoundBuffer = wtBuffer< float, ApuBufferSize >;
 
 union pulseCtrl_t
 {
@@ -707,20 +560,20 @@ public:
 		system = nullptr;
 	}
 
-	void	Begin();
-	void	End();
-	void	RegisterSystem( wtSystem* system );
+	void		Begin();
+	void		End();
+	void		RegisterSystem( wtSystem* system );
 
-	bool	Step( const cpuCycle_t& nextCpuCycle );
-	void	WriteReg( const uint16_t addr, const uint8_t value );
-	uint8_t	ReadReg( const uint16_t addr );
+	bool		Step( const cpuCycle_t& nextCpuCycle );
+	void		WriteReg( const uint16_t addr, const uint8_t value );
+	uint8_t		ReadReg( const uint16_t addr );
 
-	float	GetPulseFrequency( PulseChannel& pulse );
-	float	GetPulsePeriod( PulseChannel& pulse );
-	void	GetDebugInfo( apuDebug_t& apuDebug );
-	void	SampleDmcBuffer();
+	float		GetPulseFrequency( PulseChannel& pulse );
+	float		GetPulsePeriod( PulseChannel& pulse );
+	void		GetDebugInfo( apuDebug_t& apuDebug );
+	void		SampleDmcBuffer();
 
-	void	Serialize( Serializer& serializer, const serializeMode_t mode );
+	void		Serialize( Serializer& serializer, const serializeMode_t mode );
 
 private:
 	void		ExecPulseChannel( PulseChannel& pulse );
