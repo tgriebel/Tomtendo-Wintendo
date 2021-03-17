@@ -186,12 +186,8 @@ public:
 		}
 		else if ( InRange( addr, wtSystem::SramBase, wtSystem::SramEnd ) )
 		{
-			if( ramDisable ) {
-				return 0x00;
-			} else {
-				const uint16_t sramAddr = ( addr - wtSystem::SramBase );
-				return prgRamBank[ sramAddr ];
-			}
+			const uint16_t sramAddr = ( addr - wtSystem::SramBase );
+			return prgRamBank[ sramAddr ];
 		}
 
 		assert( 0 );
