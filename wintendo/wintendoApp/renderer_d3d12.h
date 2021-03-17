@@ -132,8 +132,8 @@ struct sync_t
 	ComPtr<ID3D12Fence>					fence;
 	ComPtr<ID3D12Fence>					cpyFence;
 	UINT64								fenceValues[ FrameCount ];
-	HANDLE								frameSubmitSemaphore[ FrameCount ];
-	HANDLE								audioCopySemaphore[ FrameCount ];
+	HANDLE								frameSubmitSemaphore[ FrameResultCount ];
+	HANDLE								audioCopySemaphore[ FrameResultCount ]; // TODO: put these in the app struct
 };
 
 
@@ -170,12 +170,11 @@ private:
 public:
 	bool									initD3D12 = false;
 	uint32_t								currentFrame = 0;
-	uint32_t								finishedFrame = 0;
+	uint32_t								frameResultIx = 0;
 	uint64_t								frameNumber = 0;
 	view_t									view;
 	sync_t									sync = { 0 };
 	wtAppDisplay							appDisplay;
-	wtFrameResult*							fr;
 	wtAppInterface_t*						app;
 
 	void									WaitForGpu();
@@ -195,7 +194,7 @@ public:
 	void									UpdateD3D12();
 	void									DestroyD3D12();
 
-	void									IssueTextureCopyCommands();
+	void									IssueTextureCopyCommands( const uint32_t workFrame );
 	void									BuildImguiCommandList();
 	void									BuildDrawCommandList();
 	void									ExecuteDrawCommands();

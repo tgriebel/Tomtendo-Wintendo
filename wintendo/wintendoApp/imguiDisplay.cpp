@@ -43,6 +43,8 @@ void wtRenderer::BuildImguiCommandList()
 	static int32_t playbackFrame = 0;
 	static bool autoPlayback = false;
 
+	wtFrameResult* fr = &app->frameResult[ app->submittedFrameIx ];
+
 	if ( ImGui::BeginTabBar( "Debug Info" ) )
 	{
 		bool systemTabOpen = true;

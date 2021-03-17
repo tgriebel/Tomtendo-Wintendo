@@ -209,7 +209,8 @@ public:
 	bool					MouseInRegion( const wtRect& region );
 	static void				InitConfig( config_t& cfg );
 	wtInput*				GetInput();
-	const config_t*			GetConfig();	
+	const config_t*			GetConfig();
+	bool					HasNewFrame() const;
 	void					SubmitCommand( const sysCmd_t& cmd ); // In "command.cpp"
 
 private:

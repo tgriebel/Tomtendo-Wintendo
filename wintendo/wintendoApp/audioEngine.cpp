@@ -59,6 +59,15 @@ void wtAudioEngine::Init()
 }
 
 
+void wtAudioEngine::Shutdown()
+{
+	if( pXAudio2.Get() ) {
+		pXAudio2->StopEngine();
+		pXAudio2->Release();
+	}
+}
+
+
 void wtAudioEngine::EncodeSamples( wtSampleQueue& soundQueue )
 {
 	bool buffersFull = false;

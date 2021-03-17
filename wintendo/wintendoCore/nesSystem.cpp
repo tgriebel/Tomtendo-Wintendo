@@ -404,6 +404,11 @@ const config_t* wtSystem::GetConfig()
 }
 
 
+bool wtSystem::HasNewFrame() const
+{
+	return toggledFrame;
+}
+
 void wtSystem::SetFramePixel( const uint32_t ix, const Pixel& color )
 {
 	frameBuffer[ currentFrameIx ].Set( ix, color );
@@ -821,18 +826,21 @@ int wtSystem::RunFrame()
 		palette[ i ] = ppu.palette[ ppu.ReadVram( PPU::PaletteBaseAddr + i ) ];
 	}
 
-	ppu.DrawDebugPatternTables( patternTable0, palette, 0, false );
-	ppu.DrawDebugPatternTables( patternTable1, palette, 1, false );
-
 	RGBA pickedPalette[ 4 ];
 	GetChrRomPalette( ( ppu.dbgInfo.spritePicked.palette >> 2 ) + 4, pickedPalette );
 	ppu.DrawDebugObject( &pickedObj8x16, pickedPalette, ppu.dbgInfo.spritePicked );
 
-	bool debugNT = debugNTEnable && ( ( frameNumber % 60 ) == 0 );
-	if ( debugNT ) {
-		ppu.DrawDebugNametable( nameTableSheet );
+	const bool dbgUpdateTick = ( frameNumber % 60 ) == 0;
+	const bool debugNT = ( debugNTEnable && dbgUpdateTick );
+	if( dbgUpdateTick )
+	{
+		if ( debugNT ) {
+			ppu.DrawDebugNametable( nameTableSheet );
+		}
+		ppu.DrawDebugPalette( paletteDebug );
+		ppu.DrawDebugPatternTables( patternTable0, palette, 0, false );
+		ppu.DrawDebugPatternTables( patternTable1, palette, 1, false );
 	}
-	ppu.DrawDebugPalette( paletteDebug );
 
 	DebugPrintFlushLog();
 

@@ -23,6 +23,7 @@ void wtRenderer::AdvanceNextFrame()
 	{
 		ThrowIfFailed( sync.fence->SetEventOnCompletion( sync.fenceValues[ currentFrame ], sync.fenceEvent ) );
 		WaitForSingleObject( sync.fenceEvent, INFINITE );
+	//	PrintLog( "GPU WAIT.\n" );
 	}
 
 	sync.fenceValues[ currentFrame ] = currentFence + 1;
@@ -78,6 +79,10 @@ uint32_t wtRenderer::InitD3D12()
 		ThrowIfFailed( d3d12device->CreateCommandAllocator( D3D12_COMMAND_LIST_TYPE_COPY, IID_PPV_ARGS( &cmd.cpyCommandAllocator[ i ] ) ) );
 		ThrowIfFailed( d3d12device->CreateCommandAllocator( D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS( &cmd.imguiCommandAllocator[ i ] ) ) );
 	}
+
+	InitImgui();
+	CreateD3D12Pipeline();
+	initD3D12 = true;
 
 	return 0;
 }
@@ -220,7 +225,7 @@ void wtRenderer::CreateConstantBuffers()
 
 void wtRenderer::CreateSyncObjects()
 {
-	for ( uint32_t i = 0; i < FrameCount; ++i )
+	for ( uint32_t i = 0; i < FrameResultCount; ++i )
 	{
 		sync.frameSubmitSemaphore[ i ] = CreateSemaphore( NULL, 0, 1, NULL );
 		sync.audioCopySemaphore[ i ] = CreateSemaphore( NULL, 0, 1, NULL );
@@ -347,18 +352,14 @@ void wtRenderer::UpdateD3D12()
 
 void wtRenderer::SubmitFrame()
 {
-	if( fr != nullptr )
-	{
-		UpdateD3D12();
+	UpdateD3D12();
 
-		IssueTextureCopyCommands();
-		BuildDrawCommandList();
-		BuildImguiCommandList();
-		ExecuteDrawCommands();
+	BuildDrawCommandList();
+	BuildImguiCommandList();
+	ExecuteDrawCommands();
 
-		ThrowIfFailed( swapChain.dxgi->Present( 1, 0 ) );
-		AdvanceNextFrame();
-	}
+	ThrowIfFailed( swapChain.dxgi->Present( 1, 0 ) );
+	AdvanceNextFrame();
 }
 
 
@@ -522,29 +523,26 @@ void wtRenderer::DestroyD3D12()
 
 	WaitForGpu();
 	CloseHandle( sync.fenceEvent );
-	for ( uint32_t i = 0; i < FrameCount; ++i )
+	for ( uint32_t i = 0; i < FrameResultCount; ++i )
 	{
 		CloseHandle( sync.frameSubmitSemaphore[ i ] );
 		CloseHandle( sync.audioCopySemaphore[ i ] );
 	}
 	sync.cpyFence->Release();
 	sync.fence->Release();
+	initD3D12 = false;
 }
 
 
-void wtRenderer::IssueTextureCopyCommands()
+void wtRenderer::IssueTextureCopyCommands( const uint32_t workFrame )
 {
-	ThrowIfFailed( cmd.cpyCommandAllocator[ currentFrame ]->Reset() );
-	ThrowIfFailed( cmd.cpyCommandList[ currentFrame ]->Reset( cmd.cpyCommandAllocator[ currentFrame ].Get(), pipeline.pso.Get() ) );
+	ThrowIfFailed( cmd.cpyCommandAllocator[ workFrame ]->Reset() );
+	ThrowIfFailed( cmd.cpyCommandList[ workFrame ]->Reset( cmd.cpyCommandAllocator[ workFrame ].Get(), pipeline.pso.Get() ) );
 
-	const uint32_t textureCount = static_cast<uint32_t>( textureResources[ currentFrame ].size() );
+	const uint32_t textureCount = static_cast<uint32_t>( textureResources[ workFrame ].size() );
 	std::vector<D3D12_SUBRESOURCE_DATA> textureData( textureCount );
 
-	for ( uint32_t i = 0; i < textureCount; ++i )
-	{
-		D3D12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition( textureResources[ currentFrame ][ i ].srv.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST );
-		cmd.cpyCommandList[ currentFrame ]->ResourceBarrier( 1, &barrier );
-	}
+	wtFrameResult* fr = &app->frameResult[ app->submittedFrameIx ];
 
 	uint32_t imageIx = 0;
 	const wtRawImageInterface* sourceImages[ SHADER_RESOURES_TEXTURE_CNT ];
@@ -567,31 +565,30 @@ void wtRenderer::IssueTextureCopyCommands()
 	{
 		D3D12_SUBRESOURCE_DATA textureData;
 		textureData.pData = sourceImages[ i ]->GetRawBuffer();
-		textureData.RowPitch = textureResources[ currentFrame ][ i ].width * static_cast<uint64_t>( texturePixelSize );
-		textureData.SlicePitch = textureData.RowPitch * textureResources[ currentFrame ][ i ].height;
+		textureData.RowPitch = textureResources[ workFrame ][ i ].width * static_cast<uint64_t>( texturePixelSize );
+		textureData.SlicePitch = textureData.RowPitch * textureResources[ workFrame ][ i ].height;
 
 		D3D12_PLACED_SUBRESOURCE_FOOTPRINT pLayouts = {};
 		pLayouts.Offset = 0;
 		pLayouts.Footprint.Depth = 1;
 		pLayouts.Footprint.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-		pLayouts.Footprint.Width = textureResources[ currentFrame ][ i ].width;
-		pLayouts.Footprint.Height = textureResources[ currentFrame ][ i ].height;
+		pLayouts.Footprint.Width = textureResources[ workFrame ][ i ].width;
+		pLayouts.Footprint.Height = textureResources[ workFrame ][ i ].height;
 		pLayouts.Footprint.RowPitch = static_cast<uint32_t>( textureData.RowPitch );
 
+		D3D12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition( textureResources[ workFrame ][ i ].srv.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST );
+		cmd.cpyCommandList[ workFrame ]->ResourceBarrier( 1, &barrier );
+
 		// TODO: use only one intermediate buffer
-		UpdateSubresources( cmd.cpyCommandList[ currentFrame ].Get(), textureResources[ currentFrame ][ i ].srv.Get(), textureResources[ currentFrame ][ i ].uploadBuffer.Get(), 0, 0, 1, &textureData );
+		UpdateSubresources( cmd.cpyCommandList[ workFrame ].Get(), textureResources[ workFrame ][ i ].srv.Get(), textureResources[ workFrame ][ i ].uploadBuffer.Get(), 0, 0, 1, &textureData );
+	
+		barrier = CD3DX12_RESOURCE_BARRIER::Transition( textureResources[ workFrame ][ i ].srv.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_COMMON );
+		cmd.cpyCommandList[ workFrame ]->ResourceBarrier( 1, &barrier );
 	}
 
-	for ( uint32_t i = 0; i < textureCount; ++i )
-	{
-		D3D12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition( textureResources[ currentFrame ][ i ].srv.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_COMMON );
-		cmd.cpyCommandList[ currentFrame ]->ResourceBarrier( 1, &barrier );
-	}
+	ThrowIfFailed( cmd.cpyCommandList[ workFrame ]->Close() );
 
-	ThrowIfFailed( cmd.cpyCommandList[ currentFrame ]->Close() );
-
-	ID3D12CommandList* ppCommandLists[] = { cmd.cpyCommandList[ currentFrame ].Get() };
-	cmd.d3d12CopyQueue->Wait( sync.fence.Get(), currentFrame );
+	ID3D12CommandList* ppCommandLists[] = { cmd.cpyCommandList[ workFrame ].Get() };
 	cmd.d3d12CopyQueue->ExecuteCommandLists( 1, ppCommandLists );
-	cmd.d3d12CopyQueue->Signal( sync.cpyFence.Get(), sync.fenceValues[ currentFrame ] );
+	cmd.d3d12CopyQueue->Signal( sync.cpyFence.Get(), sync.fenceValues[ workFrame ] );
 }

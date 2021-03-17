@@ -61,6 +61,7 @@ struct wtAudioEngine
 	uint32								dbgLastSoundSampleLength = 0;
 
 	void								Init();
+	void								Shutdown();
 	void								EncodeSamples( wtSampleQueue& soundQueue );
 	bool								AudioSubmit();
 };
