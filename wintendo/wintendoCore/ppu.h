@@ -344,7 +344,7 @@ public:
 	void			End();
 	void			RegisterSystem( wtSystem* sys );
 
-	void			Serialize( Serializer& serializer, const serializeMode_t mode );
+	void			Serialize( Serializer& serializer );
 
 private:
 	static uint8_t	GetChrRomPalette( const uint8_t plane0, const uint8_t plane1, const uint8_t col );
@@ -356,7 +356,7 @@ private:
 	void			DrawBlankScanline( wtDisplayImage& imageBuffer, const wtRect& imageRect, const uint8_t scanY );
 	void			DrawTile( wtNameTableImage& imageBuffer, const wtRect& imageRect, const wtPoint& nametableTile, const uint32_t ntId, const uint32_t ptrnTableId );
 	void			DrawChrRomTile( wtRawImageInterface* imageBuffer, const wtRect& imageRect, const RGBA palette[4], const uint32_t tileId, const uint32_t tableId, const bool cartBank, const bool is8x16 = false, const bool isUpper = false );
-	bool			DrawSpritePixel( wtDisplayImage& imageBuffer, const wtRect& imageRect, const spriteAttrib_t attribs, const wtPoint& point, const uint8_t bgPixel );
+	bool			DrawSpritePixel( const wtRect& imageRect, const spriteAttrib_t attribs, const wtPoint& point, const uint8_t bgPixel );
 
 	bool			BgDataFetchEnabled();
 	void			BgPipelineShiftRegisters();

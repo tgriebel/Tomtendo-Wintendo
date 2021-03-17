@@ -17,8 +17,6 @@ void wtSystem::ProcessCommands()
 
 			case sysCmdType_t::SAVE_STATE:
 			{
-				wtStateBlob state;
-				RecordSate( state );
 				SaveSate();
 			}
 			break;

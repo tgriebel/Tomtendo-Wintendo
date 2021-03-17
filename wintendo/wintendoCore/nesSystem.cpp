@@ -56,7 +56,7 @@ void wtSystem::DebugPrintFlushLog()
 }
 
 
-int wtSystem::Init( const wstring& filePath, const uint32_t resetVectorManual )
+int wtSystem::Init( const wstring& filePath, wtSystemFlags sysFlags, const uint32_t resetVectorManual )
 {
 	Reset();
 
@@ -78,6 +78,7 @@ int wtSystem::Init( const wstring& filePath, const uint32_t resetVectorManual )
 
 	const size_t offset = fileName.find( L".nes", 0 );
 	baseFileName = fileName.substr( 0, offset );
+	flags = sysFlags;
 
 	LoadSRam();
 
@@ -117,11 +118,9 @@ void wtSystem::LoadProgram( const uint32_t resetVectorManual )
 
 	if ( cart->h.controlBits0.fourScreenMirror ) {
 		mirrorMode = MIRROR_MODE_FOURSCREEN;
-	}
-	else if ( cart->h.controlBits0.mirror ) {
+	} else if ( cart->h.controlBits0.mirror ) {
 		mirrorMode = MIRROR_MODE_VERTICAL;
-	}
-	else {
+	} else {
 		mirrorMode = MIRROR_MODE_HORIZONTAL;
 	}
 }
@@ -201,6 +200,12 @@ uint8_t wtSystem::GetMapperId() const
 uint8_t wtSystem::GetMirrorMode() const
 {
 	return mirrorMode;
+}
+
+
+void wtSystem::SetMirrorMode( uint8_t mode )
+{
+	mirrorMode = mode;
 }
 
 
@@ -387,6 +392,24 @@ const APU& wtSystem::GetAPU() const
 }
 
 
+wtInput* wtSystem::GetInput()
+{
+	return &input;
+}
+
+
+const config_t* wtSystem::GetConfig()
+{
+	return config;
+}
+
+
+void wtSystem::SetFramePixel( const uint32_t ix, const Pixel& color )
+{
+	frameBuffer[ currentFrameIx ].Set( ix, color );
+}
+
+
 void wtSystem::InitConfig( config_t& config )
 {
 	// PPU
@@ -489,8 +512,8 @@ void wtSystem::LoadSRam()
 
 void wtSystem::RecordSate( wtStateBlob& state )
 {
-	Serializer serializer( MB_1 );
-	Serialize( serializer, serializeMode_t::STORE );
+	Serializer serializer( MB_1, serializeMode_t::STORE );
+	Serialize( serializer );
 	state.Set( serializer );
 }
 
@@ -501,9 +524,9 @@ void wtSystem::RestoreState( const wtStateBlob& state )
 		return;
 	}
 
-	Serializer serializer( state.GetBufferSize() );
+	Serializer serializer( state.GetBufferSize(), serializeMode_t::LOAD );
 	state.WriteTo( serializer );
-	Serialize( serializer, serializeMode_t::LOAD );
+	Serialize( serializer );
 }
 
 
@@ -532,13 +555,13 @@ void wtSystem::LoadState()
 	loadFile.seekg( 0, std::ios::end );
 	const uint32_t len = static_cast<uint32_t>( loadFile.tellg() );
 
-	Serializer serializer( len );
+	Serializer serializer( len, serializeMode_t::LOAD );
 
 	loadFile.seekg( 0, std::ios::beg );
 	loadFile.read( reinterpret_cast<char*>( serializer.GetPtr() ), len );
 	loadFile.close();
 
-	Serialize( serializer, serializeMode_t::LOAD );
+	Serialize( serializer );
 }
 
 
@@ -782,7 +805,7 @@ int wtSystem::RunFrame()
 	dbgInfo.framePerRun += frameNumber - previousFrameNumber;
 	dbgInfo.runInvocations++;
 
-	if ( headless ) {
+	if ( ( flags & wtSystemFlags::HEADLESS ) != 0 ) {
 		return isRunning;
 	}
 

@@ -80,13 +80,13 @@ public:
 		return ( system->cart->GetMapperId() == 2 ) && InRange( address, wtSystem::ExpansionRomBase, wtSystem::Bank1End );
 	}
 
-	void Serialize( Serializer& serializer, const serializeMode_t mode ) override
+	void Serialize( Serializer& serializer ) override
 	{
-		serializer.Next8b( bank,		mode );
-		serializer.Next8b( lastBank,	mode );
+		serializer.Next8b( bank );
+		serializer.Next8b( lastBank );
 
 		if( system->cart->HasChrRam() ) {
-			serializer.NextArray( chrRam, PPU::PatternTableMemorySize,	mode );
+			serializer.NextArray( chrRam, PPU::PatternTableMemorySize );
 		}
 	}
 };

@@ -156,25 +156,27 @@ enum ShaderResources
 
 class wtRenderer
 {
-public:
+private:
 	ComPtr<IDXGIAdapter1>					dxgiAdapter;
 	ComPtr<IDXGIFactory4>					dxgiFactory;
 	ComPtr<ID3D12Device>					d3d12device;
-	bool									initD3D12 = false;
 
 	swapChain_t								swapChain;
-	view_t									view;
 	pipeline_t								pipeline;
 	command_t								cmd;
-	sync_t									sync = { 0 };
+
+	std::vector<wtAppTextureD3D12>			textureResources[ FrameCount ];
+
+public:
+	bool									initD3D12 = false;
 	uint32_t								currentFrame = 0;
 	uint32_t								finishedFrame = 0;
 	uint64_t								frameNumber = 0;
+	view_t									view;
+	sync_t									sync = { 0 };
 	wtAppDisplay							appDisplay;
 	wtFrameResult*							fr;
 	wtAppInterface_t*						app;
-
-	std::vector<wtAppTextureD3D12>			textureResources[ FrameCount ];
 
 	void									WaitForGpu();
 	void									AdvanceNextFrame();

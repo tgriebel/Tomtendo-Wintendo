@@ -39,63 +39,75 @@ bool Serializer::CanStore( const uint32_t sizeInBytes ) const
 }
 
 
-bool Serializer::NextBool( bool& v, serializeMode_t mode )
+void Serializer::SetMode( serializeMode_t serializeMode )
 {
-	return Next8b( *reinterpret_cast<uint8_t*>( &v ), mode );
-}
-
-bool Serializer::NextChar( int8_t& v, serializeMode_t mode )
-{
-	return Next8b( *reinterpret_cast<uint8_t*>( &v ), mode );
-}
-
-bool Serializer::NextUchar( uint8_t& v, serializeMode_t mode )
-{
-	return Next8b( v, mode );
-}
-
-bool Serializer::NextShort( int16_t& v, serializeMode_t mode )
-{
-	return Next16b( *reinterpret_cast<uint16_t*>( &v ), mode );
-}
-
-bool Serializer::NextUshort( uint16_t& v, serializeMode_t mode )
-{
-	return Next16b( v, mode );
-}
-
-bool Serializer::NextInt( int32_t& v, serializeMode_t mode )
-{
-	return Next32b( *reinterpret_cast<uint32_t*>( &v ), mode );
-}
-
-bool Serializer::NextUint( uint32_t& v, serializeMode_t mode )
-{
-	return Next32b( v, mode );
-}
-
-bool Serializer::NextLong( int64_t& v, serializeMode_t mode )
-{
-	return Next64b( *reinterpret_cast<uint64_t*>( &v ), mode );
-}
-
-bool Serializer::NextUlong( uint64_t& v, serializeMode_t mode )
-{
-	return Next64b( v, mode );
-}
-
-bool Serializer::NextFloat( float& v, serializeMode_t mode )
-{
-	return Next32b( *reinterpret_cast<uint32_t*>( &v ), mode );
-}
-
-bool Serializer::NextDouble( double& v, serializeMode_t mode )
-{
-	return Next64b( *reinterpret_cast<uint64_t*>( &v ), mode );
+	mode = serializeMode;
 }
 
 
-bool Serializer::Next8b( uint8_t& b8, serializeMode_t mode )
+serializeMode_t Serializer::GetMode() const
+{
+	return mode;
+}
+
+
+bool Serializer::NextBool( bool& v)
+{
+	return Next8b( *reinterpret_cast<uint8_t*>( &v ) );
+}
+
+bool Serializer::NextChar( int8_t& v )
+{
+	return Next8b( *reinterpret_cast<uint8_t*>( &v ) );
+}
+
+bool Serializer::NextUchar( uint8_t& v )
+{
+	return Next8b( v );
+}
+
+bool Serializer::NextShort( int16_t& v )
+{
+	return Next16b( *reinterpret_cast<uint16_t*>( &v ) );
+}
+
+bool Serializer::NextUshort( uint16_t& v )
+{
+	return Next16b( v );
+}
+
+bool Serializer::NextInt( int32_t& v )
+{
+	return Next32b( *reinterpret_cast<uint32_t*>( &v ) );
+}
+
+bool Serializer::NextUint( uint32_t& v )
+{
+	return Next32b( v );
+}
+
+bool Serializer::NextLong( int64_t& v )
+{
+	return Next64b( *reinterpret_cast<uint64_t*>( &v ) );
+}
+
+bool Serializer::NextUlong( uint64_t& v )
+{
+	return Next64b( v );
+}
+
+bool Serializer::NextFloat( float& v )
+{
+	return Next32b( *reinterpret_cast<uint32_t*>( &v ) );
+}
+
+bool Serializer::NextDouble( double& v )
+{
+	return Next64b( *reinterpret_cast<uint64_t*>( &v ) );
+}
+
+
+bool Serializer::Next8b( uint8_t& b8 )
 {
 	const uint32_t size = sizeof( b8 );
 	if ( !CanStore( size ) ) {
@@ -119,7 +131,7 @@ bool Serializer::Next8b( uint8_t& b8, serializeMode_t mode )
 }
 
 
-bool Serializer::Next16b( uint16_t& b16, serializeMode_t mode )
+bool Serializer::Next16b( uint16_t& b16 )
 {
 	const uint32_t size = sizeof( b16 );
 	if ( !CanStore( size ) ) {
@@ -150,7 +162,7 @@ bool Serializer::Next16b( uint16_t& b16, serializeMode_t mode )
 }
 
 
-bool Serializer::Next32b( uint32_t& b32, serializeMode_t mode )
+bool Serializer::Next32b( uint32_t& b32 )
 {
 	const uint32_t size = sizeof( b32 );
 	if ( !CanStore( size ) ) {
@@ -185,7 +197,7 @@ bool Serializer::Next32b( uint32_t& b32, serializeMode_t mode )
 }
 
 
-bool Serializer::Next64b( uint64_t& b64, serializeMode_t mode )
+bool Serializer::Next64b( uint64_t& b64 )
 {
 	const uint32_t size = sizeof( b64 );
 	if ( !CanStore( size ) ) {
@@ -228,7 +240,7 @@ bool Serializer::Next64b( uint64_t& b64, serializeMode_t mode )
 }
 
 
-bool Serializer::NextArray( uint8_t* b8, uint32_t sizeInBytes, serializeMode_t mode )
+bool Serializer::NextArray( uint8_t* b8, uint32_t sizeInBytes )
 {
 	if ( !CanStore( sizeInBytes ) ) {
 		assert( 0 ); // TODO: remove

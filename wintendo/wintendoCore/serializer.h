@@ -35,10 +35,11 @@ class Serializer
 {
 public:
 	
-	Serializer( const uint32_t sizeInBytes )
+	Serializer( const uint32_t _sizeInBytes, serializeMode_t _mode )
 	{
-		bytes = new uint8_t[ sizeInBytes ];
-		byteCount = sizeInBytes;
+		bytes = new uint8_t[ _sizeInBytes ];
+		byteCount = _sizeInBytes;
+		mode = _mode;
 		Clear();
 	}
 
@@ -48,6 +49,7 @@ public:
 			delete[] bytes;
 		}
 		byteCount = 0;
+		mode = serializeMode_t::LOAD;
 		SetPosition( 0 );
 	}
 
@@ -55,35 +57,38 @@ public:
 	Serializer( const Serializer& ) = delete;
 	Serializer operator=( const Serializer& ) = delete;
 
-	uint8_t*	GetPtr();
-	void		SetPosition( const uint32_t index );
-	void		Clear();
-	uint32_t	CurrentSize() const;
-	uint32_t	BufferSize() const;
-	bool		CanStore( const uint32_t sizeInBytes ) const;
+	uint8_t*			GetPtr();
+	void				SetPosition( const uint32_t index );
+	void				Clear();
+	uint32_t			CurrentSize() const;
+	uint32_t			BufferSize() const;
+	bool				CanStore( const uint32_t sizeInBytes ) const;
+	void				SetMode( serializeMode_t mode );
+	serializeMode_t		GetMode() const;
 
-	bool		NextBool( bool& v, serializeMode_t mode );
-	bool		NextChar( int8_t& v, serializeMode_t mode );
-	bool		NextUchar( uint8_t& v, serializeMode_t mode );
-	bool		NextShort( int16_t& v, serializeMode_t mode );
-	bool		NextUshort( uint16_t& v, serializeMode_t mode );
-	bool		NextInt( int32_t& v, serializeMode_t mode );
-	bool		NextUint( uint32_t& v, serializeMode_t mode );
-	bool		NextLong( int64_t& v, serializeMode_t mode );
-	bool		NextUlong( uint64_t& v, serializeMode_t mode );
-	bool		NextFloat( float& v, serializeMode_t mode );
-	bool		NextDouble( double& v, serializeMode_t mode );
+	bool				NextBool( bool& v );
+	bool				NextChar( int8_t& v );
+	bool				NextUchar( uint8_t& v );
+	bool				NextShort( int16_t& v );
+	bool				NextUshort( uint16_t& v );
+	bool				NextInt( int32_t& v );
+	bool				NextUint( uint32_t& v );
+	bool				NextLong( int64_t& v );
+	bool				NextUlong( uint64_t& v );
+	bool				NextFloat( float& v );
+	bool				NextDouble( double& v );
 
-	bool		Next8b( uint8_t& b8, serializeMode_t mode );
-	bool		Next16b( uint16_t& b16, serializeMode_t mode );
-	bool		Next32b( uint32_t& b32, serializeMode_t mode );
-	bool		Next64b( uint64_t& b64, serializeMode_t mode );
-	bool		NextArray( uint8_t* b8, uint32_t sizeInBytes, serializeMode_t mode );
+	bool				Next8b( uint8_t& b8 );
+	bool				Next16b( uint16_t& b16 );
+	bool				Next32b( uint32_t& b32 );
+	bool				Next64b( uint64_t& b64 );
+	bool				NextArray( uint8_t* b8, uint32_t sizeInBytes );
 
 private:
-	uint8_t*	bytes;
-	uint32_t	byteCount;
-	uint32_t	index;
+	uint8_t*		bytes;
+	uint32_t		byteCount;
+	uint32_t		index;
+	serializeMode_t mode;
 public: // FIXME: temp
 	std::stringstream dbgText;
 };

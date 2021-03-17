@@ -668,7 +668,7 @@ spriteAttrib_t PPU::GetSpriteData( const uint8_t spriteId, const uint8_t oam[] )
 }
 
 
-bool PPU::DrawSpritePixel( wtDisplayImage& imageBuffer, const wtRect& imageRect, const spriteAttrib_t attribs, const wtPoint& point, const uint8_t bgPixel )
+bool PPU::DrawSpritePixel( const wtRect& imageRect, const spriteAttrib_t attribs, const wtPoint& point, const uint8_t bgPixel )
 {
 	if( !regMask.sem.showSprt )
 	{
@@ -732,7 +732,7 @@ bool PPU::DrawSpritePixel( wtDisplayImage& imageBuffer, const wtRect& imageRect,
 		return true;
 	}
 
-	if( !system->config->ppu.showSprite ) {
+	if( !system->GetConfig()->ppu.showSprite ) {
 		return true;
 	}
 
@@ -746,11 +746,11 @@ bool PPU::DrawSpritePixel( wtDisplayImage& imageBuffer, const wtRect& imageRect,
 		pixelColor.rgba.alpha = 0xFF;
 		
 		dbgInfo.spritePicked = attribs;
-		imageBuffer.Set( imageIndex, pixelColor );
+		system->SetFramePixel( imageIndex, pixelColor );
 	}
 	else
 	{
-		imageBuffer.Set( imageIndex, pixelColor );
+		system->SetFramePixel( imageIndex, pixelColor );
 	}
 
 	return true;
@@ -854,7 +854,7 @@ void PPU::LoadSecondaryOAM()
 		secondaryOAM[ destSpriteNum ].tableId = GetSpritePatternTableId();
 		destSpriteNum++;
 
-		if ( destSpriteNum >= system->config->ppu.spriteLimit ) {
+		if ( destSpriteNum >= system->GetConfig()->ppu.spriteLimit ) {
 			regStatus.current.sem.spriteOverflow = true; //  // TODO: accuracy
 			break;
 		}
@@ -1001,7 +1001,7 @@ void PPU::Render()
 
 	bool bgMask = ( !regMask.sem.bgLeft && ( beamPosition.x < 8 ) );
 	bgMask = bgMask || !regMask.sem.showBg;
-	bgMask = bgMask || !system->config->ppu.showBG;
+	bgMask = bgMask || !system->GetConfig()->ppu.showBG;
 
 	if ( bgMask )
 	{
@@ -1009,7 +1009,7 @@ void PPU::Render()
 		const uint8_t colorIx = ReadVram( PPU::PaletteBaseAddr );
 
 		pixelColor.rgba = palette[ colorIx ];
-		system->frameBuffer[ system->currentFrameIx ].Set( imageIx, pixelColor );
+		system->SetFramePixel( imageIx, pixelColor );
 	}
 	else
 	{
@@ -1030,7 +1030,7 @@ void PPU::Render()
 			//pixelColor.rgba.blue = static_cast<uint8_t>( 255.0f * scanlineValue );
 			//pixelColor.rgba.green = static_cast<uint8_t>( 255.0f * scanlineValue );
 		}
-		system->frameBuffer[ system->currentFrameIx ].Set( imageIx, pixelColor );
+		system->SetFramePixel( imageIx, pixelColor );
 	}
 
 	uint8_t spriteCount = secondaryOamSpriteCnt;
@@ -1044,8 +1044,7 @@ void PPU::Render()
 		if ( ( beamPosition.x >= ( attribs.x + 8 ) ) || ( beamPosition.x < attribs.x ) )
 			continue;
 
-		wtDisplayImage& fb = system->frameBuffer[ system->currentFrameIx ];
-		if ( DrawSpritePixel( fb, imageRect, attribs, beamPosition, bgPixel & 0x03 ) )
+		if ( DrawSpritePixel(imageRect, attribs, beamPosition, bgPixel & 0x03 ) )
 			break;
 	}
 }
@@ -1122,7 +1121,7 @@ ppuCycle_t PPU::Exec()
 			inVBlank = true;
 			regStatus.current.sem.vBlank = 1;
 
-			system->ToggleFrame();
+			system->ToggleFrame(); // frame is complete
 
 			const bool isVblank = static_cast<bool>( regCtrl.sem.nmiVblank );
 			if ( isVblank )

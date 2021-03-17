@@ -79,7 +79,7 @@ private:
 		if ( mode == 0 ) // Control
 		{
 			ctrlReg.byte = regValue;
-			system->mirrorMode = GetMirrorMode();
+			system->SetMirrorMode( GetMirrorMode() );
 		}
 		else if ( mode == 1 ) // CHR bank 0
 		{
@@ -256,30 +256,30 @@ public:
 		return 0;
 	}
 
-	void Serialize( Serializer& serializer, const serializeMode_t mode ) override
+	void Serialize( Serializer& serializer ) override
 	{
-		serializer.Next8b( ctrlReg.byte, mode );
-		serializer.Next8b( chrBank0Reg, mode );
-		serializer.Next8b( chrBank1Reg, mode );
-		serializer.Next8b( bank0, mode );
-		serializer.Next8b( bank1, mode );
-		serializer.NextBool( ramEnabled, mode );
-		serializer.Next8b( chrBank0, mode );
-		serializer.Next8b( chrBank1, mode );
-		serializer.Next8b( bank256, mode );
-		serializer.Next8b( ramDisable, mode );
+		serializer.Next8b( ctrlReg.byte );
+		serializer.Next8b( chrBank0Reg );
+		serializer.Next8b( chrBank1Reg );
+		serializer.Next8b( bank0 );
+		serializer.Next8b( bank1 );
+		serializer.NextBool( ramEnabled );
+		serializer.Next8b( chrBank0 );
+		serializer.Next8b( chrBank1 );
+		serializer.Next8b( bank256 );
+		serializer.Next8b( ramDisable );
 
-		if ( mode == serializeMode_t::STORE ) {
+		if ( serializer.GetMode() == serializeMode_t::STORE ) {
 			uint8_t shift = shiftRegister.GetValue();
-			serializer.Next8b( shift, mode );
+			serializer.Next8b( shift );
 		}
-		else if ( mode == serializeMode_t::LOAD ) {
+		else if ( serializer.GetMode() == serializeMode_t::LOAD ) {
 			uint8_t shift;
-			serializer.Next8b( shift, mode );
+			serializer.Next8b( shift );
 			shiftRegister.Set( shift );
 		}
 
-		serializer.NextArray( reinterpret_cast<uint8_t*>( &prgRamBank[ 0 ] ), KB( 8 ), mode );
-		serializer.NextArray( reinterpret_cast<uint8_t*>( &chrRam[ 0 ] ), PPU::PatternTableMemorySize, mode );
+		serializer.NextArray( reinterpret_cast<uint8_t*>( &prgRamBank[ 0 ] ), KB( 8 ) );
+		serializer.NextArray( reinterpret_cast<uint8_t*>( &chrRam[ 0 ] ), PPU::PatternTableMemorySize );
 	}
 };

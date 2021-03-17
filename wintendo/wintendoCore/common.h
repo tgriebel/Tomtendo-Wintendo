@@ -102,16 +102,16 @@ protected:
 public:
 	wtSystem* system;
 
-	virtual uint8_t	OnLoadCpu() { return 0; };
-	virtual uint8_t	OnLoadPpu() { return 0; };
-	virtual uint8_t	ReadRom( const uint16_t addr ) = 0;
-	virtual uint8_t	ReadChrRom( const uint16_t addr ) { return 0; };
-	virtual uint8_t	WriteChrRam( const uint16_t addr, const uint8_t value ) { return 0; };
-	virtual uint8_t	Write( const uint16_t addr, const uint8_t value ) { return 0; };
-	virtual bool	InWriteWindow( const uint16_t addr, const uint16_t offset ) { return false; };
+	virtual uint8_t			OnLoadCpu() { return 0; };
+	virtual uint8_t			OnLoadPpu() { return 0; };
+	virtual uint8_t			ReadRom( const uint16_t addr ) = 0;
+	virtual uint8_t			ReadChrRom( const uint16_t addr ) { return 0; };
+	virtual uint8_t			WriteChrRam( const uint16_t addr, const uint8_t value ) { return 0; };
+	virtual uint8_t			Write( const uint16_t addr, const uint8_t value ) { return 0; };
+	virtual bool			InWriteWindow( const uint16_t addr, const uint16_t offset ) { return false; };
 	
-	virtual void	Serialize( Serializer& serializer, const serializeMode_t mode ) {};
-	virtual void	Clock() {};
+	virtual void			Serialize( Serializer& serializer ) {};
+	virtual void			Clock() {};
 };
 
 
@@ -443,7 +443,8 @@ public:
 		if( s.BufferSize() < byteCount ) {
 			return;
 		}
-		s.NextArray( bytes, byteCount, serializeMode_t::STORE );
+		s.SetMode( serializeMode_t::STORE );
+		s.NextArray( bytes, byteCount );
 		s.SetPosition( 0 );
 	}
 

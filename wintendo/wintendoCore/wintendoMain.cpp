@@ -15,8 +15,7 @@ wtSystem nesSystem;
 
 int main()
 {
-	nesSystem.Init( L"Games/Contra.nes" );
-	nesSystem.headless = true;
+	nesSystem.Init( L"Games/Contra.nes", wtSystemFlags::HEADLESS );
 
 	nesSystem.RunFrame();
 

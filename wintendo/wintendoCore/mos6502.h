@@ -256,7 +256,7 @@ public:
 	void StartTraceLog( const uint32_t frameCount );
 	void StopTraceLog();
 
-	void Serialize( Serializer& serializer, const serializeMode_t mode );
+	void Serialize( Serializer& serializer );
 
 private:
 	// All ops included here

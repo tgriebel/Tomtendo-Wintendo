@@ -281,7 +281,7 @@ public:
 			{
 				if( !system->cart->h.controlBits0.fourScreenMirror )
 				{
-					system->mirrorMode = ( value & 0x01 ) ? MIRROR_MODE_HORIZONTAL : MIRROR_MODE_VERTICAL;
+					system->SetMirrorMode( ( value & 0x01 ) ? MIRROR_MODE_HORIZONTAL : MIRROR_MODE_VERTICAL );
 				}
 			}
 			else
@@ -305,26 +305,26 @@ public:
 		return 0;
 	}
 
-	void Serialize( Serializer& serializer, const serializeMode_t mode ) override
+	void Serialize( Serializer& serializer ) override
 	{
-		serializer.Next8b( irqLatch, mode );
-		serializer.Next8b( irqCounter, mode );
-		serializer.Next8b( bankSelect.byte, mode );
-		serializer.Next8b( bank0, mode );
-		serializer.Next8b( bank1, mode );
-		serializer.Next8b( bank2, mode );
-		serializer.Next8b( bank3, mode );
-		serializer.Next8b( chrBank0, mode );
-		serializer.Next8b( chrBank1, mode );
-		serializer.Next8b( chrBank2, mode );
-		serializer.Next8b( chrBank3, mode );
-		serializer.Next8b( chrBank4, mode );
-		serializer.Next8b( chrBank5, mode );
-		serializer.Next8b( chrBank6, mode );
-		serializer.Next8b( chrBank7, mode );
-		serializer.NextBool( irqEnable, mode );
-		serializer.NextArray( reinterpret_cast<uint8_t*>( &R[ 0 ] ), 8 * sizeof( R[ 0 ] ), mode );
-		serializer.NextArray( reinterpret_cast<uint8_t*>( &prgRamBank[ 0 ] ), KB(8), mode );
-		serializer.NextArray( reinterpret_cast<uint8_t*>( &chrRam[ 0 ] ), PPU::PatternTableMemorySize, mode );
+		serializer.Next8b( irqLatch );
+		serializer.Next8b( irqCounter );
+		serializer.Next8b( bankSelect.byte );
+		serializer.Next8b( bank0 );
+		serializer.Next8b( bank1 );
+		serializer.Next8b( bank2 );
+		serializer.Next8b( bank3 );
+		serializer.Next8b( chrBank0 );
+		serializer.Next8b( chrBank1 );
+		serializer.Next8b( chrBank2 );
+		serializer.Next8b( chrBank3 );
+		serializer.Next8b( chrBank4 );
+		serializer.Next8b( chrBank5 );
+		serializer.Next8b( chrBank6 );
+		serializer.Next8b( chrBank7 );
+		serializer.NextBool( irqEnable );
+		serializer.NextArray( reinterpret_cast<uint8_t*>( &R[ 0 ] ), 8 * sizeof( R[ 0 ] ) );
+		serializer.NextArray( reinterpret_cast<uint8_t*>( &prgRamBank[ 0 ] ), KB(8) );
+		serializer.NextArray( reinterpret_cast<uint8_t*>( &chrRam[ 0 ] ), PPU::PatternTableMemorySize );
 	}
 };

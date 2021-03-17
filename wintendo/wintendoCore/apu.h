@@ -261,7 +261,7 @@ public:
 		envelope.divCounter = 1;
 	}
 
-	void Serialize( Serializer& serializer, const serializeMode_t mode );
+	void Serialize( Serializer& serializer );
 };
 
 
@@ -295,7 +295,7 @@ public:
 		mute = true;
 	}
 
-	void Serialize( Serializer& serializer, const serializeMode_t mode );
+	void Serialize( Serializer& serializer );
 };
 
 
@@ -333,7 +333,7 @@ public:
 		mute = true;
 	}
 
-	void Serialize( Serializer& serializer, const serializeMode_t mode );
+	void Serialize( Serializer& serializer );
 };
 
 
@@ -390,7 +390,7 @@ public:
 		lastCycle = cpuCycle_t( 0 );
 	}
 
-	void Serialize( Serializer& serializer, const serializeMode_t mode );
+	void Serialize( Serializer& serializer );
 };
 
 
@@ -506,11 +506,10 @@ private:
 	uint32_t		currentBuffer;
 	apuOutput_t*	soundOutput;
 	apuOutput_t		soundOutputBuffers[ SoundBufferCnt ];
-
-public:
-	// TODO: make 'frameOutput' private
-	apuOutput_t*	frameOutput;
 	wtSystem*		system;
+
+public:	
+	apuOutput_t*	frameOutput; // TODO: make private
 
 	APU()
 	{
@@ -573,7 +572,7 @@ public:
 	void		GetDebugInfo( apuDebug_t& apuDebug );
 	void		SampleDmcBuffer();
 
-	void		Serialize( Serializer& serializer, const serializeMode_t mode );
+	void		Serialize( Serializer& serializer );
 
 private:
 	void		ExecPulseChannel( PulseChannel& pulse );
