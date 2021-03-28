@@ -43,7 +43,7 @@ void wtRenderer::BuildImguiCommandList()
 	static int32_t playbackFrame = 0;
 	static bool autoPlayback = false;
 
-	wtFrameResult* fr = &app->frameResult[ app->submittedFrameIx ];
+	wtFrameResult* fr = &app->frameResult[ app->frameIx ];
 
 	if ( ImGui::BeginTabBar( "Debug Info" ) )
 	{
@@ -262,7 +262,7 @@ void wtRenderer::BuildImguiCommandList()
 				static float ntScale = 1.0f;
 				ImGui::SliderFloat( "Scale", &ntScale, 0.1f, 10.0f );
 				const uint32_t imageId = 1;
-				const wtRawImageInterface* srcImage = &fr->nameTableSheet;
+				const wtRawImageInterface* srcImage = fr->nameTableSheet;
 				ImGui::Image( (ImTextureID)textureResources[ currentFrame ][ imageId ].gpuHandle.ptr, ImVec2( ntScale * srcImage->GetWidth(), ntScale * srcImage->GetHeight() ) );
 			}
 
@@ -302,7 +302,7 @@ void wtRenderer::BuildImguiCommandList()
 			if ( ImGui::CollapsingHeader( "Palette", ImGuiTreeNodeFlags_OpenOnArrow ) )
 			{
 				const uint32_t imageId = 2;
-				const wtRawImageInterface* srcImage = &fr->paletteDebug;
+				const wtRawImageInterface* srcImage = fr->paletteDebug;
 				ImGui::Image( (ImTextureID)textureResources[ currentFrame ][ imageId ].gpuHandle.ptr, ImVec2( 10.0f * srcImage->GetWidth(), 10.0f * srcImage->GetHeight() ) );
 			}
 
@@ -316,7 +316,7 @@ void wtRenderer::BuildImguiCommandList()
 			if ( ImGui::CollapsingHeader( "Picked Object", ImGuiTreeNodeFlags_OpenOnArrow ) )
 			{
 				const uint32_t imageId = 5;
-				const wtRawImageInterface* srcImage = &fr->pickedObj8x16;
+				const wtRawImageInterface* srcImage = fr->pickedObj8x16;
 
 				ImGui::Columns( 3 );
 				ImGui::Text( "X: %i",				fr->ppuDebug.spritePicked.x );

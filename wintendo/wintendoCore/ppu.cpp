@@ -216,30 +216,16 @@ void PPU::IncRenderAddr()
 }
 
 
-void PPU::BgPipelineFetch( const uint64_t scanlineCycle )
+void PPU::BgPipelineFetch( const uint64_t cycleCountAdjust )
 {
-	/*
-	Memory fetch phase 1 thru 128
-	---------------------------- -
-	1. Name table byte
-	2. Attribute table byte
-	3. Pattern table tile #0
-	4. Pattern table tile #1
-	*/
-
-	if ( !BgDataFetchEnabled() )
-	{
-		return;
-	}
-
-	uint32_t cycleCountAdjust = ( scanlineCycle - 1 ) % 8;
-	if ( cycleCountAdjust == 1 )
+	// 1. Name table byte
+	if ( cycleCountAdjust == 2 )
 	{
 		const uint16_t address = NameTable0BaseAddr | ( regV.byte2x & 0x0FFF );
 		plLatches.tileId = ReadVram( address );
-	//	assert( regV.sem.coarseY <= 30 );
 	}
-	else if ( cycleCountAdjust == 3 )
+	// 2. Attribute table byte
+	else if ( cycleCountAdjust == 4 )
 	{
 		wtPoint coarsePt;
 		coarsePt.x = regV.sem.coarseX;
@@ -252,15 +238,20 @@ void PPU::BgPipelineFetch( const uint64_t scanlineCycle )
 
 		plLatches.attribId = GetTilePaletteId( attribute, coarsePt );
 	}
-	else if ( cycleCountAdjust == 5 )
+	// 3. Pattern table tile #0
+	else if ( cycleCountAdjust == 6 )
 	{
 		plLatches.chrRom0 = GetChrRom8x8( plLatches.tileId, 0, GetBgPatternTableId(), regV.sem.fineY );
 	}
-	else if( cycleCountAdjust == 7 )
+	// 4. Pattern table tile #1
+	else if( cycleCountAdjust == 0 )
 	{
 		plLatches.chrRom1 = GetChrRom8x8( plLatches.tileId, 1, GetBgPatternTableId(), regV.sem.fineY );
+		//---------------------
+		// Finish pipeline work
+		//---------------------
 		plLatches.flags = 0x1;
-		AdvanceXScroll( scanlineCycle );
+		AdvanceXScroll();
 
 		plShifts[curShift] = plLatches;
 
@@ -269,17 +260,6 @@ void PPU::BgPipelineFetch( const uint64_t scanlineCycle )
 
 		palLatch[0] = ( plShifts[curShift].attribId >> 2 ) & 0x01;
 		palLatch[1] = ( ( plShifts[curShift].attribId >> 2 ) & 0x2 ) >> 1;
-
-		palShifts[0] = 0;
-		palShifts[1] = 0;
-
-		for ( uint8_t bit = 0; bit < 8; ++bit )
-		{
-			palShifts[0] <<= 1;
-			palShifts[1] <<= 1;
-			palShifts[0] |= ( plShifts[curShift^1].attribId >> 2 ) & 0x1;
-			palShifts[1] |= ( ( plShifts[curShift^1].attribId >> 2 ) & 0x2 ) >> 1;
-		}
 
 		curShift ^= 0x1;
 	}
@@ -865,7 +845,7 @@ void PPU::LoadSecondaryOAM()
 }
 
 
-void PPU::AdvanceXScroll( const uint64_t cycleCount )
+void PPU::AdvanceXScroll()
 {
 	if ( !RenderEnabled() )
 		return;
@@ -882,7 +862,7 @@ void PPU::AdvanceXScroll( const uint64_t cycleCount )
 }
 
 
-void PPU::AdvanceYScroll( const uint64_t cycleCount )
+void PPU::AdvanceYScroll()
 {
 	if ( !RenderEnabled() )
 		return;
@@ -913,9 +893,6 @@ void PPU::AdvanceYScroll( const uint64_t cycleCount )
 
 void PPU::BgPipelineShiftRegisters()
 {
-	if ( !BgDataFetchEnabled() )
-		return;
-
 	chrShifts[0] <<= 1;
 	chrShifts[1] <<= 1;
 	palShifts[0] <<= 1;
@@ -928,9 +905,6 @@ void PPU::BgPipelineShiftRegisters()
 void PPU::BgPipelineDebugPrefetchFetchTiles()
 {
 #if 0
-	if ( !BgDataFetchEnabled() )
-		return;
-
 	if ( debugPrefetchTiles )
 	{
 		plShifts[0].tileId = 1;
@@ -1166,7 +1140,7 @@ ppuCycle_t PPU::Exec()
 			}
 	
 			BgPipelineShiftRegisters();
-			BgPipelineFetch( cycleCount );
+			BgPipelineFetch( cycleCount & 0x07 );
 			beamPosition.x++;
 		}
 
@@ -1174,14 +1148,18 @@ ppuCycle_t PPU::Exec()
 	}
 	else if ( cycleCount == 256 )
 	{
-		BgPipelineFetch( cycleCount );
-		AdvanceYScroll( cycleCount );
+		if ( BgDataFetchEnabled() ) {
+			BgPipelineFetch( cycleCount & 0x07 );
+		}
+		AdvanceYScroll();
 
 		execCycles += ppuCycle_t( 1 );
 	}
 	else if ( cycleCount == 257 )
 	{
-		BgPipelineFetch( cycleCount );
+		if ( BgDataFetchEnabled() ) {
+		//	BgPipelineFetch<0>( cycleCount );
+		}
 
 		if ( RenderEnabled() )
 		{
@@ -1214,14 +1192,17 @@ ppuCycle_t PPU::Exec()
 	{
 		execCycles++;
 
-		BgPipelineShiftRegisters();
-
-		BgPipelineFetch( cycleCount ); // Prefetch first two tiles on next scanline
-		BgPipelineDebugPrefetchFetchTiles();
+		if( BgDataFetchEnabled() ) {
+			BgPipelineShiftRegisters();
+			BgPipelineFetch( cycleCount & 0x07 ); // Prefetch first two tiles on next scanline
+			BgPipelineDebugPrefetchFetchTiles();
+		}
 	}
 	else if ( cycleCount <= 339 ) // [337 - 339], +3 cycles
 	{
-		BgPipelineFetch( cycleCount );
+		if ( BgDataFetchEnabled() ) {
+			BgPipelineFetch( cycleCount & 0x07 );
+		}
 
 		// 2 unused fetches
 		execCycles++;

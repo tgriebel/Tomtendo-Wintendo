@@ -233,7 +233,7 @@ public:
 	envelope_t			envelope;
 	sweep_t				sweep;
 	uint32_t			volume;
-	wtSampleQueue		samples;
+	float				sample;
 	bool				mute;
 
 	void Clear()
@@ -254,7 +254,6 @@ public:
 		
 		sweep.divider.Reload( 1 );
 		period.Reload( 1 );
-		samples.Reset();
 
 		memset( &envelope, 0, sizeof( envelope ) );
 		envelope.startFlag = false;
@@ -276,7 +275,7 @@ public:
 	BitCounter<11>		timer;
 	uint8_t				sequenceStep;
 	cpuCycle_t			lastCycle;
-	wtSampleQueue		samples;
+	float				sample;
 	bool				mute;
 
 	void Clear()
@@ -290,7 +289,6 @@ public:
 		linearCounter.Reload();
 		lengthCounter = 0;
 		timer.Reload();
-		samples.Reset();
 
 		mute = true;
 	}
@@ -309,7 +307,7 @@ public:
 	envelope_t			envelope;
 	BitCounter<12>		timer; // TODO: how many bits?
 	uint8_t				lengthCounter;
-	wtSampleQueue		samples;
+	float				sample;
 	apuCycle_t			lastApuCycle;
 	cpuCycle_t			lastCycle;
 	bool				mute;
@@ -326,7 +324,6 @@ public:
 		envelope.startFlag = false;
 		timer.Reload();
 		lengthCounter = 0;
-		samples.Reset();
 		lastApuCycle = apuCycle_t( 0 );
 		lastCycle = cpuCycle_t( 0 );
 
@@ -346,6 +343,7 @@ public:
 	uint16_t			regLength;
 
 	wtSampleQueue		samples;
+	float				sample;
 	apuCycle_t			lastApuCycle;
 	cpuCycle_t			lastCycle;
 	bool				irq;
@@ -560,10 +558,11 @@ public:
 	}
 
 	void		Begin();
-	void		End();
+	void		Mixer();
 	void		RegisterSystem( wtSystem* system );
 
 	bool		Step( const cpuCycle_t& nextCpuCycle );
+	void		End();
 	void		WriteReg( const uint16_t addr, const uint8_t value );
 	uint8_t		ReadReg( const uint16_t addr );
 
@@ -588,5 +587,4 @@ private:
 	float		PulseMixer( const uint32_t pulse1, const uint32_t pulse2 );
 	float		TndMixer( const uint32_t triangle, const uint32_t noise, const uint32_t dmc );
 	void		ClockDmc();
-	uint32_t	GetNextSampleIx() const;
 };

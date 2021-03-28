@@ -320,8 +320,7 @@ void APU::ExecPulseChannel( PulseChannel& pulse )
 		pulseSample = 0;
 	}
 
-	pulse.samples.Enque( pulseSample );
-	pulse.samples.Enque( pulseSample );
+	pulse.sample = pulseSample;
 }
 
 
@@ -349,7 +348,7 @@ void APU::ExecChannelTri()
 		volume = 0;
 	}
 
-	triangle.samples.Enque( volume );
+	triangle.sample = volume;
 }
 
 
@@ -372,8 +371,7 @@ void APU::ExecChannelNoise()
 		volume = 0;
 	}
 
-	noise.samples.Enque( volume );
-	noise.samples.Enque( volume );
+	noise.sample = volume;
 }
 
 
@@ -477,7 +475,7 @@ void APU::ExecChannelDMC()
 	}
 
 	const float volume = dmc.outputLevel.Value();
-	dmc.samples.Enque( dmc.mute ? 0.0f : volume );
+	dmc.sample = ( dmc.mute ? 0.0f : volume );
 }
 
 
@@ -581,12 +579,25 @@ bool APU::Step( const cpuCycle_t& nextCpuCycle )
 			ExecChannelNoise();
 		}
 
+		Mixer();
+
 		++cpuCycle;
 		++frameSeqTick;
 	}
 	apuCycle = chrono::duration_cast<apuCycle_t>( cpuCycle );
 
 	return true;
+}
+
+
+void APU::End()
+{
+	frameOutput = soundOutput;
+
+	currentBuffer = ( currentBuffer + 1 ) % SoundBufferCnt;
+	soundOutput = &soundOutputBuffers[ currentBuffer ];
+
+	soundOutput->master.Reset();
 }
 
 
@@ -636,18 +647,6 @@ void APU::GetDebugInfo( apuDebug_t& apuDebug )
 }
 
 
-uint32_t APU::GetNextSampleIx() const
-{
-	uint32_t sampleIx = UINT32_MAX;
-	sampleIx = std::min( sampleIx, pulse1.samples.GetSampleCnt() );
-	sampleIx = std::min( sampleIx, pulse2.samples.GetSampleCnt() );
-	sampleIx = std::min( sampleIx, triangle.samples.GetSampleCnt() );
-	sampleIx = std::min( sampleIx, noise.samples.GetSampleCnt() );
-	sampleIx = std::min( sampleIx, dmc.samples.GetSampleCnt() );
-	return sampleIx;
-}
-
-
 void APU::Begin()
 {
 }
@@ -659,42 +658,33 @@ void APU::RegisterSystem( wtSystem* sys )
 }
 
 
-void APU::End()
+void APU::Mixer()
 {
-	const uint32_t nextIx = GetNextSampleIx();
-	for( uint32_t i = 0; i < nextIx; ++i )
-	{
-		float pulse1Sample			= pulse1.samples.Deque();
-		float pulse2Sample			= pulse2.samples.Deque();
-		float triSample				= triangle.samples.Deque();
-		float noiseSample			= noise.samples.Deque();
-		float dmcSample				= dmc.samples.Deque();
+	float pulse1Sample			= pulse1.sample;
+	float pulse2Sample			= pulse2.sample;
+	float triSample				= triangle.sample;
+	float noiseSample			= noise.sample;
+	float dmcSample				= dmc.sample;
 
-		const config_t::APU* config	= &system->GetConfig()->apu;
-		pulse1Sample				= ( config->mutePulse1	) ? 0.0f : pulse1Sample;
-		pulse2Sample				= ( config->mutePulse2	) ? 0.0f : pulse2Sample;
-		triSample					= ( config->muteTri		) ? 0.0f : triSample;
-		noiseSample					= ( config->muteNoise	) ? 0.0f : noiseSample;
-		dmcSample					= ( config->muteDMC		) ? 0.0f : dmcSample;
+	const config_t::APU* config	= &system->GetConfig()->apu;
+	pulse1Sample				= ( config->mutePulse1	) ? 0.0f : pulse1Sample;
+	pulse2Sample				= ( config->mutePulse2	) ? 0.0f : pulse2Sample;
+	triSample					= ( config->muteTri		) ? 0.0f : triSample;
+	noiseSample					= ( config->muteNoise	) ? 0.0f : noiseSample;
+	dmcSample					= ( config->muteDMC		) ? 0.0f : dmcSample;
 
-		const float pulseMixed		= PulseMixer( (uint32_t)pulse1Sample, (uint32_t)pulse2Sample );
-		const float tndMixed		= TndMixer( (uint32_t)triSample, (uint32_t)noiseSample, (uint32_t)dmcSample );
-		const float mixedSample		= pulseMixed + tndMixed;
+	const float pulseMixed		= PulseMixer( (uint32_t)pulse1Sample, (uint32_t)pulse2Sample );
+	const float tndMixed		= TndMixer( (uint32_t)triSample, (uint32_t)noiseSample, (uint32_t)dmcSample );
+	const float mixedSample		= pulseMixed + tndMixed;
 
-		assert( pulseMixed < 0.3f );
+	assert( pulseMixed < 0.3f );
 
-		soundOutput->dbgPulse1.EnqueFIFO( pulse1Sample );
-		soundOutput->dbgPulse2.EnqueFIFO( pulse2Sample );
-		soundOutput->dbgTri.EnqueFIFO( triSample );
-		soundOutput->dbgNoise.EnqueFIFO( noiseSample );
-		soundOutput->dbgDmc.EnqueFIFO( dmcSample );
-		soundOutput->master.Enque( floor( 32767.0f * mixedSample ) );
-	}
-
-	frameOutput = soundOutput;
-
-	currentBuffer = ( currentBuffer + 1 ) % SoundBufferCnt;
-	soundOutput = &soundOutputBuffers[currentBuffer];
-
-	soundOutput->master.Reset();
+#if 0
+	soundOutput->dbgPulse1.EnqueFIFO( pulse1Sample );
+	soundOutput->dbgPulse2.EnqueFIFO( pulse2Sample );
+	soundOutput->dbgTri.EnqueFIFO( triSample );
+	soundOutput->dbgNoise.EnqueFIFO( noiseSample );
+	soundOutput->dbgDmc.EnqueFIFO( dmcSample );
+#endif
+	soundOutput->master.Enque( 32767.0f * mixedSample );
 }

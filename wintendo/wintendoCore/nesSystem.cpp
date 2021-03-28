@@ -332,11 +332,11 @@ void wtSystem::WriteInput( const uint16_t address, const uint8_t value )
 void wtSystem::GetFrameResult( wtFrameResult& outFrameResult )
 {
 	outFrameResult.frameBuffer = frameBuffer[ finishedFrameIx ];
-	outFrameResult.nameTableSheet = nameTableSheet;
-	outFrameResult.paletteDebug = paletteDebug;
-	outFrameResult.patternTable0 = patternTable0;
-	outFrameResult.patternTable1 = patternTable1;
-	outFrameResult.pickedObj8x16 = pickedObj8x16;
+	outFrameResult.nameTableSheet = &nameTableSheet;
+	outFrameResult.paletteDebug = &paletteDebug;
+	outFrameResult.patternTable0 = &patternTable0;
+	outFrameResult.patternTable1 = &patternTable1;
+	outFrameResult.pickedObj8x16 = &pickedObj8x16;
 	outFrameResult.ppuDebug = ppu.dbgInfo;
 
 	GetState( outFrameResult.cpuDebug );
@@ -576,8 +576,6 @@ bool wtSystem::Run( const masterCycles_t& nextCycle )
 
 	static constexpr masterCycles_t ticks( CpuClockDivide );
 
-	// cpu.Begin(); // TODO
-	// ppu.Begin(); // TODO
 	apu.Begin();
 
 	// TODO: CHECK WRAP AROUND LOGIC
@@ -589,9 +587,6 @@ bool wtSystem::Run( const masterCycles_t& nextCycle )
 		ppu.Step( chrono::duration_cast<ppuCycle_t>( sysCycles ) );
 		apu.Step( cpu.cycle );
 	}
-
-	// cpu.End(); // TODO
-	// ppu.End(); // TODO
 	apu.End();
 
 #if DEBUG_MODE == 1

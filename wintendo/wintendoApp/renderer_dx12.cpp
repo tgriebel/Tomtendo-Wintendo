@@ -227,8 +227,8 @@ void wtRenderer::CreateSyncObjects()
 {
 	for ( uint32_t i = 0; i < FrameResultCount; ++i )
 	{
-		sync.frameSubmitSemaphore[ i ] = CreateSemaphore( NULL, 0, 1, NULL );
-		sync.audioCopySemaphore[ i ] = CreateSemaphore( NULL, 0, 1, NULL );
+		sync.frameSubmitSemaphore[ i ] = CreateSemaphore( NULL, 1, 1, NULL );
+		sync.audioCopySemaphore[ i ] = CreateSemaphore( NULL, 1, 1, NULL );
 	}
 
 	ThrowIfFailed( d3d12device->CreateFence( 0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS( &sync.fence ) ) );
@@ -542,17 +542,17 @@ void wtRenderer::IssueTextureCopyCommands( const uint32_t workFrame )
 	const uint32_t textureCount = static_cast<uint32_t>( textureResources[ workFrame ].size() );
 	std::vector<D3D12_SUBRESOURCE_DATA> textureData( textureCount );
 
-	wtFrameResult* fr = &app->frameResult[ app->submittedFrameIx ];
+	wtFrameResult* fr = &app->frameResult[ app->frameIx ];
 
 	uint32_t imageIx = 0;
 	const wtRawImageInterface* sourceImages[ SHADER_RESOURES_TEXTURE_CNT ];
 	// All that this needs right now are the dimensions.
 	sourceImages[ imageIx++ ] = &fr->frameBuffer;
-	sourceImages[ imageIx++ ] = &fr->nameTableSheet;
-	sourceImages[ imageIx++ ] = &fr->paletteDebug;
-	sourceImages[ imageIx++ ] = &fr->patternTable0;
-	sourceImages[ imageIx++ ] = &fr->patternTable1;
-	sourceImages[ imageIx++ ] = &fr->pickedObj8x16;
+	sourceImages[ imageIx++ ] = fr->nameTableSheet;
+	sourceImages[ imageIx++ ] = fr->paletteDebug;
+	sourceImages[ imageIx++ ] = fr->patternTable0;
+	sourceImages[ imageIx++ ] = fr->patternTable1;
+	sourceImages[ imageIx++ ] = fr->pickedObj8x16;
 
 	for ( int i = 0; i < SHADER_RESOURES_CHRBANK_CNT; ++i )
 	{

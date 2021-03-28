@@ -32,6 +32,44 @@ enum wtSystemFlags : uint32_t
 	HEADLESS,
 };
 
+
+struct memDebug_t
+{
+	static const uint32_t	CpuMemorySize = KB( 2 );
+	static const uint32_t	PpuMemorySize = KB( 2 );
+
+	uint8_t	cpuMemory[ CpuMemorySize ];
+	uint8_t	ppuMemory[ PpuMemorySize ];
+};
+
+
+struct wtFrameResult
+{
+	uint64_t					currentFrame;
+	uint64_t					stateCount;
+	replayStateCode_t			stateCode;
+	wtDisplayImage				frameBuffer;
+	apuOutput_t					soundOutput;
+	bool						sndReady;
+
+	// Debug
+	debugTiming_t				dbgInfo;
+	wtRomHeader					romHeader;
+	wtMirrorMode				mirrorMode;
+	uint32_t					mapperId;
+	wtNameTableImage*			nameTableSheet;
+	wtPaletteImage*				paletteDebug;
+	wtPatternTableImage*		patternTable0;
+	wtPatternTableImage*		patternTable1;
+	wt16x8ChrImage*				pickedObj8x16;
+	memDebug_t					memDebug;
+	cpuDebug_t					cpuDebug;
+	apuDebug_t					apuDebug;
+	ppuDebug_t					ppuDebug;
+	wtLog*						dbgLog;
+};
+
+
 class wtSystem
 {
 public:
@@ -90,6 +128,7 @@ private:
 #if DEBUG_ADDR == 1
 	std::map<uint16_t, uint8_t>	memoryDebug;
 #endif // #if DEBUG_ADDR == 1
+	wtFrameResult				result;
 	wtDisplayImage				frameBuffer[ 2 ];
 	wtNameTableImage			nameTableSheet;
 	wtPaletteImage				paletteDebug;
@@ -232,41 +271,4 @@ private:
 	static bool				IsCartMemory( const uint16_t address );
 	static bool				IsPhysicalMemory( const uint16_t address );
 	static bool				IsDMA( const uint16_t address );
-};
-
-
-struct memDebug_t
-{
-	static const uint32_t	CpuMemorySize = wtSystem::PhysicalMemorySize;
-	static const uint32_t	PpuMemorySize = KB( 2 );
-
-	uint8_t	cpuMemory[ CpuMemorySize ];
-	uint8_t	ppuMemory[ PpuMemorySize ];
-};
-
-
-struct wtFrameResult
-{
-	uint64_t					currentFrame;
-	uint64_t					stateCount;
-	replayStateCode_t			stateCode;
-	wtDisplayImage				frameBuffer;
-	apuOutput_t					soundOutput;
-	bool						sndReady;
-
-	// Debug
-	debugTiming_t				dbgInfo;
-	wtRomHeader					romHeader;
-	wtMirrorMode				mirrorMode;
-	uint32_t					mapperId;
-	wtNameTableImage			nameTableSheet;
-	wtPaletteImage				paletteDebug;
-	wtPatternTableImage			patternTable0;
-	wtPatternTableImage			patternTable1;
-	wt16x8ChrImage				pickedObj8x16;
-	memDebug_t					memDebug;
-	cpuDebug_t					cpuDebug;
-	apuDebug_t					apuDebug;
-	ppuDebug_t					ppuDebug;
-	wtLog*						dbgLog;
 };

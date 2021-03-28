@@ -363,8 +363,8 @@ private:
 	void			BgPipelineDebugPrefetchFetchTiles();
 	uint8_t			BgPipelineDecodePalette();
 	void			BgPipelineFetch( const uint64_t cycle );
-	void			AdvanceXScroll( const uint64_t cycleCount );
-	void			AdvanceYScroll( const uint64_t cycleCount );
+	void			AdvanceXScroll();
+	void			AdvanceYScroll();
 	void			LoadSecondaryOAM();
 	void			DMA( const uint16_t address );
 	void			Render();
