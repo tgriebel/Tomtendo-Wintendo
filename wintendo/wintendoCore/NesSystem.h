@@ -32,16 +32,6 @@ enum wtSystemFlags : uint32_t
 };
 
 
-struct memDebug_t
-{
-	static const uint32_t	CpuMemorySize = KB( 2 );
-	static const uint32_t	PpuMemorySize = KB( 2 );
-
-	uint8_t	cpuMemory[ CpuMemorySize ];
-	uint8_t	ppuMemory[ PpuMemorySize ];
-};
-
-
 struct wtFrameResult
 {
 	uint64_t					currentFrame;
@@ -49,7 +39,7 @@ struct wtFrameResult
 	replayStateCode_t			stateCode;
 	wtDisplayImage*				frameBuffer;
 	apuOutput_t*				soundOutput;
-	bool						sndReady;
+	wtStateBlob*				frameState;
 
 	// Debug
 	debugTiming_t				dbgInfo;
@@ -61,7 +51,6 @@ struct wtFrameResult
 	wtPatternTableImage*		patternTable0;
 	wtPatternTableImage*		patternTable1;
 	wt16x8ChrImage*				pickedObj8x16;
-	memDebug_t					memDebug;
 	cpuDebug_t					cpuDebug;
 	apuDebug_t					apuDebug;
 	ppuDebug_t					ppuDebug;
@@ -135,6 +124,7 @@ private:
 	wtPatternTableImage			patternTable1;
 	wt16x8ChrImage				pickedObj8x16;
 	std::deque<wtStateBlob>		states;
+	wtStateBlob					frameState;
 	uint32_t					currentState;
 	uint32_t					firstState;
 	bool						strobeOn;

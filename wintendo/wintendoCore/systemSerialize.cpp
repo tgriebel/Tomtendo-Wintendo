@@ -68,7 +68,9 @@ void wtSystem::Serialize( Serializer& serializer )
 	uint32_t f = static_cast<uint32_t>( flags );
 	serializer.Next32b( f );
 
+	serializer.NewLabel( STATE_MEMORY_LABEL );
 	serializer.NextArray( memory, PhysicalMemorySize );
+	serializer.EndLabel( STATE_MEMORY_LABEL );
 
 	cpu.Serialize( serializer );
 	ppu.Serialize( serializer );
@@ -134,7 +136,9 @@ void PPU::Serialize( Serializer& serializer )
 	
 	serializer.NextArray( reinterpret_cast<uint8_t*>( &primaryOAM ), OamSize );
 	serializer.NextArray( reinterpret_cast<uint8_t*>( &secondaryOAM ), OamSize * sizeof( spriteAttrib_t ) );
+	serializer.NewLabel( STATE_VRAM_LABEL );
 	serializer.NextArray( nt, KB(2) );
+	serializer.EndLabel( STATE_VRAM_LABEL );
 	serializer.NextArray( imgPal, PPU::PaletteColorNumber );
 	serializer.NextArray( sprPal, PPU::PaletteColorNumber );
 	serializer.NextArray( registers, 9 );

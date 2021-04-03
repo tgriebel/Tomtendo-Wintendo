@@ -31,6 +31,24 @@ union serializerTuple_t
 	uint64_t b64;
 };
 
+
+struct serializerHeader_t
+{
+	static const uint32_t MaxSections = 128;
+	static const uint32_t MaxNameLength = 128;
+
+	struct section_t
+	{
+		char		name[ MaxNameLength ];
+		uint32_t	offset;
+		uint32_t	size;
+	};
+
+	section_t	sections[ MaxSections ];
+	uint32_t	sectionCount;
+};
+
+
 class Serializer
 {
 public:
@@ -66,6 +84,10 @@ public:
 	void				SetMode( serializeMode_t mode );
 	serializeMode_t		GetMode() const;
 
+	uint32_t			NewLabel( const char name[ serializerHeader_t::MaxNameLength ] );
+	void				EndLabel( const char name[ serializerHeader_t::MaxNameLength ] );
+	bool				FindLabel( const char name[ serializerHeader_t::MaxNameLength ], serializerHeader_t::section_t** outSection );
+
 	bool				NextBool( bool& v );
 	bool				NextChar( int8_t& v );
 	bool				NextUchar( uint8_t& v );
@@ -85,10 +107,11 @@ public:
 	bool				NextArray( uint8_t* b8, uint32_t sizeInBytes );
 
 private:
-	uint8_t*		bytes;
-	uint32_t		byteCount;
-	uint32_t		index;
-	serializeMode_t mode;
+	serializerHeader_t	header;
+	uint8_t*			bytes;
+	uint32_t			byteCount;
+	uint32_t			index;
+	serializeMode_t		mode;
 public: // FIXME: temp
-	std::stringstream dbgText;
+	std::stringstream	dbgText;
 };

@@ -51,6 +51,46 @@ serializeMode_t Serializer::GetMode() const
 }
 
 
+uint32_t Serializer::NewLabel( const char name[ serializerHeader_t::MaxNameLength ] )
+{
+	const uint32_t sectionIx = header.sectionCount;
+
+	serializerHeader_t::section_t& section = header.sections[ sectionIx ];
+	section.offset = index;
+	strcpy_s< serializerHeader_t::MaxNameLength >( section.name, name );
+	++header.sectionCount;
+
+	return sectionIx;
+}
+
+
+void Serializer::EndLabel( const char name[ serializerHeader_t::MaxNameLength ] )
+{
+	serializerHeader_t::section_t* section;
+	if( FindLabel( name, &section ) )
+	{
+		section->size = ( index - section->offset );
+	}
+}
+
+
+bool Serializer::FindLabel( const char name[ serializerHeader_t::MaxNameLength ], serializerHeader_t::section_t** outSection )
+{
+	for( uint32_t i = 0; i < header.sectionCount; ++i )
+	{
+		serializerHeader_t::section_t& section = header.sections[ i ];
+		if( _strnicmp( name, section.name, serializerHeader_t::MaxNameLength ) == 0 )
+		{
+			*outSection = &section;
+			return true;
+		}
+	}
+
+	*outSection = nullptr;
+	return false;
+}
+
+
 bool Serializer::NextBool( bool& v)
 {
 	return Next8b( *reinterpret_cast<uint8_t*>( &v ) );

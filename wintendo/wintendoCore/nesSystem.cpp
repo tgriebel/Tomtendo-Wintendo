@@ -339,18 +339,16 @@ void wtSystem::GetFrameResult( wtFrameResult& outFrameResult )
 	outFrameResult.ppuDebug			= ppu.dbgInfo;
 
 	GetState( outFrameResult.cpuDebug );
-	memcpy( outFrameResult.memDebug.cpuMemory, memory, memDebug_t::CpuMemorySize );
-	memcpy( outFrameResult.memDebug.ppuMemory, ppu.nt, KB( 2 ) );
 #if DEBUG_ADDR
 	outFrameResult.dbgLog = nullptr;
 	if( cpu.dbgLog.IsFinished() ) {
-		outFrameResult.dbgLog = &cpu.dbgLog;
+		outFrameResult.dbgLog		= &cpu.dbgLog;
 	}
 #endif
-	outFrameResult.dbgInfo = dbgInfo;
-	outFrameResult.romHeader = cart->h;
-	outFrameResult.mirrorMode = static_cast<wtMirrorMode>( GetMirrorMode() );
-	outFrameResult.mapperId = GetMapperId();
+	outFrameResult.dbgInfo			= dbgInfo;
+	outFrameResult.romHeader		= cart->h;
+	outFrameResult.mirrorMode		= static_cast<wtMirrorMode>( GetMirrorMode() );
+	outFrameResult.mapperId			= GetMapperId();
 
 	if ( apu.frameOutput != nullptr )
 	{
@@ -359,9 +357,10 @@ void wtSystem::GetFrameResult( wtFrameResult& outFrameResult )
 		apu.frameOutput = nullptr;
 	}
 
-	outFrameResult.currentFrame = frameNumber;
-	outFrameResult.stateCount = static_cast<uint64_t>( states.size() );
-	outFrameResult.stateCode = playbackState.replayState;
+	outFrameResult.frameState		= &frameState;
+	outFrameResult.currentFrame		= frameNumber;
+	outFrameResult.stateCount		= static_cast<uint64_t>( states.size() );
+	outFrameResult.stateCode		= playbackState.replayState;
 }
 
 
@@ -708,6 +707,8 @@ void wtSystem::RunStateControl( const bool newFrame, masterCycles_t& nextCycle )
 		return;
 	}
 
+	RecordSate( frameState );
+
 	const replayStateCode_t stateCode = playbackState.replayState;
 	if ( stateCode == replayStateCode_t::REPLAY )
 	{
@@ -733,8 +734,7 @@ void wtSystem::RunStateControl( const bool newFrame, masterCycles_t& nextCycle )
 				states.pop_front();
 			}
 
-			states.push_back( wtStateBlob() );
-			RecordSate( states.back() );
+			states.push_back( frameState );
 			++playbackState.currentFrame;
 		}
 	}

@@ -222,7 +222,7 @@ void wtRenderer::BuildImguiCommandList()
 			if ( ImGui::CollapsingHeader( "Physical Memory", ImGuiTreeNodeFlags_OpenOnArrow ) )
 			{
 				static MemoryEditor cpuMemEdit;
-				cpuMemEdit.DrawContents( fr->memDebug.cpuMemory, memDebug_t::CpuMemorySize, 0 );
+				cpuMemEdit.DrawContents( fr->frameState->header.memory, fr->frameState->header.memorySize, 0 );
 			}
 
 			ImGui::EndTabItem();
@@ -337,7 +337,7 @@ void wtRenderer::BuildImguiCommandList()
 			if ( ImGui::CollapsingHeader( "NT Memory", ImGuiTreeNodeFlags_OpenOnArrow ) )
 			{
 				static MemoryEditor ppuMemEdit;
-				ppuMemEdit.DrawContents( fr->memDebug.ppuMemory, memDebug_t::PpuMemorySize );
+				ppuMemEdit.DrawContents( fr->frameState->header.vram, fr->frameState->header.vramSize );
 			}
 			ImGui::EndTabItem();
 		}

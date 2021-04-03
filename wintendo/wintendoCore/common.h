@@ -412,10 +412,22 @@ enum class wtImageTag
 	PATTERN_TABLE_1
 };
 
+#define STATE_MEMORY_LABEL	"Memory"
+#define STATE_VRAM_LABEL	"VRAM"
+
+struct stateHeader_t
+{
+	uint8_t* memory;
+	uint8_t* vram;
+	uint32_t memorySize;
+	uint32_t vramSize;
+};
+
 
 class wtStateBlob
 {
 public:
+
 	wtStateBlob()
 	{
 		bytes = nullptr;
@@ -446,6 +458,16 @@ public:
 		byteCount = s.CurrentSize();
 		bytes = new uint8_t[ byteCount ];
 		memcpy( bytes, s.GetPtr(), byteCount );
+		
+		serializerHeader_t::section_t* memSection;
+		s.FindLabel( STATE_MEMORY_LABEL, &memSection );
+		header.memory = bytes + memSection->offset;
+		header.memorySize = memSection->size;
+
+		serializerHeader_t::section_t* vramSection;
+		s.FindLabel( STATE_VRAM_LABEL, &vramSection );
+		header.vram = bytes + vramSection->offset;
+		header.vramSize = vramSection->size;
 	}
 
 	void WriteTo( Serializer& s ) const
@@ -469,6 +491,7 @@ public:
 		cycle = masterCycles_t( 0 );
 	}
 
+	stateHeader_t	header;
 private:
 	uint8_t*		bytes;
 	uint32_t		byteCount;
