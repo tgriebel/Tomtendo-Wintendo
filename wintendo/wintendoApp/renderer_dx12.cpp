@@ -3,31 +3,31 @@
 
 void wtRenderer::WaitForGpu()
 {
-	ThrowIfFailed( cmd.d3d12CommandQueue->Signal( sync.fence.Get(), sync.fenceValues[ currentFrame ] ) );
+	ThrowIfFailed( cmd.d3d12CommandQueue->Signal( sync.fence.Get(), sync.fenceValues[ currentFrameIx ] ) );
 
-	ThrowIfFailed( sync.fence->SetEventOnCompletion( sync.fenceValues[ currentFrame ], sync.fenceEvent ) );
+	ThrowIfFailed( sync.fence->SetEventOnCompletion( sync.fenceValues[ currentFrameIx ], sync.fenceEvent ) );
 	WaitForSingleObjectEx( sync.fenceEvent, INFINITE, FALSE );
 
-	sync.fenceValues[ currentFrame ]++;
+	sync.fenceValues[ currentFrameIx ]++;
 }
 
 
 void wtRenderer::AdvanceNextFrame()
 {
-	const UINT64 currentFence = sync.fenceValues[ currentFrame ];
+	const UINT64 currentFence = sync.fenceValues[ currentFrameIx ];
 	ThrowIfFailed( cmd.d3d12CommandQueue->Signal( sync.fence.Get(), currentFence ) );
 
-	currentFrame = swapChain.dxgi->GetCurrentBackBufferIndex();
+	currentFrameIx = swapChain.dxgi->GetCurrentBackBufferIndex();
 
-	if ( sync.fence->GetCompletedValue() < sync.fenceValues[ currentFrame ] )
+	if ( sync.fence->GetCompletedValue() < sync.fenceValues[ currentFrameIx ] )
 	{
-		ThrowIfFailed( sync.fence->SetEventOnCompletion( sync.fenceValues[ currentFrame ], sync.fenceEvent ) );
+		ThrowIfFailed( sync.fence->SetEventOnCompletion( sync.fenceValues[ currentFrameIx ], sync.fenceEvent ) );
 		WaitForSingleObject( sync.fenceEvent, INFINITE );
 	//	PrintLog( "GPU WAIT.\n" );
 	}
 
-	sync.fenceValues[ currentFrame ] = currentFence + 1;
-	frameNumber = sync.fenceValues[ currentFrame ];
+	sync.fenceValues[ currentFrameIx ] = currentFence + 1;
+	frameNumber = sync.fenceValues[ currentFrameIx ];
 }
 
 
@@ -227,13 +227,13 @@ void wtRenderer::CreateSyncObjects()
 {
 	for ( uint32_t i = 0; i < FrameResultCount; ++i )
 	{
-		sync.frameSubmitSemaphore[ i ] = CreateSemaphore( NULL, 1, 1, NULL );
-		sync.audioCopySemaphore[ i ] = CreateSemaphore( NULL, 1, 1, NULL );
+		sync.frameSubmitWriteLock[ i ] = CreateSemaphore( NULL, 2, 2, NULL );
+		sync.frameSubmitReadLock[ i ] = CreateSemaphore( NULL, 2, 2, NULL );
 	}
 
 	ThrowIfFailed( d3d12device->CreateFence( 0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS( &sync.fence ) ) );
 	ThrowIfFailed( d3d12device->CreateFence( 0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS( &sync.cpyFence ) ) );
-	sync.fenceValues[ currentFrame ]++;
+	sync.fenceValues[ currentFrameIx ]++;
 
 	sync.fenceEvent = CreateEvent( nullptr, FALSE, FALSE, nullptr );
 	if ( sync.fenceEvent == nullptr )
@@ -304,42 +304,42 @@ void wtRenderer::CreateVertexBuffers()
 
 void wtRenderer::BuildDrawCommandList()
 {
-	ThrowIfFailed( cmd.commandAllocator[ currentFrame ]->Reset() );
-	ThrowIfFailed( cmd.commandList[ currentFrame ]->Reset( cmd.commandAllocator[ currentFrame ].Get(), pipeline.pso.Get() ) );
+	ThrowIfFailed( cmd.commandAllocator[ currentFrameIx ]->Reset() );
+	ThrowIfFailed( cmd.commandList[ currentFrameIx ]->Reset( cmd.commandAllocator[ currentFrameIx ].Get(), pipeline.pso.Get() ) );
 
-	cmd.commandList[ currentFrame ]->SetGraphicsRootSignature( pipeline.rootSig.Get() );
+	cmd.commandList[ currentFrameIx ]->SetGraphicsRootSignature( pipeline.rootSig.Get() );
 
 	ID3D12DescriptorHeap* ppHeaps[] = { pipeline.cbvSrvUavHeap.Get() };
-	cmd.commandList[ currentFrame ]->SetDescriptorHeaps( _countof( ppHeaps ), ppHeaps );
-	cmd.commandList[ currentFrame ]->SetGraphicsRootDescriptorTable( 0, textureResources[ currentFrame ][ 0 ].gpuHandle );
-	cmd.commandList[ currentFrame ]->SetGraphicsRootDescriptorTable( 1, pipeline.cbvSrvGpuHandle );
+	cmd.commandList[ currentFrameIx ]->SetDescriptorHeaps( _countof( ppHeaps ), ppHeaps );
+	cmd.commandList[ currentFrameIx ]->SetGraphicsRootDescriptorTable( 0, textureResources[ currentFrameIx ][ 0 ].gpuHandle );
+	cmd.commandList[ currentFrameIx ]->SetGraphicsRootDescriptorTable( 1, pipeline.cbvSrvGpuHandle );
 
-	cmd.commandList[ currentFrame ]->RSSetViewports( 1, &view.viewport );
-	cmd.commandList[ currentFrame ]->RSSetScissorRects( 1, &view.scissorRect );
+	cmd.commandList[ currentFrameIx ]->RSSetViewports( 1, &view.viewport );
+	cmd.commandList[ currentFrameIx ]->RSSetScissorRects( 1, &view.scissorRect );
 
-	D3D12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition( swapChain.renderTargets[ currentFrame ].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET );
-	cmd.commandList[ currentFrame ]->ResourceBarrier( 1, &barrier );
+	D3D12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition( swapChain.renderTargets[ currentFrameIx ].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET );
+	cmd.commandList[ currentFrameIx ]->ResourceBarrier( 1, &barrier );
 
-	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle( swapChain.rtvHeap->GetCPUDescriptorHandleForHeapStart(), currentFrame, swapChain.rtvDescriptorSize );
-	cmd.commandList[ currentFrame ]->OMSetRenderTargets( 1, &rtvHandle, FALSE, nullptr );
+	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle( swapChain.rtvHeap->GetCPUDescriptorHandleForHeapStart(), currentFrameIx, swapChain.rtvDescriptorSize );
+	cmd.commandList[ currentFrameIx ]->OMSetRenderTargets( 1, &rtvHandle, FALSE, nullptr );
 
 	const float clearColor[] = { 0.1f, 0.2f, 0.2f, 1.0f };
-	cmd.commandList[ currentFrame ]->ClearRenderTargetView( rtvHandle, clearColor, 0, nullptr );
-	cmd.commandList[ currentFrame ]->IASetPrimitiveTopology( D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST );
-	cmd.commandList[ currentFrame ]->IASetVertexBuffers( 0, 1, &pipeline.vbView );
-	cmd.commandList[ currentFrame ]->DrawInstanced( 6, 1, 0, 0 );
+	cmd.commandList[ currentFrameIx ]->ClearRenderTargetView( rtvHandle, clearColor, 0, nullptr );
+	cmd.commandList[ currentFrameIx ]->IASetPrimitiveTopology( D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST );
+	cmd.commandList[ currentFrameIx ]->IASetVertexBuffers( 0, 1, &pipeline.vbView );
+	cmd.commandList[ currentFrameIx ]->DrawInstanced( 6, 1, 0, 0 );
 
-	barrier = CD3DX12_RESOURCE_BARRIER::Transition( swapChain.renderTargets[ currentFrame ].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT );
-	cmd.commandList[ currentFrame ]->ResourceBarrier( 1, &barrier );
+	barrier = CD3DX12_RESOURCE_BARRIER::Transition( swapChain.renderTargets[ currentFrameIx ].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT );
+	cmd.commandList[ currentFrameIx ]->ResourceBarrier( 1, &barrier );
 
-	ThrowIfFailed( cmd.commandList[ currentFrame ]->Close() );
+	ThrowIfFailed( cmd.commandList[ currentFrameIx ]->Close() );
 }
 
 
 void wtRenderer::ExecuteDrawCommands()
 {
-	ID3D12CommandList* ppCommandLists[] = { cmd.commandList[ currentFrame ].Get(), cmd.imguiCommandList[ currentFrame ].Get() };
-	cmd.d3d12CommandQueue->Wait( sync.cpyFence.Get(), sync.fenceValues[ currentFrame ] );
+	ID3D12CommandList* ppCommandLists[] = { cmd.commandList[ currentFrameIx ].Get(), cmd.imguiCommandList[ currentFrameIx ].Get() };
+	cmd.d3d12CommandQueue->Wait( sync.cpyFence.Get(), sync.fenceValues[ currentFrameIx ] );
 	cmd.d3d12CommandQueue->ExecuteCommandLists( _countof( ppCommandLists ), ppCommandLists );
 }
 
@@ -388,7 +388,7 @@ void wtRenderer::CreateFrameBuffers()
 	ThrowIfFailed( dxgiFactory->CreateSwapChainForHwnd( cmd.d3d12CommandQueue.Get(), appDisplay.hWnd, &swapChainDesc, &swapChainFullDesc, nullptr, &tmpSwapChain ) );
 
 	ThrowIfFailed( tmpSwapChain.As( &swapChain.dxgi ) );
-	currentFrame = swapChain.dxgi->GetCurrentBackBufferIndex();
+	currentFrameIx = swapChain.dxgi->GetCurrentBackBufferIndex();
 
 	D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc = {};
 	rtvHeapDesc.NumDescriptors = FrameCount;
@@ -525,8 +525,8 @@ void wtRenderer::DestroyD3D12()
 	CloseHandle( sync.fenceEvent );
 	for ( uint32_t i = 0; i < FrameResultCount; ++i )
 	{
-		CloseHandle( sync.frameSubmitSemaphore[ i ] );
-		CloseHandle( sync.audioCopySemaphore[ i ] );
+		CloseHandle( sync.frameSubmitWriteLock[ i ] );
+		CloseHandle( sync.frameSubmitReadLock[ i ] );
 	}
 	sync.cpyFence->Release();
 	sync.fence->Release();
@@ -547,7 +547,7 @@ void wtRenderer::IssueTextureCopyCommands( const uint32_t workFrame )
 	uint32_t imageIx = 0;
 	const wtRawImageInterface* sourceImages[ SHADER_RESOURES_TEXTURE_CNT ];
 	// All that this needs right now are the dimensions.
-	sourceImages[ imageIx++ ] = &fr->frameBuffer;
+	sourceImages[ imageIx++ ] = fr->frameBuffer;
 	sourceImages[ imageIx++ ] = fr->nameTableSheet;
 	sourceImages[ imageIx++ ] = fr->paletteDebug;
 	sourceImages[ imageIx++ ] = fr->patternTable0;

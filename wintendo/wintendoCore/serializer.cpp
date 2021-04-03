@@ -1,5 +1,5 @@
-#include <assert.h>
 #include "serializer.h"
+#include "assert.h"
 
 uint8_t* Serializer::GetPtr()
 {

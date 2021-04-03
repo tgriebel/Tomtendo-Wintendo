@@ -18,23 +18,23 @@ void wtRenderer::BuildImguiCommandList()
 	wtAppDebug_t&	debugData		= app->debugData;
 	wtAudioEngine&	audio			= *app->audio;
 
-	ThrowIfFailed( cmd.imguiCommandAllocator[ currentFrame ]->Reset() );
-	ThrowIfFailed( cmd.imguiCommandList[ currentFrame ]->Reset( cmd.imguiCommandAllocator[ currentFrame ].Get(), pipeline.pso.Get() ) );
+	ThrowIfFailed( cmd.imguiCommandAllocator[ currentFrameIx ]->Reset() );
+	ThrowIfFailed( cmd.imguiCommandList[ currentFrameIx ]->Reset( cmd.imguiCommandAllocator[ currentFrameIx ].Get(), pipeline.pso.Get() ) );
 
-	cmd.imguiCommandList[ currentFrame ]->SetGraphicsRootSignature( pipeline.rootSig.Get() );
+	cmd.imguiCommandList[ currentFrameIx ]->SetGraphicsRootSignature( pipeline.rootSig.Get() );
 
 	ID3D12DescriptorHeap* ppHeaps[] = { pipeline.cbvSrvUavHeap.Get() };
-	cmd.imguiCommandList[ currentFrame ]->SetDescriptorHeaps( _countof( ppHeaps ), ppHeaps );
-	cmd.imguiCommandList[ currentFrame ]->SetGraphicsRootDescriptorTable( 0, pipeline.cbvSrvUavHeap->GetGPUDescriptorHandleForHeapStart() );
+	cmd.imguiCommandList[ currentFrameIx ]->SetDescriptorHeaps( _countof( ppHeaps ), ppHeaps );
+	cmd.imguiCommandList[ currentFrameIx ]->SetGraphicsRootDescriptorTable( 0, pipeline.cbvSrvUavHeap->GetGPUDescriptorHandleForHeapStart() );
 
-	cmd.imguiCommandList[ currentFrame ]->RSSetViewports( 1, &view.viewport );
-	cmd.imguiCommandList[ currentFrame ]->RSSetScissorRects( 1, &view.scissorRect );
+	cmd.imguiCommandList[ currentFrameIx ]->RSSetViewports( 1, &view.viewport );
+	cmd.imguiCommandList[ currentFrameIx ]->RSSetScissorRects( 1, &view.scissorRect );
 
-	D3D12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition( swapChain.renderTargets[ currentFrame ].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET );
-	cmd.imguiCommandList[ currentFrame ]->ResourceBarrier( 1, &barrier );
+	D3D12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition( swapChain.renderTargets[ currentFrameIx ].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET );
+	cmd.imguiCommandList[ currentFrameIx ]->ResourceBarrier( 1, &barrier );
 
-	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle( swapChain.rtvHeap->GetCPUDescriptorHandleForHeapStart(), currentFrame, swapChain.rtvDescriptorSize );
-	cmd.imguiCommandList[ currentFrame ]->OMSetRenderTargets( 1, &rtvHandle, FALSE, nullptr );
+	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle( swapChain.rtvHeap->GetCPUDescriptorHandleForHeapStart(), currentFrameIx, swapChain.rtvDescriptorSize );
+	cmd.imguiCommandList[ currentFrameIx ]->OMSetRenderTargets( 1, &rtvHandle, FALSE, nullptr );
 
 	ImGui_ImplDX12_NewFrame();
 	ImGui_ImplWin32_NewFrame();
@@ -234,16 +234,16 @@ void wtRenderer::BuildImguiCommandList()
 			if ( ImGui::CollapsingHeader( "Frame Buffer", ImGuiTreeNodeFlags_OpenOnArrow ) )
 			{
 				const uint32_t imageId = 0;
-				const wtRawImageInterface* srcImage = &fr->frameBuffer;
-				ImGui::Image( (ImTextureID)textureResources[ currentFrame ][ imageId ].gpuHandle.ptr, ImVec2( (float)srcImage->GetWidth(), (float)srcImage->GetHeight() ) );
-				ImGui::Text( "%.3f ms/frame (%.1f FPS)",		fr->dbgInfo.frameTimeUs / 1000.0f, 1000000.0f / fr->dbgInfo.frameTimeUs );
-				ImGui::Text( "Display Frame #%i",				frameNumber );
-				ImGui::Text( "Emulator Frame #%i",				fr->dbgInfo.frameNumber );
-				ImGui::Text( "Emulator Run Invocations #%i",	fr->dbgInfo.runInvocations );
-				ImGui::Text( "Avg Frames Emulated %f",			fr->dbgInfo.framePerRun / (float)fr->dbgInfo.runInvocations );
-				ImGui::Text( "Copy time: %4.2f ms",				app->t.copyTime );
-				ImGui::Text( "Time since last copy: %4.2f ms",	app->t.elapsedCopyTime );
-				ImGui::Text( "Copy size: %i MB",				sizeof( *fr ) / 1024 / 1024 );
+				const wtRawImageInterface* srcImage = fr->frameBuffer;
+				ImGui::Image( (ImTextureID)textureResources[ currentFrameIx ][ imageId ].gpuHandle.ptr, ImVec2( (float)srcImage->GetWidth(), (float)srcImage->GetHeight() ) );
+				ImGui::Text( "%.3f ms/frame (%.1f FPS)",				fr->dbgInfo.frameTimeUs / 1000.0f, 1000000.0f / fr->dbgInfo.frameTimeUs );
+				ImGui::Text( "Display Frame #%i",						frameNumber );
+				ImGui::Text( "Emulator Frame #%i",						fr->dbgInfo.frameNumber );
+				ImGui::Text( "Emulator Run Invocations #%i",			fr->dbgInfo.runInvocations );
+				ImGui::Text( "Avg Frames Emulated %f",					fr->dbgInfo.framePerRun / (float)fr->dbgInfo.runInvocations );
+				ImGui::Text( "Copy time: %4.2f ms",						app->t.copyTime );
+				ImGui::Text( "Time since last invocation: %4.2f ms",	app->t.elapsedCopyTime );
+				ImGui::Text( "Copy size: %i MB",						sizeof( *fr ) / 1024 / 1024 );
 
 				frameTimePlot.EnqueFIFO( fr->dbgInfo.frameTimeUs / 1000.0f );
 
@@ -263,7 +263,7 @@ void wtRenderer::BuildImguiCommandList()
 				ImGui::SliderFloat( "Scale", &ntScale, 0.1f, 10.0f );
 				const uint32_t imageId = 1;
 				const wtRawImageInterface* srcImage = fr->nameTableSheet;
-				ImGui::Image( (ImTextureID)textureResources[ currentFrame ][ imageId ].gpuHandle.ptr, ImVec2( ntScale * srcImage->GetWidth(), ntScale * srcImage->GetHeight() ) );
+				ImGui::Image( (ImTextureID)textureResources[ currentFrameIx ][ imageId ].gpuHandle.ptr, ImVec2( ntScale * srcImage->GetWidth(), ntScale * srcImage->GetHeight() ) );
 			}
 
 			if ( ImGui::CollapsingHeader( "Pattern Table", ImGuiTreeNodeFlags_OpenOnArrow ) )
@@ -272,10 +272,10 @@ void wtRenderer::BuildImguiCommandList()
 				static int patternTableSelect = 0;
 				ImGui::SliderFloat( "Scale", &ptScale, 0.1f, 10.0f );
 				ImGui::Columns( 2 );
-				const wtAppTextureD3D12& ptrn0 = textureResources[ currentFrame ][ SHADER_RESOURES_PATTERN0 ];
+				const wtAppTextureD3D12& ptrn0 = textureResources[ currentFrameIx ][ SHADER_RESOURES_PATTERN0 ];
 				ImGui::Image( (ImTextureID)ptrn0.gpuHandle.ptr, ImVec2( ptScale * ptrn0.width, ptScale * ptrn0.height ) );
 				ImGui::NextColumn();
-				const wtAppTextureD3D12& ptrn1 = textureResources[ currentFrame ][ SHADER_RESOURES_PATTERN1 ];
+				const wtAppTextureD3D12& ptrn1 = textureResources[ currentFrameIx ][ SHADER_RESOURES_PATTERN1 ];
 				ImGui::Image( (ImTextureID)ptrn1.gpuHandle.ptr, ImVec2( ptScale * ptrn1.width, ptScale * ptrn1.height ) );
 				ImGui::Columns( 1 );
 			}
@@ -293,7 +293,7 @@ void wtRenderer::BuildImguiCommandList()
 				{
 					const uint32_t imageId = SHADER_RESOURES_CHRBANK0 + i;
 					const wtRawImageInterface* srcImage = &debugData.chrRom[ i ];
-					ImGui::Image( (ImTextureID)textureResources[ currentFrame ][ imageId ].gpuHandle.ptr, ImVec2( (float)srcImage->GetWidth(), (float)srcImage->GetHeight() ) );
+					ImGui::Image( (ImTextureID)textureResources[ currentFrameIx ][ imageId ].gpuHandle.ptr, ImVec2( (float)srcImage->GetWidth(), (float)srcImage->GetHeight() ) );
 					ImGui::NextColumn();
 				}
 				ImGui::Columns( 1 );
@@ -303,7 +303,7 @@ void wtRenderer::BuildImguiCommandList()
 			{
 				const uint32_t imageId = 2;
 				const wtRawImageInterface* srcImage = fr->paletteDebug;
-				ImGui::Image( (ImTextureID)textureResources[ currentFrame ][ imageId ].gpuHandle.ptr, ImVec2( 10.0f * srcImage->GetWidth(), 10.0f * srcImage->GetHeight() ) );
+				ImGui::Image( (ImTextureID)textureResources[ currentFrameIx ][ imageId ].gpuHandle.ptr, ImVec2( 10.0f * srcImage->GetWidth(), 10.0f * srcImage->GetHeight() ) );
 			}
 
 			if ( ImGui::CollapsingHeader( "Controls", ImGuiTreeNodeFlags_OpenOnArrow ) )
@@ -330,7 +330,7 @@ void wtRenderer::BuildImguiCommandList()
 				ImGui::Text( "OAM Index: %i",		fr->ppuDebug.spritePicked.oamIndex );
 				ImGui::Text( "2nd OAM Index: %i",	fr->ppuDebug.spritePicked.secondaryOamIndex );
 				ImGui::NextColumn();
-				ImGui::Image( (ImTextureID)textureResources[ currentFrame ][ imageId ].gpuHandle.ptr, ImVec2( 4.0f * srcImage->GetWidth(), 4.0f * srcImage->GetHeight() ) );
+				ImGui::Image( (ImTextureID)textureResources[ currentFrameIx ][ imageId ].gpuHandle.ptr, ImVec2( 4.0f * srcImage->GetWidth(), 4.0f * srcImage->GetHeight() ) );
 				ImGui::Columns( 1 );
 			}
 
@@ -368,7 +368,7 @@ void wtRenderer::BuildImguiCommandList()
 				ImGui::Text( "$4001 - Sweep Shift: %i",		apuDebug.pulse1.regRamp.sem.shift );
 				ImGui::Text( "$4001 - Sweep Negate: %i",	apuDebug.pulse1.regRamp.sem.negate );
 				ImGui::Columns( 1 );
-				ImGui::PlotHistogram( "Wave", GetQueueSample, &fr->soundOutput.dbgPulse1, fr->soundOutput.dbgPulse1.GetSampleCnt(), 0, "", -15, 15, ImVec2( 1000.0f, 100.0f ) );
+				ImGui::PlotHistogram( "Wave", GetQueueSample, &fr->soundOutput->dbgPulse1, fr->soundOutput->dbgPulse1.GetSampleCnt(), 0, "", -15, 15, ImVec2( 1000.0f, 100.0f ) );
 			}
 			if ( ImGui::CollapsingHeader( "Pulse 2", ImGuiTreeNodeFlags_OpenOnArrow ) )
 			{
@@ -376,7 +376,7 @@ void wtRenderer::BuildImguiCommandList()
 				ImGui::SameLine();
 				ImGui::Text( "| $4015 - Enabled: %i",		apuDebug.status.sem.p2 );
 				ImGui::Columns( 2 );
-				ImGui::Text( "Samples: %i",					fr->soundOutput.dbgPulse2.GetSampleCnt() );
+				ImGui::Text( "Samples: %i",					fr->soundOutput->dbgPulse2.GetSampleCnt() );
 				ImGui::Text( "$4004 - Duty: %i",			apuDebug.pulse2.regCtrl.sem.duty );
 				ImGui::Text( "$4004 - Constant: %i",		apuDebug.pulse2.regCtrl.sem.isConstant );
 				ImGui::Text( "$4004 - Reg Volume: %i",		apuDebug.pulse2.regCtrl.sem.volume );
@@ -391,7 +391,7 @@ void wtRenderer::BuildImguiCommandList()
 				ImGui::Text( "$4005 - Sweep Shift: %i",		apuDebug.pulse2.regRamp.sem.shift );
 				ImGui::Text( "$4005 - Sweep Negate: %i",	apuDebug.pulse2.regRamp.sem.negate );
 				ImGui::Columns( 1 );
-				ImGui::PlotHistogram( "Wave", GetQueueSample, &fr->soundOutput.dbgPulse2, fr->soundOutput.dbgPulse2.GetSampleCnt(), 0, "", -15, 15, ImVec2( 1000.0f, 100.0f ) );
+				ImGui::PlotHistogram( "Wave", GetQueueSample, &fr->soundOutput->dbgPulse2, fr->soundOutput->dbgPulse2.GetSampleCnt(), 0, "", -15, 15, ImVec2( 1000.0f, 100.0f ) );
 			}
 			if ( ImGui::CollapsingHeader( "Triangle", ImGuiTreeNodeFlags_OpenOnArrow ) )
 			{
@@ -399,7 +399,7 @@ void wtRenderer::BuildImguiCommandList()
 				ImGui::SameLine();
 				ImGui::Text( "| $4015 - Enabled: %i",		apuDebug.status.sem.t );
 				ImGui::Columns( 2 );
-				ImGui::Text( "Samples: %i",					fr->soundOutput.dbgTri.GetSampleCnt() );
+				ImGui::Text( "Samples: %i",					fr->soundOutput->dbgTri.GetSampleCnt() );
 				ImGui::Text( "Length Counter: %i",			apuDebug.triangle.lengthCounter );
 				ImGui::Text( "Linear Counter: %i",			apuDebug.triangle.linearCounter.Value() );
 				ImGui::Text( "Timer: %i",					apuDebug.triangle.timer.Value() );
@@ -409,7 +409,7 @@ void wtRenderer::BuildImguiCommandList()
 				ImGui::Text( "$400A - Timer: %i",			apuDebug.triangle.regTimer.sem0.timer );
 				ImGui::Text( "$400B - Counter: %i",			apuDebug.triangle.regTimer.sem0.counter );
 				ImGui::Columns( 1 );
-				ImGui::PlotHistogram( "Wave", GetQueueSample, &fr->soundOutput.dbgTri, fr->soundOutput.dbgTri.GetSampleCnt(), 0, "", -30, 30, ImVec2( 1000.0f, 100.0f ) );
+				ImGui::PlotHistogram( "Wave", GetQueueSample, &fr->soundOutput->dbgTri, fr->soundOutput->dbgTri.GetSampleCnt(), 0, "", -30, 30, ImVec2( 1000.0f, 100.0f ) );
 			}
 			if ( ImGui::CollapsingHeader( "Noise", ImGuiTreeNodeFlags_OpenOnArrow ) )
 			{
@@ -417,7 +417,7 @@ void wtRenderer::BuildImguiCommandList()
 				ImGui::SameLine();
 				ImGui::Text( "| $4015 - Enabled: %i",		apuDebug.status.sem.n );
 				ImGui::Columns( 2 );
-				ImGui::Text( "Samples: %i",					fr->soundOutput.dbgNoise.GetSampleCnt() );
+				ImGui::Text( "Samples: %i",					fr->soundOutput->dbgNoise.GetSampleCnt() );
 				ImGui::Text( "Shifter: %i",					apuDebug.noise.shift.Value() );
 				ImGui::Text( "Timer: %i",					apuDebug.noise.timer );
 				ImGui::NextColumn();
@@ -428,7 +428,7 @@ void wtRenderer::BuildImguiCommandList()
 				ImGui::Text( "$400E - Period: %i",			apuDebug.noise.regFreq1.sem.period );
 				ImGui::Text( "$400F - Length Counter: %i",	apuDebug.noise.regFreq2.sem.length );
 				ImGui::Columns( 1 );
-				ImGui::PlotHistogram( "Wave", GetQueueSample, &fr->soundOutput.dbgNoise, fr->soundOutput.dbgNoise.GetSampleCnt(), 0, "", -30, 30, ImVec2( 1000.0f, 100.0f ) );
+				ImGui::PlotHistogram( "Wave", GetQueueSample, &fr->soundOutput->dbgNoise, fr->soundOutput->dbgNoise.GetSampleCnt(), 0, "", -30, 30, ImVec2( 1000.0f, 100.0f ) );
 			}
 			if ( ImGui::CollapsingHeader( "DMC", ImGuiTreeNodeFlags_OpenOnArrow ) )
 			{
@@ -436,7 +436,7 @@ void wtRenderer::BuildImguiCommandList()
 				ImGui::SameLine();
 				ImGui::Text( "| $4015 - Enabled: %i",		apuDebug.status.sem.d );
 				ImGui::Columns( 2 );
-				ImGui::Text( "Samples: %i",					fr->soundOutput.dbgDmc.GetSampleCnt() );
+				ImGui::Text( "Samples: %i",					fr->soundOutput->dbgDmc.GetSampleCnt() );
 				ImGui::Text( "Volume: %i",					apuDebug.dmc.outputLevel.Value() );
 				ImGui::Text( "Sample Buffer: %i",			apuDebug.dmc.sampleBuffer );
 				ImGui::Text( "Bit Counter: %i",				apuDebug.dmc.bitCnt );
@@ -452,7 +452,7 @@ void wtRenderer::BuildImguiCommandList()
 				ImGui::Text( "$4012 - Addr: %X",			apuDebug.dmc.regAddr );
 				ImGui::Text( "$4013 - Length: %i",			apuDebug.dmc.regLength );
 				ImGui::Columns( 1 );
-				ImGui::PlotHistogram( "Wave", GetQueueSample, &fr->soundOutput.dbgDmc, fr->soundOutput.dbgDmc.GetSampleCnt(), 0, "", -30, 30, ImVec2( 1000.0f, 100.0f ) );
+				ImGui::PlotHistogram( "Wave", GetQueueSample, &fr->soundOutput->dbgDmc, fr->soundOutput->dbgDmc.GetSampleCnt(), 0, "", -30, 30, ImVec2( 1000.0f, 100.0f ) );
 			}
 			if ( ImGui::CollapsingHeader( "Frame Counter", ImGuiTreeNodeFlags_OpenOnArrow ) )
 			{
@@ -522,11 +522,11 @@ void wtRenderer::BuildImguiCommandList()
 	playbackFrame = min( playbackFrame, static_cast<int32_t>( fr->stateCount ) );
 
 	ImGui::Render();
-	ImGui_ImplDX12_RenderDrawData( ImGui::GetDrawData(), cmd.imguiCommandList[ currentFrame ].Get() );
+	ImGui_ImplDX12_RenderDrawData( ImGui::GetDrawData(), cmd.imguiCommandList[ currentFrameIx ].Get() );
 
-	barrier = CD3DX12_RESOURCE_BARRIER::Transition( swapChain.renderTargets[ currentFrame ].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT );
-	cmd.imguiCommandList[ currentFrame ]->ResourceBarrier( 1, &barrier );
+	barrier = CD3DX12_RESOURCE_BARRIER::Transition( swapChain.renderTargets[ currentFrameIx ].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT );
+	cmd.imguiCommandList[ currentFrameIx ]->ResourceBarrier( 1, &barrier );
 
-	ThrowIfFailed( cmd.imguiCommandList[ currentFrame ]->Close() );
+	ThrowIfFailed( cmd.imguiCommandList[ currentFrameIx ]->Close() );
 #endif
 }

@@ -44,6 +44,7 @@ struct wtAudioEngine
 	int32_t								consumeBufferIx		= 0;
 	int32_t								totalAudioSubmits	= 0;
 	int32_t								totalAudioBuffers	= 0;
+	uint32_t							emulatorFrame		= 0;
 
 #if defined(_DEBUG)
 	bool								enableSound			= false;

@@ -6,7 +6,6 @@
 #include <string>
 #include <wchar.h>
 #include <sstream>
-#include <assert.h>
 
 #include "bitmap.h"
 #include "NesSystem.h"

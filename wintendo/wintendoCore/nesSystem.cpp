@@ -1,5 +1,4 @@
 #include "stdafx.h"
-#include <assert.h>
 #include <sstream>
 #include <fstream>
 #include <iostream>
@@ -331,13 +330,13 @@ void wtSystem::WriteInput( const uint16_t address, const uint8_t value )
 
 void wtSystem::GetFrameResult( wtFrameResult& outFrameResult )
 {
-	outFrameResult.frameBuffer = frameBuffer[ finishedFrameIx ];
-	outFrameResult.nameTableSheet = &nameTableSheet;
-	outFrameResult.paletteDebug = &paletteDebug;
-	outFrameResult.patternTable0 = &patternTable0;
-	outFrameResult.patternTable1 = &patternTable1;
-	outFrameResult.pickedObj8x16 = &pickedObj8x16;
-	outFrameResult.ppuDebug = ppu.dbgInfo;
+	outFrameResult.frameBuffer		= &frameBuffer[ finishedFrameIx ];
+	outFrameResult.nameTableSheet	= &nameTableSheet;
+	outFrameResult.paletteDebug		= &paletteDebug;
+	outFrameResult.patternTable0	= &patternTable0;
+	outFrameResult.patternTable1	= &patternTable1;
+	outFrameResult.pickedObj8x16	= &pickedObj8x16;
+	outFrameResult.ppuDebug			= ppu.dbgInfo;
 
 	GetState( outFrameResult.cpuDebug );
 	memcpy( outFrameResult.memDebug.cpuMemory, memory, memDebug_t::CpuMemorySize );
@@ -355,7 +354,7 @@ void wtSystem::GetFrameResult( wtFrameResult& outFrameResult )
 
 	if ( apu.frameOutput != nullptr )
 	{
-		outFrameResult.soundOutput = *apu.frameOutput;
+		outFrameResult.soundOutput = apu.frameOutput;
 		apu.GetDebugInfo( outFrameResult.apuDebug );
 		apu.frameOutput = nullptr;
 	}

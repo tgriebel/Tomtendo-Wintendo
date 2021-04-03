@@ -2,7 +2,6 @@
 
 #include <string>
 #include <chrono>
-#include <assert.h>
 #include <sstream>
 #include <fstream>
 #include <iostream>
@@ -48,8 +47,8 @@ struct wtFrameResult
 	uint64_t					currentFrame;
 	uint64_t					stateCount;
 	replayStateCode_t			stateCode;
-	wtDisplayImage				frameBuffer;
-	apuOutput_t					soundOutput;
+	wtDisplayImage*				frameBuffer;
+	apuOutput_t*				soundOutput;
 	bool						sndReady;
 
 	// Debug

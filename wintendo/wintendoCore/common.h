@@ -1,7 +1,6 @@
 #pragma once
 
 #include <string>
-#include <assert.h>
 #include <map>
 #include <queue>
 #include <thread>
@@ -9,6 +8,7 @@
 #include "bitmap.h"
 #include "util.h"
 #include "serializer.h"
+#include "assert.h"
 
 #define NES_MODE			(1)
 #define DEBUG_MODE			(0)
@@ -273,7 +273,8 @@ class wtRawImageInterface
 public:
 	virtual void					SetPixel( const uint32_t x, const uint32_t y, const Pixel& pixel ) = 0;
 	virtual void					Set( const uint32_t index, const Pixel value ) = 0;
-	virtual void					Clear() = 0;
+	virtual const Pixel&			Get( const uint32_t index ) = 0;
+	virtual void					Clear( const uint32_t r8g8b8a8 = 0 ) = 0;
 
 	virtual const uint32_t *const	GetRawBuffer() const = 0;
 	virtual uint32_t				GetWidth() const = 0;
@@ -334,16 +335,26 @@ public:
 		}
 	}
 
+	const Pixel& Get( const uint32_t index )
+	{
+		assert( index < length );
+		if ( index < length )
+		{
+			return buffer[ index ];
+		}
+		return buffer[ 0 ];
+	}
+
 	inline void SetDebugName( const char* debugName )
 	{
 		name = debugName;
 	}
 
-	void Clear()
+	void Clear( const uint32_t r8g8b8a8 = 0 )
 	{
 		for ( uint32_t i = 0; i < length; ++i )
 		{
-			buffer[i].rawABGR = 0;
+			buffer[i].rawABGR = r8g8b8a8;
 		}
 	}
 

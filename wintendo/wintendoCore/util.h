@@ -1,5 +1,6 @@
 #pragma once
 #include <stdint.h>
+#include "assert.h"
 
 template < uint16_t B >
 class BitCounter

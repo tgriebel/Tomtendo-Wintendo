@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<root>
+ <rdmgr>
+  <timestamp type="u64_t">1616950201</timestamp>
+  <hostname>DESKTOP-PSEHGME</hostname>
+  <os>windows</os>
+  <product>Intel® oneAPI VTune™ Profiler 2021.1.1 Gold</product>
+  <buildNumber type="s32_t">613804</buildNumber>
+  <logicalCPUCount type="s32_t">8</logicalCPUCount>
+  <physicalCoreCount type="s32_t">8</physicalCoreCount>
+  <processorPackageCount type="s32_t">1</processorPackageCount>
+  <CPUFrequency type="s64_t">3000000000</CPUFrequency>
+  <CPUFamily type="s32_t">6</CPUFamily>
+  <CPUModel type="s32_t">158</CPUModel>
+  <CPUStepping type="s32_t">13</CPUStepping>
+  <CPUBrandName>Intel(R) Core(TM) i7-9700F CPU @ 3.00GHz</CPUBrandName>
+  <isa>avx2</isa>
+  <collectionTimeBegin type="u64_t">1616950201</collectionTimeBegin>
+  <collectionTimeEnd type="u64_t">1616950215</collectionTimeEnd>
+  <variables>
+   <at>hs</at>
+  </variables>
+ </rdmgr>
+</root>

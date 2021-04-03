@@ -7,7 +7,6 @@
 #include <fstream>
 #include <string>
 #include <sstream>
-#include <assert.h>
 #include <map>
 #include <bitset>
 #include "common.h"
