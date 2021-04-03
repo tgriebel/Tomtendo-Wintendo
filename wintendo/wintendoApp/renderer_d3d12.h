@@ -195,7 +195,7 @@ public:
 	void									UpdateD3D12();
 	void									DestroyD3D12();
 
-	void									IssueTextureCopyCommands( const uint32_t workFrame );
+	void									IssueTextureCopyCommands( const uint32_t srcFrameIx, const uint32_t renderFrameIx );
 	void									BuildImguiCommandList();
 	void									BuildDrawCommandList();
 	void									ExecuteDrawCommands();
