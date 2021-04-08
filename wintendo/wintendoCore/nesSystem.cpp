@@ -250,7 +250,7 @@ uint8_t wtSystem::ReadMemory( const uint16_t address )
 }
 
 
-uint8_t wtSystem::ReadZeroMemory( const uint16_t address )
+uint8_t wtSystem::ReadZeroPage( const uint16_t address )
 {
 	assert( address <= ZeroPageEnd );
 	return memory[ address ];

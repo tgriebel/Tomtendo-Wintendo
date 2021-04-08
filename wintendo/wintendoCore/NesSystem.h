@@ -211,7 +211,7 @@ public:
 	uint8_t&				GetStack();
 	uint8_t					ReadMemory( const uint16_t address );
 	void					WriteMemory( const uint16_t address, const uint16_t offset, const uint8_t value );
-	uint8_t					ReadZeroMemory( const uint16_t address );
+	uint8_t					ReadZeroPage( const uint16_t address );
 	uint8_t					GetMapperId() const;
 	uint8_t					GetMirrorMode() const;
 	void					SetMirrorMode( uint8_t mode );
