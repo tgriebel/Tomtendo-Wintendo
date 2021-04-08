@@ -233,7 +233,7 @@ void wtRenderer::BuildImguiCommandList()
 		{
 			if ( ImGui::CollapsingHeader( "Frame Buffer", ImGuiTreeNodeFlags_OpenOnArrow ) )
 			{
-				const float avgFrameTime = ( fr->dbgInfo.totalTimeUs / fr->dbgInfo.frameNumber );
+				const float avgFrameTime = ( fr->dbgInfo.totalTimeUs / (float)fr->dbgInfo.frameNumber );
 
 				const uint32_t imageId = 0;
 				const wtRawImageInterface* srcImage = fr->frameBuffer;

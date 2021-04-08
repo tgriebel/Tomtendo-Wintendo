@@ -1,0 +1,18 @@
+<?xml version='1.0' encoding='UTF-8'?>
+
+<bag xmlns:int="http://www.w3.org/2001/XMLSchema#int" xmlns:null="http://www.intel.com/2009/BagSchema#null" xmlns:unsignedLong="http://www.w3.org/2001/XMLSchema#unsignedLong">
+ <entry path="grouper" unsignedLong:size="1">
+  <indexFields>
+   <field path="global_elapsed_time_data_scale"/>
+   <emptyField path="pmu_data_attr_event_type" null:defaultValue=""/>
+   <emptyField path="pmu_data_scale" int:defaultValue="1"/>
+  </indexFields>
+  <int64Fields>
+   <field path="global_elapsed_time_data_duration"/>
+   <emptyField path="pmu_data_duration" int:defaultValue="0"/>
+   <emptyField path="pmu_data_count" int:defaultValue="0"/>
+   <emptyField path="pmu_data_inst_count" int:defaultValue="0"/>
+  </int64Fields>
+  <doubleFields/>
+ </entry>
+</bag>

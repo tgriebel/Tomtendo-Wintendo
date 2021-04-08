@@ -60,6 +60,8 @@ struct wtFrameResult
 };
 
 
+void BackgroundWorker();
+
 class wtSystem
 {
 public:

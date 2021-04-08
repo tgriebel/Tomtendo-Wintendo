@@ -1,0 +1,24 @@
+-r
+C:\Users\thoma\source\repos\nesEmu\wintendo\wintendoApp\VTune Profiler Results\wintendoApp\r031pt
+--itt-config=frame
+--collector=vtsspp
+--sys-config=cswitch
+--pt-mode=full-trace
+--event-config=CPU_CLK_UNHALTED.THREAD
+--pt-mode=cycle-accurate
+--pt-mode=kernel
+--no-stack
+--data-limit-mb=1000
+--disk-space-limit=0
+--mrte-type=java,dotnet
+--event-config=BR_INST_RETIRED.NEAR_TAKEN:sa=200003:usr=yes:os=no
+--bts-count=200
+--platform-type=122
+--uncore-sampling-interval=10
+--mrte-mode=auto
+--etw-config=clr,js
+--p-state-trigger=PT_CLOCKTICKS
+--start-paused
+--
+C:\Users\thoma\source\repos\nesEmu\wintendo\x64\Release\wintendoApp.exe
+C:\Users\thoma\source\repos\nesEmu\wintendo\wintendoApp\

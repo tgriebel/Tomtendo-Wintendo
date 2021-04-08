@@ -1,0 +1,25 @@
+<?xml version='1.0' encoding='UTF-8'?>
+
+<bag xmlns:int="http://www.w3.org/2001/XMLSchema#int" xmlns:null="http://www.intel.com/2009/BagSchema#null" xmlns:unsignedLong="http://www.w3.org/2001/XMLSchema#unsignedLong">
+ <entry path="grouper" unsignedLong:size="0">
+  <indexFields>
+   <field path="dd_thread"/>
+   <field path="cpu_usage_data_attr_utilization"/>
+   <field path="cpu_usage_data_scale"/>
+   <emptyField path="marker_global_data_attr" null:defaultValue=""/>
+   <emptyField path="marker_global_data_scale" int:defaultValue="1"/>
+   <emptyField path="pmu_data_attr_callsite" null:defaultValue=""/>
+   <emptyField path="pmu_data_attr_cpu" null:defaultValue=""/>
+   <emptyField path="pmu_data_attr_event_type" null:defaultValue=""/>
+   <emptyField path="pmu_data_attr_mem_access" null:defaultValue=""/>
+   <emptyField path="pmu_data_attr_tsx_info" null:defaultValue=""/>
+   <emptyField path="pmu_data_scale" int:defaultValue="1"/>
+  </indexFields>
+  <int64Fields>
+   <emptyField path="pmu_data_duration" int:defaultValue="0"/>
+   <emptyField path="pmu_data_count" int:defaultValue="0"/>
+   <emptyField path="pmu_data_inst_count" int:defaultValue="0"/>
+  </int64Fields>
+  <doubleFields/>
+ </entry>
+</bag>

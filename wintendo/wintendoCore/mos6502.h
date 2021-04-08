@@ -74,7 +74,7 @@ struct opInfo_t
 															inline void operator()( struct opState_t& opState );				\
 														};
 
-#define ADDR_MODE_DEF( name )							void Cpu6502::addrMode##name::operator() ( struct opState_t& opState )
+#define ADDR_MODE_DEF( name )							FORCE_INLINE void Cpu6502::addrMode##name::operator() ( struct opState_t& opState )
 
 #define _OP_ADDR( num, name, addrFunc, addrressMode, ops, advance, cycles, hasExtraCycle, isIllegal )							\
 														{																		\
