@@ -250,6 +250,13 @@ uint8_t wtSystem::ReadMemory( const uint16_t address )
 }
 
 
+uint8_t wtSystem::ReadZeroMemory( const uint16_t address )
+{
+	assert( address <= ZeroPageEnd );
+	return memory[ address ];
+}
+
+
 void wtSystem::WriteMemory( const uint16_t address, const uint16_t offset, const uint8_t value )
 {
 	const uint32_t fullAddr = address + offset;

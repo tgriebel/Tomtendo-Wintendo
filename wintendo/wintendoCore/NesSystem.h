@@ -69,7 +69,7 @@ public:
 	static const uint32_t VirtualMemorySize		= 0x10000;
 	static const uint32_t PhysicalMemorySize	= 0x0800;
 	static const uint32_t PageSize				= 0x0100;
-	static const uint32_t ZeroPageSize			= 0x0100;
+	static const uint32_t ZeroPageEnd			= 0x00FF;
 	static const uint32_t BankSize				= 0x4000;
 	static const uint32_t SramSize				= 0x2000;
 	static const uint32_t ChrRomSize			= 0x1000;
@@ -211,6 +211,7 @@ public:
 	uint8_t&				GetStack();
 	uint8_t					ReadMemory( const uint16_t address );
 	void					WriteMemory( const uint16_t address, const uint16_t offset, const uint8_t value );
+	uint8_t					ReadZeroMemory( const uint16_t address );
 	uint8_t					GetMapperId() const;
 	uint8_t					GetMirrorMode() const;
 	void					SetMirrorMode( uint8_t mode );

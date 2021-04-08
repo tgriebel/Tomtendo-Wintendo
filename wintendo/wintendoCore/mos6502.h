@@ -143,11 +143,13 @@ struct cpuAddrInfo_t
 
 struct opState_t
 {
-	opState_t() : addrInfo(), opCycles( 0 ), opCode( 0 ) {}
+	opState_t() : addrInfo(), opCycles( 0 ), opCode( 0 ), op0( 0 ), op1( 0 ) {}
 
 	cpuAddrInfo_t	addrInfo;
 	cpuCycle_t		opCycles;
 	uint8_t			opCode;
+	uint8_t			op0;
+	uint8_t			op1;
 	bool			extraCycle;
 };
 
@@ -296,7 +298,7 @@ private:
 
 	void		AdvancePC( const uint16_t places );
 	uint8_t		ReadOperand( const uint16_t offset ) const;
-	uint16_t	ReadAddressOperand() const;
+	uint16_t	ReadAddressOperand( struct opState_t& opState ) const;
 
 	void		SetAluFlags( const uint16_t value );
 
