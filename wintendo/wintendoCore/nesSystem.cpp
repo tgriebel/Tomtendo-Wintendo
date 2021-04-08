@@ -361,6 +361,8 @@ void wtSystem::GetFrameResult( wtFrameResult& outFrameResult )
 	outFrameResult.currentFrame		= frameNumber;
 	outFrameResult.stateCount		= static_cast<uint64_t>( states.size() );
 	outFrameResult.stateCode		= playbackState.replayState;
+	outFrameResult.dbgFrameBufferIx	= finishedFrameIx;
+	outFrameResult.frameToggleCount = frameTogglesPerRun;
 }
 
 
@@ -701,12 +703,8 @@ void wtSystem::GenerateChrRomTables( wtPatternTableImage chrRom[ 32 ] )
 }
 
 
-void wtSystem::RunStateControl( const bool newFrame, masterCycles_t& nextCycle )
+void wtSystem::RunStateControl()
 {
-	if( !newFrame ) {
-		return;
-	}
-
 	RecordSate( frameState );
 
 	const replayStateCode_t stateCode = playbackState.replayState;
@@ -723,7 +721,6 @@ void wtSystem::RunStateControl( const bool newFrame, masterCycles_t& nextCycle )
 			RestoreState( states[ playbackState.currentFrame ] );
 
 			playbackState.currentFrame += playbackState.pause ? 0 : 1;
-			nextCycle = sysCycles + std::chrono::duration_cast<masterCycles_t>( frameRate_t( 1 ) );
 		}
 	}
 	else if ( stateCode == replayStateCode_t::RECORD )
@@ -749,12 +746,40 @@ void wtSystem::RunStateControl( const bool newFrame, masterCycles_t& nextCycle )
 }
 
 
+void wtSystem::UpdateDebugImages()
+{
+	RGBA palette[ 4 ];
+	for ( uint32_t i = 0; i < 4; ++i )
+	{
+		palette[ i ] = ppu.palette[ ppu.ReadVram( PPU::PaletteBaseAddr + i ) ];
+	}
+
+	RGBA pickedPalette[ 4 ];
+	GetChrRomPalette( ( ppu.dbgInfo.spritePicked.palette >> 2 ) + 4, pickedPalette );
+	ppu.DrawDebugObject( &pickedObj8x16, pickedPalette, ppu.dbgInfo.spritePicked );
+
+	if ( debugNTEnable ) {
+		ppu.DrawDebugNametable( nameTableSheet );
+	}
+	ppu.DrawDebugPalette( paletteDebug );
+	ppu.DrawDebugPatternTables( patternTable0, palette, 0, false );
+	ppu.DrawDebugPatternTables( patternTable1, palette, 1, false );
+
+	DebugPrintFlushLog();
+}
+
+
 void wtSystem::ToggleFrame()
 {
 	finishedFrameIx = currentFrameIx;
-	currentFrameIx = ( currentFrameIx + 1 ) % 2;
+	currentFrameIx = ( currentFrameIx + 1 ) % 3;
+#if 0
+	// Debug code. Should never see red flashes in final display
+	frameBuffer[ currentFrameIx ].Clear( 0xFF0000FF );
+#endif
 	frameNumber++;
 	toggledFrame = true;
+	frameTogglesPerRun++;
 }
 
 
@@ -764,30 +789,33 @@ int wtSystem::RunFrame()
 
 	const timePoint_t currentTime = chrono::steady_clock::now();
 	const std::chrono::nanoseconds elapsed = ( currentTime - previousTime );
-	previousTime = std::chrono::steady_clock::now();
 
 	masterCycles_t cyclesPerFrame;
-
-#if defined( _DEBUG ) // hack for slow fps
-	if ( elapsed > std::chrono::duration_cast<chrono::nanoseconds>( chrono::milliseconds( 17 ) ) ) {
-		cyclesPerFrame = std::chrono::duration_cast<masterCycles_t>( frameRate_t( 1 ) );
+	if ( elapsed > MaxFrameLatencyNs ) // Clamp simulation catch-up for hitches/debugging
+	{
+		cyclesPerFrame = std::chrono::duration_cast<masterCycles_t>( MaxFrameLatencyNs );
+		previousTime = currentTime;
+	}
+	else if ( elapsed > FrameLatencyNs ) // Don't skip frames, instead even out bubbles over a few frames
+	{
+		cyclesPerFrame = std::chrono::duration_cast<masterCycles_t>( FrameLatencyNs );
+		previousTime += std::chrono::duration_cast<std::chrono::nanoseconds>( cyclesPerFrame );
 	}
 	else
-#endif
 	{
 		cyclesPerFrame = std::chrono::duration_cast<masterCycles_t>( elapsed );
+		previousTime = currentTime;
 	}
 
-	masterCycles_t nextCycle = sysCycles + cyclesPerFrame;
+	const masterCycles_t nextCycle = sysCycles + cyclesPerFrame;
 
-	bool toggledLastFrame = false;
-	if ( toggledFrame ) {
-		toggledLastFrame = true;
+	frameTogglesPerRun = 0;
+	if ( toggledFrame )
+	{
+		RunStateControl();
 		toggledFrame = false;
 	}
 	previousFrameNumber = frameNumber;
-
-	RunStateControl( toggledLastFrame, nextCycle ); // TODO: remove need for 'nextCycle'
 
 	dbgInfo.cycleBegin = sysCycles;
 
@@ -800,9 +828,13 @@ int wtSystem::RunFrame()
 
 	const double frameTimeUs = emuTime.GetElapsedUs();
 	dbgInfo.frameTimeUs = static_cast<uint32_t>( frameTimeUs );
+	dbgInfo.totalTimeUs += dbgInfo.frameTimeUs;
+	dbgInfo.elapsedTimeUs = static_cast<uint32_t>( elapsed.count() / 1000.0f );
 	dbgInfo.frameNumber = frameNumber;
 	dbgInfo.framePerRun += frameNumber - previousFrameNumber;
 	dbgInfo.runInvocations++;
+
+	DebugPrintFlushLog();
 
 	if ( ( flags & wtSystemFlags::HEADLESS ) != 0 ) {
 		return isRunning;
@@ -813,30 +845,6 @@ int wtSystem::RunFrame()
 		SaveSRam();
 		return false;
 	}
-
-	RGBA palette[ 4 ];
-	for ( uint32_t i = 0; i < 4; ++i )
-	{
-		palette[ i ] = ppu.palette[ ppu.ReadVram( PPU::PaletteBaseAddr + i ) ];
-	}
-
-	RGBA pickedPalette[ 4 ];
-	GetChrRomPalette( ( ppu.dbgInfo.spritePicked.palette >> 2 ) + 4, pickedPalette );
-	ppu.DrawDebugObject( &pickedObj8x16, pickedPalette, ppu.dbgInfo.spritePicked );
-
-	const bool dbgUpdateTick = ( frameNumber % 60 ) == 0;
-	const bool debugNT = ( debugNTEnable && dbgUpdateTick );
-	if( dbgUpdateTick )
-	{
-		if ( debugNT ) {
-			ppu.DrawDebugNametable( nameTableSheet );
-		}
-		ppu.DrawDebugPalette( paletteDebug );
-		ppu.DrawDebugPatternTables( patternTable0, palette, 0, false );
-		ppu.DrawDebugPatternTables( patternTable1, palette, 1, false );
-	}
-
-	DebugPrintFlushLog();
 
 	return isRunning;
 }

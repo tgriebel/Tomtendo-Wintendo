@@ -66,12 +66,6 @@ struct wtAppTextureD3D12
 };
 
 
-struct wtAppDisplay
-{
-	HWND hWnd;
-};
-
-
 struct swapChain_t
 {
 	ComPtr<IDXGISwapChain3>			dxgi;
@@ -134,6 +128,8 @@ struct sync_t
 	UINT64								fenceValues[ FrameCount ];
 	HANDLE								frameSubmitWriteLock[ FrameResultCount ];
 	HANDLE								frameSubmitReadLock[ FrameResultCount ];
+	HANDLE								audioWriteLock[ FrameResultCount ];
+	HANDLE								audioReadLock[ FrameResultCount ];
 };
 
 
@@ -175,7 +171,7 @@ public:
 	uint64_t								lastFrameDrawn = 0;
 	view_t									view;
 	sync_t									sync = { 0 };
-	wtAppDisplay							appDisplay;
+	HWND									hWnd;
 	wtAppInterface_t*						app;
 
 	void									WaitForGpu();

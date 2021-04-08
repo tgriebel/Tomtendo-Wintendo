@@ -73,10 +73,11 @@ void wtAudioEngine::EncodeSamples( wtSampleQueue& soundQueue )
 	bool buffersFull = false;
 	int32_t* destIx = &soundBufferBytesCnt[ currentSndBufferIx ];
 	while ( !soundQueue.IsEmpty() )
+	//for( uint32_t sampleIx = 0; sampleIx < soundQueue.GetSampleCnt(); ++sampleIx )
 	{
 		assert( soundBufferState[ currentSndBufferIx ] != SOUND_STATE_SUBMITTED );
 
-		float rawSample = soundQueue.Deque();
+		float rawSample = soundQueue.Deque();//soundQueue.Peek( sampleIx );
 		int16_t encodedSample = static_cast<int16_t>( rawSample );
 		soundDataBuffer[ currentSndBufferIx ][ ( *destIx )++ ] = encodedSample & 0xFF;
 		soundDataBuffer[ currentSndBufferIx ][ ( *destIx )++ ] = ( encodedSample >> 8 ) & 0xFF;

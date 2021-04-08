@@ -37,12 +37,17 @@ static constexpr uint64_t CPU_HZ = chrono::duration_cast<cpuCycle_t>( chrono::se
 static constexpr uint64_t APU_HZ = chrono::duration_cast<apuCycle_t>( chrono::seconds( 1 ) ).count();
 static constexpr uint64_t PPU_HZ = chrono::duration_cast<ppuCycle_t>( chrono::seconds( 1 ) ).count();
 
+static const std::chrono::nanoseconds FrameLatencyNs = std::chrono::duration_cast<chrono::nanoseconds>( frameRate_t( 1 ) );
+static const std::chrono::nanoseconds MaxFrameLatencyNs = 4 * FrameLatencyNs;
+
 const uint32_t KB_1		= 1024;
 const uint32_t MB_1		= 1024 * KB_1;
 
 #define KB(n) ( n * KB_1 )
 #define BIT_MASK(n)	( 1 << n )
 #define SELECT_BIT( word, bit ) ( (word) & (BIT_MASK_##bit) ) >> (BIT_##bit)
+
+#define FORCE_INLINE __forceinline
 
 class wtSystem;
 
@@ -210,6 +215,8 @@ public:
 struct debugTiming_t
 {
 	uint32_t		frameTimeUs;
+	uint32_t		totalTimeUs;
+	uint32_t		elapsedTimeUs;
 	uint64_t		frameNumber;
 	uint64_t		framePerRun;
 	uint64_t		runInvocations;
@@ -325,11 +332,11 @@ public:
 		}
 	}
 
-	void Set( const uint32_t index, const Pixel value )
+	FORCE_INLINE void Set( const uint32_t index, const Pixel value )
 	{
 		assert( index < length );
 
-		if ( index < length )
+		//if ( index < length )
 		{
 			buffer[index] = value;
 		}
@@ -498,12 +505,12 @@ private:
 	masterCycles_t	cycle;
 };
 
-inline uint16_t Combine( const uint8_t lsb, const uint8_t msb )
+FORCE_INLINE uint16_t Combine( const uint8_t lsb, const uint8_t msb )
 {
 	return ( ( ( msb << 8 ) | lsb ) & 0xFFFF );
 }
 
-inline bool InRange( const uint16_t addr, const uint16_t loAddr, const uint16_t hiAddr )
+FORCE_INLINE bool InRange( const uint16_t addr, const uint16_t loAddr, const uint16_t hiAddr )
 {
 	return ( addr >= loAddr ) && ( addr <= hiAddr );
 }

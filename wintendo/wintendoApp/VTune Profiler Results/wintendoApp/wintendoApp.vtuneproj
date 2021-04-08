@@ -356,7 +356,7 @@
    </workloads>
   </target_settings>
   <analysis_type_settings>
-   <selected_analysis_type_path>C:\Program Files (x86)\Intel\oneAPI\vtune\2021.1.1\config\analysis_type\hotspots.cfg</selected_analysis_type_path>
+   <selected_analysis_type_path>C:\Program Files (x86)\Intel\oneAPI\vtune\2021.1.1\config\analysis_type\threading_analysis.cfg</selected_analysis_type_path>
    <localhost>
     <launch>
      <at_start_point>
@@ -426,7 +426,7 @@
        </contextValue>
        <contextValue>
         <id>enableStackCollect</id>
-        <value type="bool">false</value>
+        <value type="bool">true</value>
        </contextValue>
        <contextValue>
         <id>goodFastFrameThreshold</id>
@@ -446,7 +446,7 @@
        </contextValue>
        <contextValue>
         <id>samplingMode</id>
-        <value>sw</value>
+        <value>hw</value>
        </contextValue>
        <contextValue>
         <id>slowGoodFrameThreshold</id>

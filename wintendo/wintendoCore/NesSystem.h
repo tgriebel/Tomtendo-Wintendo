@@ -46,6 +46,8 @@ struct wtFrameResult
 	wtRomHeader					romHeader;
 	wtMirrorMode				mirrorMode;
 	uint32_t					mapperId;
+	uint64_t					dbgFrameBufferIx;
+	uint64_t					frameToggleCount;
 	wtNameTableImage*			nameTableSheet;
 	wtPaletteImage*				paletteDebug;
 	wtPatternTableImage*		patternTable0;
@@ -95,6 +97,7 @@ public:
 	static const uint16_t PpuOamDma				= 0x4014;
 	static const uint16_t InputRegister0		= 0x4016;
 	static const uint16_t InputRegister1		= 0x4017;
+	static const uint32_t OutputBuffersCount	= 3;
 
 	// TODO: Need to abstract memory access for mappers
 	unique_ptr<wtCart>			cart;
@@ -117,7 +120,7 @@ private:
 	std::map<uint16_t, uint8_t>	memoryDebug;
 #endif // #if DEBUG_ADDR == 1
 	wtFrameResult				result;
-	wtDisplayImage				frameBuffer[ 2 ];
+	wtDisplayImage				frameBuffer[ OutputBuffersCount ];
 	wtNameTableImage			nameTableSheet;
 	wtPaletteImage				paletteDebug;
 	wtPatternTableImage			patternTable0;
@@ -138,6 +141,7 @@ private:
 	uint32_t					finishedFrameIx;
 	uint64_t					frameNumber;
 	uint64_t					previousFrameNumber;
+	uint64_t					frameTogglesPerRun;
 	bool						toggledFrame;
 	uint8_t						mirrorMode;
 
@@ -168,16 +172,18 @@ public:
 		replayFinished = true;
 		toggledFrame = false;
 
-		frameBuffer[0].SetDebugName( "FrameBuffer1" );
-		frameBuffer[1].SetDebugName( "FrameBuffer2" );
 		nameTableSheet.SetDebugName( "nameTable" );
 		paletteDebug.SetDebugName( "Palette" );
 		patternTable0.SetDebugName( "PatternTable0" );
 		patternTable1.SetDebugName( "PatternTable1" );
 		pickedObj8x16.SetDebugName( "Picked Object 8x16" );
 
-		frameBuffer[0].Clear();
-		frameBuffer[1].Clear();
+		for( uint32_t i = 0; i < OutputBuffersCount; ++i ) {
+			frameBuffer[i].Clear();
+			char dbgName[ 128 ];
+			sprintf_s( dbgName, "FrameBuffer%i", i );
+			frameBuffer[ i ].SetDebugName( dbgName );
+		}
 		nameTableSheet.Clear();
 		paletteDebug.Clear();
 		patternTable0.Clear();
@@ -195,6 +201,8 @@ public:
 		finishedFrameIx = 1;
 		frameNumber = 0;
 		previousTime = chrono::steady_clock::now();
+
+		memset( &dbgInfo, 0, sizeof( dbgInfo ) );
 	}
 
 	// Emulation functions - TODO: make visible only to other emulation components
@@ -239,6 +247,7 @@ public:
 	wtInput*				GetInput();
 	const config_t*			GetConfig();
 	bool					HasNewFrame() const;
+	void					UpdateDebugImages();
 	void					SubmitCommand( const sysCmd_t& cmd ); // In "command.cpp"
 
 private:
@@ -247,9 +256,10 @@ private:
 	uint16_t				MirrorAddress( const uint16_t address ) const;
 	void					RecordSate( wtStateBlob& state );
 	void					RestoreState( const wtStateBlob& state );
-	void					RunStateControl( const bool newFrame, masterCycles_t& nextCycle );
+	void					RunStateControl();
 	void					SaveSRam();
 	void					LoadSRam();
+	void					BackgroundUpdate();
 
 	// command.cpp
 	void					ProcessCommands();

@@ -227,8 +227,10 @@ void wtRenderer::CreateSyncObjects()
 {
 	for ( uint32_t i = 0; i < FrameResultCount; ++i )
 	{
-		sync.frameSubmitWriteLock[ i ] = CreateSemaphore( NULL, 2, 2, NULL );
-		sync.frameSubmitReadLock[ i ] = CreateSemaphore( NULL, 2, 2, NULL );
+		sync.frameSubmitWriteLock[ i ] = CreateSemaphore( NULL, 1, 1, NULL );
+		sync.frameSubmitReadLock[ i ] = CreateSemaphore( NULL, 1, 1, NULL );
+		sync.audioWriteLock[ i ] = CreateSemaphore( NULL, 1, 1, NULL );
+		sync.audioReadLock[ i ] = CreateSemaphore( NULL, 1, 1, NULL );
 	}
 
 	ThrowIfFailed( d3d12device->CreateFence( 0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS( &sync.fence ) ) );
@@ -376,7 +378,7 @@ void wtRenderer::CreateFrameBuffers()
 	swapChainDesc.BufferUsage			= DXGI_USAGE_RENDER_TARGET_OUTPUT;
 	swapChainDesc.Scaling				= DXGI_SCALING_NONE;
 	swapChainDesc.SwapEffect			= DXGI_SWAP_EFFECT_FLIP_DISCARD;
-	swapChainDesc.Flags					= 0;
+	swapChainDesc.Flags					= DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT;
 
 	DXGI_SWAP_CHAIN_FULLSCREEN_DESC swapChainFullDesc;
 	swapChainFullDesc.Windowed			= true;
@@ -385,7 +387,7 @@ void wtRenderer::CreateFrameBuffers()
 	swapChainFullDesc.Scaling			= DXGI_MODE_SCALING_CENTERED;
 
 	ComPtr<IDXGISwapChain1> tmpSwapChain;
-	ThrowIfFailed( dxgiFactory->CreateSwapChainForHwnd( cmd.d3d12CommandQueue.Get(), appDisplay.hWnd, &swapChainDesc, &swapChainFullDesc, nullptr, &tmpSwapChain ) );
+	ThrowIfFailed( dxgiFactory->CreateSwapChainForHwnd( cmd.d3d12CommandQueue.Get(), hWnd, &swapChainDesc, &swapChainFullDesc, nullptr, &tmpSwapChain ) );
 
 	ThrowIfFailed( tmpSwapChain.As( &swapChain.dxgi ) );
 	currentFrameIx = swapChain.dxgi->GetCurrentBackBufferIndex();
@@ -504,7 +506,7 @@ void wtRenderer::InitImgui()
 
 	ImGui::StyleColorsDark();
 
-	ImGui_ImplWin32_Init( appDisplay.hWnd );
+	ImGui_ImplWin32_Init( hWnd );
 	ImGui_ImplDX12_Init( d3d12device.Get(), FrameCount,
 		DXGI_FORMAT_R8G8B8A8_UNORM, pipeline.cbvSrvUavHeap.Get(),
 		pipeline.cbvSrvUavHeap.Get()->GetCPUDescriptorHandleForHeapStart(),
@@ -527,6 +529,8 @@ void wtRenderer::DestroyD3D12()
 	{
 		CloseHandle( sync.frameSubmitWriteLock[ i ] );
 		CloseHandle( sync.frameSubmitReadLock[ i ] );
+		CloseHandle( sync.audioWriteLock[ i ] );
+		CloseHandle( sync.audioReadLock[ i ] );
 	}
 	sync.cpyFence->Release();
 	sync.fence->Release();

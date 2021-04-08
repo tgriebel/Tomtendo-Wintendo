@@ -215,7 +215,7 @@ void PPU::IncRenderAddr()
 }
 
 
-void PPU::BgPipelineFetch( const uint64_t cycleCountAdjust )
+FORCE_INLINE void PPU::BgPipelineFetch( const uint64_t cycleCountAdjust )
 {
 	// 1. Name table byte
 	if ( cycleCountAdjust == 2 )
@@ -351,7 +351,7 @@ void PPU::GenerateMirrorMap()
 #endif
 }
 
-uint16_t PPU::MirrorVram( uint16_t addr )
+FORCE_INLINE uint16_t PPU::MirrorVram( uint16_t addr )
 {
 	uint32_t mirrorMode = system->GetMirrorMode();
 
@@ -457,7 +457,7 @@ bool PPU::IsMemoryMapped( const uint16_t addr ) const
 }
 
 
-uint8_t PPU::ReadVram( const uint16_t addr )
+FORCE_INLINE uint8_t PPU::ReadVram( const uint16_t addr )
 {
 	const uint16_t adjustedAddr = MirrorVram( addr );
 	assert( adjustedAddr < VirtualMemorySize );
