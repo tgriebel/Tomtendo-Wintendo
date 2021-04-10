@@ -1,7 +1,8 @@
 #include "renderer_d3d12.h"
 #include "audioEngine.h"
 
-using frameSampleBuffer = wtQueue< float, 500 >;
+static const uint32_t FramePlotSampleCount = 500;
+using frameSampleBuffer = wtQueue< float, FramePlotSampleCount >;
 static frameSampleBuffer frameTimePlot;
 
 static float ImGuiGetWtQueueSample( void* data, int32_t idx )
@@ -45,8 +46,12 @@ void wtRenderer::BuildImguiCommandList()
 
 	wtFrameResult* fr = &app->frameResult[ app->frameIx ];
 
+	frameTimePlot.EnqueFIFO( fr->dbgInfo.frameTimeUs / 1000.0f );
+
 	if ( ImGui::BeginTabBar( "Debug Info" ) )
 	{
+		const float avgFrameTime = ( fr->dbgInfo.totalTimeUs / (float)fr->dbgInfo.frameNumber );
+
 		bool systemTabOpen = true;
 		if ( ImGui::BeginTabItem( "System", &systemTabOpen ) )
 		{
@@ -143,6 +148,33 @@ void wtRenderer::BuildImguiCommandList()
 			{
 				ImGui::Text( "Frame Cycle Start: %u",	fr->dbgInfo.cycleBegin );
 				ImGui::Text( "Frame Cycle End: %u",		fr->dbgInfo.cycleEnd );
+				ImGui::Text( "Frame Cycles: %u",		( fr->dbgInfo.cycleEnd - fr->dbgInfo.cycleBegin ) );
+				ImGui::Text( "State Cycle: %u",			fr->dbgInfo.stateCycle );
+				ImGui::Separator();
+				ImGui::Text( "Avg %.3f ms/frame (%.1f FPS)", avgFrameTime / 1000.0f, 1000000.0f / avgFrameTime );
+				ImGui::Text( "Display Frame #%i", frameNumber );
+				ImGui::Text( "Emulator Frame #%i", fr->dbgInfo.frameNumber );
+				ImGui::Text( "Emulator Run Invocations #%i", fr->dbgInfo.runInvocations );
+				ImGui::Text( "Avg Frames Emulated %f", fr->dbgInfo.framePerRun / (float)fr->dbgInfo.runInvocations );
+				ImGui::Text( "Copy time: %4.2f ms", app->t.copyTime );
+				ImGui::Text( "Time since last invocation: %4.2f ms", app->t.elapsedCopyTime );
+				ImGui::Text( "Toggled Frames: %i", fr->frameToggleCount );
+				if ( fr->frameToggleCount > 1 ) {
+					ImGui::SameLine();
+					ImGui::Text( "- Warning!" );
+				}
+				ImGui::Text( "Copy size: %i MB", sizeof( *fr ) / 1024 / 1024 );
+
+				ImGui::PlotHistogram( "", &ImGuiGetWtQueueSample,
+					reinterpret_cast<void*>( &frameTimePlot ),
+					FramePlotSampleCount,
+					0,
+					NULL,
+					0.0f,
+					17.0f,
+					ImVec2( 0, 0 ) );
+				ImGui::SameLine();
+				ImGui::Text( "%.3f ms/frame (%.1f FPS)", fr->dbgInfo.frameTimeUs / 1000.0f, 1000000.0f / fr->dbgInfo.frameTimeUs );
 			}
 
 			if ( ImGui::CollapsingHeader( "Controls", ImGuiTreeNodeFlags_OpenOnArrow ) )
@@ -233,36 +265,9 @@ void wtRenderer::BuildImguiCommandList()
 		{
 			if ( ImGui::CollapsingHeader( "Frame Buffer", ImGuiTreeNodeFlags_OpenOnArrow ) )
 			{
-				const float avgFrameTime = ( fr->dbgInfo.totalTimeUs / (float)fr->dbgInfo.frameNumber );
-
 				const uint32_t imageId = 0;
 				const wtRawImageInterface* srcImage = fr->frameBuffer;
 				ImGui::Image( (ImTextureID)textureResources[ currentFrameIx ][ imageId ].gpuHandle.ptr, ImVec2( (float)srcImage->GetWidth(), (float)srcImage->GetHeight() ) );
-				ImGui::Text( "%.3f ms/frame (%.1f FPS)",				fr->dbgInfo.frameTimeUs / 1000.0f, 1000000.0f / fr->dbgInfo.frameTimeUs );			
-				ImGui::Text( "Avg %.3f ms/frame (%.1f FPS)",			avgFrameTime / 1000.0f, 1000000.0f / avgFrameTime );
-				ImGui::Text( "Display Frame #%i",						frameNumber );
-				ImGui::Text( "Emulator Frame #%i",						fr->dbgInfo.frameNumber );
-				ImGui::Text( "Emulator Run Invocations #%i",			fr->dbgInfo.runInvocations );
-				ImGui::Text( "Avg Frames Emulated %f",					fr->dbgInfo.framePerRun / (float)fr->dbgInfo.runInvocations );
-				ImGui::Text( "Copy time: %4.2f ms",						app->t.copyTime );
-				ImGui::Text( "Time since last invocation: %4.2f ms",	app->t.elapsedCopyTime );
-				ImGui::Text( "Toggled Frames: %i",						fr->frameToggleCount );
-				if( fr->frameToggleCount > 1 ) {
-					ImGui::SameLine();
-					ImGui::Text( "- Warning!" );
-				}
-				ImGui::Text( "Copy size: %i MB",						sizeof( *fr ) / 1024 / 1024 );
-
-				frameTimePlot.EnqueFIFO( fr->dbgInfo.frameTimeUs / 1000.0f );
-
-				ImGui::PlotLines( "", &ImGuiGetWtQueueSample,
-					reinterpret_cast<void*>( &frameTimePlot ),
-					frameTimePlot.GetSampleCnt(),
-					0,
-					NULL,
-					0.0f,
-					17.0f,
-					ImVec2( 0, 0 ) );
 			}
 
 			if ( ImGui::CollapsingHeader( "Name Table", ImGuiTreeNodeFlags_OpenOnArrow ) )

@@ -823,6 +823,7 @@ int wtSystem::RunFrame()
 	{
 		RunStateControl();
 		toggledFrame = false;
+		dbgInfo.stateCycle = sysCycles;
 	}
 	previousFrameNumber = frameNumber;
 

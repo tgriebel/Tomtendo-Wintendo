@@ -222,6 +222,7 @@ struct debugTiming_t
 	uint64_t		runInvocations;
 	masterCycle_t	cycleBegin;
 	masterCycle_t	cycleEnd;
+	masterCycle_t	stateCycle;
 };
 
 

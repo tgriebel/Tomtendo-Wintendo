@@ -173,10 +173,11 @@ public:
 
 	float Peek( const uint32_t sampleIx ) const
 	{
-		const int32_t index = ( begin + sampleIx ) % SIZE;
-		if ( ( index >= end ) || ( sampleIx >= GetSampleCnt() ) ) {
+		if( sampleIx >= GetSampleCnt() ) {
 			return 0.0f;
 		}
+
+		const int32_t index = ( begin + sampleIx ) % SIZE;
 		return samples[ index ];
 	}
 
