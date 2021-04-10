@@ -413,21 +413,17 @@ uint8_t PPU::GetTilePaletteId( const uint32_t attribTable, const wtPoint& tileCo
 
 uint8_t PPU::GetChrRom8x8( const uint32_t tileId, const uint8_t plane, const uint8_t ptrnTableId, const uint8_t row )
 {
-	const uint8_t tileBytes		= 16;
-	const uint16_t baseAddr		= ptrnTableId * wtSystem::ChrRomSize;
-	const uint16_t chrRomBase	= baseAddr + tileId * tileBytes;
-
-	return ReadVram( chrRomBase + row + 8 * ( plane & 0x01 ) );
+	const uint16_t chrRomAddr= ( ptrnTableId << 12 ) | ( tileId << 4 ) | ( plane << 3 ) | row;
+	return ReadVram( chrRomAddr );
 }
 
 
-uint8_t PPU::GetChrRom8x16( const uint32_t tileId, const uint8_t plane, const uint8_t row, const bool isUpper )
+uint8_t PPU::GetChrRom8x16( const uint32_t tileId, const uint8_t plane, const uint8_t row, const uint8_t isUpper )
 {
-	const uint8_t tileBytes		= 16;
-	const uint16_t baseAddr		= ( tileId & 0x01 ) * wtSystem::ChrRomSize;
-	const uint16_t chrRomBase	= baseAddr + ( ( tileId & ~0x01 ) + isUpper ) * tileBytes;
+	const uint16_t baseAddr		= ( ( tileId & 0x01 ) << 12 ) | ( ( ( tileId & ~0x01 ) | isUpper ) << 4 );
+	const uint16_t chrRomAddr	= baseAddr | ( plane << 3 ) | row;
 
-	return ReadVram( chrRomBase + row + 8 * ( plane & 0x01 ) );
+	return ReadVram( chrRomAddr );
 }
 
 
@@ -444,7 +440,6 @@ uint8_t PPU::GetChrRomBank8x8( const uint32_t tileId, const uint8_t plane, const
 uint8_t PPU::GetChrRomPalette( const uint8_t plane0, const uint8_t plane1, const uint8_t col )
 {
 	const uint16_t xBitMask = ( 0x80 >> col );
-
 	const uint8_t lowerBits = ( ( plane0 & xBitMask ) >> ( 7 - col ) ) | ( ( ( plane1 & xBitMask ) >> ( 7 - col ) ) << 1 );
 
 	return ( lowerBits & 0x03 );
@@ -529,11 +524,10 @@ uint8_t PPU::BgPipelineDecodePalette()
 {
 	uint8_t chrRomColor;
 
-	uint8_t paletteId = plShifts[curShift].attribId;
 	const uint8_t chrRom0 = static_cast<uint8_t>( chrShifts[0] >> 8 );
 	const uint8_t chrRom1 = static_cast<uint8_t>( chrShifts[1] >> 8 );
 
-	paletteId = GetChrRomPalette( palShifts[0], palShifts[1], static_cast< uint8_t >( regX ) );
+	uint8_t paletteId = GetChrRomPalette( palShifts[0], palShifts[1], static_cast< uint8_t >( regX ) );
 	paletteId <<= 2;
 
 	chrRomColor = GetChrRomPalette( chrRom0, chrRom1, static_cast< uint8_t >( regX ) );
@@ -548,11 +542,7 @@ void PPU::DrawTile( wtNameTableImage& imageBuffer, const wtRect& imageRect, cons
 	{
 		for ( uint32_t x = 0; x < PPU::TilePixels; ++x )
 		{
-			wtPoint point;
 			wtPoint chrRomPoint;
-
-			point.x = 8 * nametableTile.x + x;
-			point.y = 8 * nametableTile.y + y;
 
 			const uint32_t tileIx = GetNtTile( ntId, nametableTile );
 
@@ -647,7 +637,7 @@ spriteAttrib_t PPU::GetSpriteData( const uint8_t spriteId, const uint8_t oam[] )
 }
 
 
-bool PPU::DrawSpritePixel( const wtRect& imageRect, const spriteAttrib_t attribs, const wtPoint& point, const uint8_t bgPixel )
+bool PPU::DrawSpritePixel( wtDisplayImage& fb, const wtRect& imageRect, const spriteAttrib_t attribs, const wtPoint& point, const uint8_t bgPixel )
 {
 	if( !regMask.sem.showSprt )
 	{
@@ -725,11 +715,11 @@ bool PPU::DrawSpritePixel( const wtRect& imageRect, const spriteAttrib_t attribs
 		pixelColor.rgba.alpha = 0xFF;
 		
 		dbgInfo.spritePicked = attribs;
-		system->SetFramePixel( imageIndex, pixelColor );
+		fb.Set( imageIndex, pixelColor );
 	}
 	else
 	{
-		system->SetFramePixel( imageIndex, pixelColor );
+		fb.Set( imageIndex, pixelColor );
 	}
 
 	return true;
@@ -878,10 +868,6 @@ void PPU::AdvanceYScroll()
 			regV.sem.coarseY = 0;
 			regV.sem.ntId ^= 0x2;
 		}
-		else if ( regV.sem.coarseY == 31 ) // This is legal to set, but causes odd behavior
-		{
-			regV.sem.coarseY = 0;
-		}
 		else
 		{
 			regV.sem.coarseY++;
@@ -976,13 +962,15 @@ void PPU::Render()
 	bgMask = bgMask || !regMask.sem.showBg;
 	bgMask = bgMask || !system->GetConfig()->ppu.showBG;
 
+	wtDisplayImage* fb = system->GetBackbuffer();
+
 	if ( bgMask )
 	{
 		Pixel pixelColor;
 		const uint8_t colorIx = ReadVram( PPU::PaletteBaseAddr );
 
 		pixelColor.rgba = palette[ colorIx ];
-		system->SetFramePixel( imageIx, pixelColor );
+		fb->Set( imageIx, pixelColor );	
 	}
 	else
 	{
@@ -1003,7 +991,7 @@ void PPU::Render()
 			//pixelColor.rgba.blue = static_cast<uint8_t>( 255.0f * scanlineValue );
 			//pixelColor.rgba.green = static_cast<uint8_t>( 255.0f * scanlineValue );
 		}
-		system->SetFramePixel( imageIx, pixelColor );
+		fb->Set( imageIx, pixelColor );
 	}
 
 	uint8_t spriteCount = secondaryOamSpriteCnt;
@@ -1017,7 +1005,7 @@ void PPU::Render()
 		if ( ( beamPosition.x >= ( attribs.x + 8 ) ) || ( beamPosition.x < attribs.x ) )
 			continue;
 
-		if ( DrawSpritePixel(imageRect, attribs, beamPosition, bgPixel & 0x03 ) )
+		if ( DrawSpritePixel( *fb, imageRect, attribs, beamPosition, bgPixel & 0x03 ) )
 			break;
 	}
 }

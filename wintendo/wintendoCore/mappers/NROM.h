@@ -5,35 +5,42 @@
 
 class NROM : public wtMapper
 {
+private:
+	uint8_t*	prgBanks[2];
+	uint8_t*	chrBank;
 public:
 	NROM( const uint32_t _mapperId )
 	{
 		mapperId = _mapperId;
+		prgBanks[0] = nullptr;
+		prgBanks[1] = nullptr;
+		chrBank = nullptr;
 	}
+
+	uint8_t OnLoadCpu() override
+	{
+		const uint8_t bank1 = ( system->cart->GetPrgBankCount() == 1 ) ? 0 : 1;
+		prgBanks[ 0 ] = system->cart->GetPrgRomBank( 0 );
+		prgBanks[ 1 ] = system->cart->GetPrgRomBank( bank1 );
+		return 0;
+	};
+
+	uint8_t OnLoadPpu() override
+	{
+		chrBank = system->cart->GetChrRomBank( 0 );
+		return 0;
+	};
 
 	uint8_t	ReadRom( const uint16_t addr ) override
 	{
-		if ( InRange( addr, wtSystem::Bank0, wtSystem::Bank0End ) )
-		{
-			const uint16_t bankAddr = ( addr - wtSystem::Bank0 );
-			return system->cart->GetPrgRomBank( 0 )[ bankAddr ];
-		}
-		else if ( InRange( addr, wtSystem::Bank1, wtSystem::Bank1End ) )
-		{
-			const uint8_t bank1 = ( system->cart->GetPrgBankCount() == 1 ) ? 0 : 1;
-			const uint16_t bankAddr = ( addr - wtSystem::Bank1 );
-			return system->cart->GetPrgRomBank( bank1 )[ bankAddr ];
-		}
-		assert( 0 );
-		return 0;
+		const uint8_t bank = ( addr >> 14 ) & 0x01;
+		const uint16_t offset = ( addr & ( wtSystem::BankSize - 1 ) );
+
+		return prgBanks[ bank ][ offset ];
 	}
 
 	uint8_t	ReadChrRom( const uint16_t addr ) override
 	{
-		if ( InRange( addr, 0x0000, 0x1FFF ) ) {
-			return system->cart->GetChrRomBank( 0 )[ addr ];
-		}
-		assert( 0 );
-		return 0;
+		return chrBank[ addr ];
 	}
 };

@@ -417,9 +417,10 @@ bool wtSystem::HasNewFrame() const
 	return toggledFrame;
 }
 
-void wtSystem::SetFramePixel( const uint32_t ix, const Pixel& color )
+
+wtDisplayImage* wtSystem::GetBackbuffer()
 {
-	frameBuffer[ currentFrameIx ].Set( ix, color );
+	return &frameBuffer[ currentFrameIx ];
 }
 
 

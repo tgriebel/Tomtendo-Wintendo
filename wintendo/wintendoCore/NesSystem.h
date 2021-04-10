@@ -222,6 +222,7 @@ public:
 	void					RequestDmcTransfer() const;
 	void					SetFramePixel( const uint32_t ix, const Pixel& color );
 	void					ToggleFrame();
+	wtDisplayImage*			GetBackbuffer();
 	void					Serialize( Serializer& serializer );
 	unique_ptr<wtMapper>	AssignMapper( const uint32_t mapperId ); // In "mapper.h"
 

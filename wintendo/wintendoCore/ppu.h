@@ -350,13 +350,13 @@ private:
 	static uint8_t	GetChrRomPalette( const uint8_t plane0, const uint8_t plane1, const uint8_t col );
 
 	uint8_t			GetChrRom8x8( const uint32_t tileId, const uint8_t plane, const uint8_t ptrnTableId, const uint8_t row );
-	uint8_t			GetChrRom8x16( const uint32_t tileId, const uint8_t plane, const uint8_t row, const bool isUpper );
+	uint8_t			GetChrRom8x16( const uint32_t tileId, const uint8_t plane, const uint8_t row, const uint8_t isUpper );
 	uint8_t			GetChrRomBank8x8( const uint32_t tileId, const uint8_t plane, const uint8_t bankId, const uint8_t row );
 
 	void			DrawBlankScanline( wtDisplayImage& imageBuffer, const wtRect& imageRect, const uint8_t scanY );
 	void			DrawTile( wtNameTableImage& imageBuffer, const wtRect& imageRect, const wtPoint& nametableTile, const uint32_t ntId, const uint32_t ptrnTableId );
 	void			DrawChrRomTile( wtRawImageInterface* imageBuffer, const wtRect& imageRect, const RGBA palette[4], const uint32_t tileId, const uint32_t tableId, const bool cartBank, const bool is8x16 = false, const bool isUpper = false );
-	bool			DrawSpritePixel( const wtRect& imageRect, const spriteAttrib_t attribs, const wtPoint& point, const uint8_t bgPixel );
+	bool			DrawSpritePixel( wtDisplayImage& fb, const wtRect& imageRect, const spriteAttrib_t attribs, const wtPoint& point, const uint8_t bgPixel );
 
 	bool			BgDataFetchEnabled();
 	void			BgPipelineShiftRegisters();
