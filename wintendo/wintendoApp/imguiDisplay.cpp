@@ -236,23 +236,33 @@ void wtRenderer::BuildImguiCommandList()
 				}
 
 				ImGui::SameLine();
+				if ( ImGui::Button( "Prev" ) ) {
+					sysCmd_t traceCmd;
+					traceCmd.type = sysCmdType_t::REPLAY;
+					traceCmd.parms[ 0 ].i = fr->playbackState.currentFrame > 0 ? ( fr->playbackState.currentFrame - 1 ) : 0;
+					traceCmd.parms[ 1 ].u = true;
+					nesSystem.SubmitCommand( traceCmd );
+				}
+
+				ImGui::SameLine();
 				if ( ImGui::Button( "Next" ) ) {
 					sysCmd_t traceCmd;
-					traceCmd.type			= sysCmdType_t::REPLAY;
-					traceCmd.parms[ 0 ].i	= ( fr->playbackState.currentFrame + 1 );
-					traceCmd.parms[ 1 ].u	= true;
+					traceCmd.type = sysCmdType_t::REPLAY;
+					traceCmd.parms[ 0 ].i = ( fr->playbackState.currentFrame + 1 );
+					traceCmd.parms[ 1 ].u = true;
 					nesSystem.SubmitCommand( traceCmd );
 				}
 
 				if ( fr->stateCount > 0 )
 				{
-					int startFrame = (int)fr->playbackState.currentFrame;
-					int playFrame = startFrame;
+					int displayFrame = static_cast<int>( fr->playbackState.currentFrame );
+					int maxFrames = static_cast< int >( fr->stateCount );
+					int playFrame = displayFrame;
 					ImGui::SliderInt( "", &playFrame, 0, fr->stateCount );
 					ImGui::SameLine();
 					ImGui::Text( "%i", fr->stateCount );
 
-					if( playFrame != startFrame )
+					if( playFrame != displayFrame )
 					{
 						sysCmd_t traceCmd;
 						traceCmd.type = sysCmdType_t::REPLAY;
