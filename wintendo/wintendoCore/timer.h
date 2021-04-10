@@ -6,42 +6,47 @@ class Timer
 public:
 	Timer()
 	{
-		Start();
-		Stop();
+		Reset();
+	}
+
+	void Reset()
+	{
+		startTimeNs = std::chrono::nanoseconds( 0 );
+		endTimeNs = std::chrono::nanoseconds( 0 );
+		totalTimeNs = std::chrono::nanoseconds( 0 );
 	}
 
 	void Start()
 	{
-		startTimeUs = std::chrono::system_clock::now().time_since_epoch();
-		endTimeUs = startTimeUs;
+		startTimeNs = std::chrono::system_clock::now().time_since_epoch();
+		endTimeNs = startTimeNs;
 	}
 
-	// TODO: redesign interface. GetElapsed() should return time since start even without stopping
-	// Stop() does not reset timer currently to support this
 	void Stop()
 	{
-		endTimeUs = std::chrono::system_clock::now().time_since_epoch();
+		endTimeNs = std::chrono::system_clock::now().time_since_epoch();
+		totalTimeNs += ( endTimeNs - startTimeNs );
+		startTimeNs = endTimeNs;
 	}
 
 	double GetElapsedNs()
 	{
-		Stop();
-		return static_cast<double>( ( endTimeUs - startTimeUs ).count() );
+		endTimeNs = std::chrono::system_clock::now().time_since_epoch();
+		return static_cast<double>( totalTimeNs.count() + ( endTimeNs - startTimeNs ).count() );
 	}
 
 	double GetElapsedUs()
 	{
-		Stop();
 		return ( GetElapsedNs() / 1000.0f );
 	}
 
 	double GetElapsedMs()
 	{
-		Stop();
 		return ( GetElapsedUs() / 1000.0f );
 	}
 
 private:
-	std::chrono::nanoseconds startTimeUs;
-	std::chrono::nanoseconds endTimeUs;
+	std::chrono::nanoseconds startTimeNs;
+	std::chrono::nanoseconds endTimeNs;
+	std::chrono::nanoseconds totalTimeNs;
 };
