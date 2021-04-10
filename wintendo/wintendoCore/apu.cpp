@@ -660,18 +660,12 @@ void APU::RegisterSystem( wtSystem* sys )
 
 void APU::Mixer()
 {
-	float pulse1Sample			= pulse1.sample;
-	float pulse2Sample			= pulse2.sample;
-	float triSample				= triangle.sample;
-	float noiseSample			= noise.sample;
-	float dmcSample				= dmc.sample;
-
 	const config_t::APU* config	= &system->GetConfig()->apu;
-	pulse1Sample				= ( config->mutePulse1	) ? 0.0f : pulse1Sample;
-	pulse2Sample				= ( config->mutePulse2	) ? 0.0f : pulse2Sample;
-	triSample					= ( config->muteTri		) ? 0.0f : triSample;
-	noiseSample					= ( config->muteNoise	) ? 0.0f : noiseSample;
-	dmcSample					= ( config->muteDMC		) ? 0.0f : dmcSample;
+	const float pulse1Sample	= ( config->mutePulse1	) ? 0.0f : pulse1.sample;
+	const float pulse2Sample	= ( config->mutePulse2	) ? 0.0f : pulse2.sample;
+	const float triSample		= ( config->muteTri		) ? 0.0f : triangle.sample;
+	const float noiseSample		= ( config->muteNoise	) ? 0.0f : noise.sample;
+	const float dmcSample		= ( config->muteDMC		) ? 0.0f : dmc.sample;
 
 	const float pulseMixed		= PulseMixer( (uint32_t)pulse1Sample, (uint32_t)pulse2Sample );
 	const float tndMixed		= TndMixer( (uint32_t)triSample, (uint32_t)noiseSample, (uint32_t)dmcSample );
