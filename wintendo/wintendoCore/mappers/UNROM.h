@@ -82,5 +82,13 @@ public:
 		if( system->cart->HasChrRam() ) {
 			serializer.NextArray( chrRam, PPU::PatternTableMemorySize );
 		}
+
+		if( serializer.GetMode() == serializeMode_t::LOAD )
+		{
+			prgBanks[ 0 ] = system->cart->GetPrgRomBank( bank );
+			if ( !system->cart->HasChrRam() ) {
+				chrBank = system->cart->GetChrRomBank( 0 );
+			}
+		}
 	}
 };
