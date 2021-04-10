@@ -1063,6 +1063,8 @@ ppuCycle_t PPU::Exec()
 			regStatus.current.sem.vBlank = 0;
 			regStatus.latched.byte = 0;
 			regStatus.hasLatch = false;
+
+			system->SaveFrameState();
 		}
 		else if( cycleCount >= 280 && cycleCount <= 304 )
 		{

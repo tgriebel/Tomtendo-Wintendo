@@ -36,7 +36,7 @@ struct wtFrameResult
 {
 	uint64_t					currentFrame;
 	uint64_t					stateCount;
-	replayStateCode_t			stateCode;
+	playbackState_t				playbackState;
 	wtDisplayImage*				frameBuffer;
 	apuOutput_t*				soundOutput;
 	wtStateBlob*				frameState;
@@ -220,7 +220,7 @@ public:
 	void					RequestIRQ() const;
 	void					RequestDMA() const;
 	void					RequestDmcTransfer() const;
-	void					SetFramePixel( const uint32_t ix, const Pixel& color );
+	void					SaveFrameState();
 	void					ToggleFrame();
 	wtDisplayImage*			GetBackbuffer();
 	void					Serialize( Serializer& serializer );
@@ -260,7 +260,7 @@ private:
 	uint16_t				MirrorAddress( const uint16_t address ) const;
 	void					RecordSate( wtStateBlob& state );
 	void					RestoreState( const wtStateBlob& state );
-	void					RunStateControl();
+	void					RunStateControl( const bool toggledFrame );
 	void					SaveSRam();
 	void					LoadSRam();
 	void					BackgroundUpdate();

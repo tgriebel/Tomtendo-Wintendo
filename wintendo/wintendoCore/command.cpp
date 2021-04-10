@@ -27,12 +27,12 @@ void wtSystem::ProcessCommands()
 				{
 					const int64_t frameCount = cmd.parms[ 0 ].i;
 					playbackState.replayState = replayStateCode_t::RECORD;
-					playbackState.startFrame = static_cast<int64_t>( frameNumber );
-					playbackState.currentFrame = static_cast<int64_t>( frameNumber );
+					playbackState.startFrame = 0;
+					playbackState.currentFrame = 0;
 					if ( frameCount < 0 ) {
 						playbackState.finalFrame = INT64_MAX;
 					} else {
-						playbackState.finalFrame = static_cast<int64_t>( frameNumber ) + frameCount;
+						playbackState.finalFrame = frameCount;
 					}
 				}
 			}
@@ -45,7 +45,7 @@ void wtSystem::ProcessCommands()
 				playbackState.replayState = replayStateCode_t::REPLAY;
 				playbackState.startFrame = frameCount;
 				playbackState.currentFrame = frameCount;
-				playbackState.finalFrame = INT64_MAX;
+				playbackState.finalFrame = static_cast<int64_t>( states.size() ) - 1;
 				playbackState.pause = pause;
 			}
 			break;

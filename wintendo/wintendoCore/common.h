@@ -460,7 +460,7 @@ public:
 		return bytes;
 	}
 
-	void Set( Serializer& s )
+	void Set( Serializer& s, const masterCycle_t sysCycle )
 	{
 		Reset();
 		byteCount = s.CurrentSize();
@@ -476,6 +476,8 @@ public:
 		s.FindLabel( STATE_VRAM_LABEL, &vramSection );
 		header.vram = bytes + vramSection->offset;
 		header.vramSize = vramSection->size;
+
+		cycle = sysCycle;
 	}
 
 	void WriteTo( Serializer& s ) const
@@ -484,9 +486,11 @@ public:
 		if( s.BufferSize() < byteCount ) {
 			return;
 		}
+		const serializeMode_t mode = s.GetMode();
 		s.SetMode( serializeMode_t::STORE );
 		s.NextArray( bytes, byteCount );
 		s.SetPosition( 0 );
+		s.SetMode( mode );
 	}
 
 	void Reset()

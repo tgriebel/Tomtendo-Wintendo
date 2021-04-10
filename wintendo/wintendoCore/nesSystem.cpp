@@ -368,7 +368,7 @@ void wtSystem::GetFrameResult( wtFrameResult& outFrameResult )
 	outFrameResult.frameState		= &frameState;
 	outFrameResult.currentFrame		= frameNumber;
 	outFrameResult.stateCount		= static_cast<uint64_t>( states.size() );
-	outFrameResult.stateCode		= playbackState.replayState;
+	outFrameResult.playbackState	= playbackState;
 	outFrameResult.dbgFrameBufferIx	= finishedFrameIx;
 	outFrameResult.frameToggleCount = frameTogglesPerRun;
 }
@@ -528,7 +528,7 @@ void wtSystem::RecordSate( wtStateBlob& state )
 {
 	Serializer serializer( MB_1, serializeMode_t::STORE );
 	Serialize( serializer );
-	state.Set( serializer );
+	state.Set( serializer, sysCycles );
 }
 
 
@@ -712,29 +712,44 @@ void wtSystem::GenerateChrRomTables( wtPatternTableImage chrRom[ 32 ] )
 }
 
 
-void wtSystem::RunStateControl()
+void wtSystem::RunStateControl( const bool toggledFrame )
 {
-	RecordSate( frameState );
-
 	const replayStateCode_t stateCode = playbackState.replayState;
+
+	if ( toggledFrame )
+	{
+	//	RecordSate( frameState );
+	//	dbgInfo.stateCycle = sysCycles;
+	}
+
 	if ( stateCode == replayStateCode_t::REPLAY )
 	{
-		const bool replayFinished = ( playbackState.currentFrame >= static_cast<int64_t>( states.size() ) );
+		const bool replayFinished = ( playbackState.currentFrame >= playbackState.finalFrame );
 		if ( replayFinished )
 		{
 			playbackState.replayState = replayStateCode_t::FINISHED;
 		}
-		else
+		else if( toggledFrame )
 		{
-			frameBuffer[ currentFrameIx ].Clear();
-			RestoreState( states[ playbackState.currentFrame ] );
-
-			playbackState.currentFrame += playbackState.pause ? 0 : 1;
+			const wtStateBlob& state = states[ playbackState.currentFrame ];
+			if( state.IsValid() )
+			{
+				GetBackbuffer()->Clear();
+				RestoreState( states[ playbackState.currentFrame ] );
+				playbackState.currentFrame += playbackState.pause ? 0 : 1;
+			}
+			else
+			{
+				playbackState.replayState = replayStateCode_t::FINISHED;
+			}
 		}
 	}
 	else if ( stateCode == replayStateCode_t::RECORD )
 	{
-		if( playbackState.currentFrame < playbackState.finalFrame )
+		const bool hasNewState = ( toggledFrame && frameState.IsValid() );
+		const bool canRecord = ( playbackState.currentFrame < playbackState.finalFrame );
+
+		if( hasNewState && canRecord )
 		{
 			if( states.size() >= MaxStates ) {
 				states.pop_front();
@@ -747,6 +762,7 @@ void wtSystem::RunStateControl()
 	else if ( stateCode == replayStateCode_t::FINISHED )
 	{
 		states.clear();
+		frameState.Reset();
 		playbackState.replayState = replayStateCode_t::LIVE;
 		playbackState.startFrame = -1;
 		playbackState.currentFrame = -1;
@@ -775,6 +791,13 @@ void wtSystem::UpdateDebugImages()
 	ppu.DrawDebugPatternTables( patternTable1, palette, 1, false );
 
 	DebugPrintFlushLog();
+}
+
+
+void wtSystem::SaveFrameState()
+{
+	RecordSate( frameState );
+	dbgInfo.stateCycle = sysCycles;
 }
 
 
@@ -815,16 +838,13 @@ int wtSystem::RunFrame()
 		cyclesPerFrame = std::chrono::duration_cast<masterCycle_t>( elapsed );
 		previousTime = currentTime;
 	}
+	
+	RunStateControl( toggledFrame );
 
 	const masterCycle_t nextCycle = sysCycles + cyclesPerFrame;
-
+	
+	toggledFrame = false;
 	frameTogglesPerRun = 0;
-	if ( toggledFrame )
-	{
-		RunStateControl();
-		toggledFrame = false;
-		dbgInfo.stateCycle = sysCycles;
-	}
 	previousFrameNumber = frameNumber;
 
 	dbgInfo.cycleBegin = sysCycles;

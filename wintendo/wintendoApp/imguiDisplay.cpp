@@ -41,7 +41,6 @@ void wtRenderer::BuildImguiCommandList()
 	ImGui_ImplWin32_NewFrame();
 	ImGui::NewFrame();
 
-	static int32_t playbackFrame = 0;
 	static bool autoPlayback = false;
 
 	wtFrameResult* fr = &app->frameResult[ app->frameIx ];
@@ -200,6 +199,9 @@ void wtRenderer::BuildImguiCommandList()
 					traceCmd.type			= sysCmdType_t::RECORD;
 					traceCmd.parms[ 0 ].i	= -1;
 					nesSystem.SubmitCommand( traceCmd );
+
+					fr->playbackState.currentFrame = 0;
+					autoPlayback = false;
 				}
 
 				ImGui::SameLine();
@@ -211,13 +213,14 @@ void wtRenderer::BuildImguiCommandList()
 					traceCmd.parms[ 1 ].u	= true;
 					nesSystem.SubmitCommand( traceCmd );
 
+					fr->playbackState.currentFrame = 0;
 					autoPlayback = false;
 				}
 
 				ImGui::SameLine();
 				if ( ImGui::Button( "Play" ) )
 				{
-					playbackFrame = 0;
+					fr->playbackState.currentFrame = 0;
 					autoPlayback = true;
 				}
 
@@ -226,7 +229,7 @@ void wtRenderer::BuildImguiCommandList()
 				{
 					sysCmd_t traceCmd;
 					traceCmd.type			= sysCmdType_t::REPLAY;
-					traceCmd.parms[ 0 ].i	= playbackFrame;
+					traceCmd.parms[ 0 ].i	= 0;
 					traceCmd.parms[ 1 ].u	= true;
 					nesSystem.SubmitCommand( traceCmd );
 					autoPlayback = false;
@@ -234,20 +237,29 @@ void wtRenderer::BuildImguiCommandList()
 
 				ImGui::SameLine();
 				if ( ImGui::Button( "Next" ) ) {
-					++playbackFrame;
 					sysCmd_t traceCmd;
 					traceCmd.type			= sysCmdType_t::REPLAY;
-					traceCmd.parms[ 0 ].i	= playbackFrame;
+					traceCmd.parms[ 0 ].i	= ( fr->playbackState.currentFrame + 1 );
 					traceCmd.parms[ 1 ].u	= true;
 					nesSystem.SubmitCommand( traceCmd );
 				}
 
 				if ( fr->stateCount > 0 )
 				{
-					int playPercent = (int)( 100.0f * playbackFrame / (float)fr->stateCount );
-					ImGui::SliderInt( "", &playPercent, 0, 100 );
+					int startFrame = (int)fr->playbackState.currentFrame;
+					int playFrame = startFrame;
+					ImGui::SliderInt( "", &playFrame, 0, fr->stateCount );
 					ImGui::SameLine();
 					ImGui::Text( "%i", fr->stateCount );
+
+					if( playFrame != startFrame )
+					{
+						sysCmd_t traceCmd;
+						traceCmd.type = sysCmdType_t::REPLAY;
+						traceCmd.parms[ 0 ].i = playFrame;
+						traceCmd.parms[ 1 ].u = true;
+						nesSystem.SubmitCommand( traceCmd );
+					}
 				}
 			}
 
@@ -522,17 +534,18 @@ void wtRenderer::BuildImguiCommandList()
 
 	if ( autoPlayback )
 	{
-		if ( ( (int32_t)app->t.runTime.GetElapsedMs() % 8 ) == 0 )
+		if( fr->playbackState.currentFrame < fr->playbackState.finalFrame )
 		{
 			sysCmd_t traceCmd;
 			traceCmd.type = sysCmdType_t::REPLAY;
-			traceCmd.parms[ 0 ].i = playbackFrame;
+			traceCmd.parms[ 0 ].i = ( fr->playbackState.currentFrame + 1 );
 			nesSystem.SubmitCommand( traceCmd );
-
-			++playbackFrame;
+		}
+		else
+		{
+			autoPlayback = false;
 		}
 	}
-	playbackFrame = min( playbackFrame, static_cast<int32_t>( fr->stateCount ) );
 
 	ImGui::Render();
 	ImGui_ImplDX12_RenderDrawData( ImGui::GetDrawData(), cmd.imguiCommandList[ currentFrameIx ].Get() );
