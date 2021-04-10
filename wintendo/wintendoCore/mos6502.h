@@ -214,8 +214,8 @@ private:
 
 	cpuCycle_t			dbgStartCycle;
 	cpuCycle_t			dbgTargetCycle;
-	masterCycles_t		dbgSysStartCycle;
-	masterCycles_t		dbgSysTargetCycle;
+	masterCycle_t		dbgSysStartCycle;
+	masterCycle_t		dbgSysTargetCycle;
 
 public:
 	void Reset()

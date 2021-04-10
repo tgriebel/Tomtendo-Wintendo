@@ -562,8 +562,8 @@ bool APU::Step( const cpuCycle_t& nextCpuCycle )
 
 	dbgStartCycle		= apuCycle;
 	dbgTargetCycle		= nextApuCycle;
-	dbgSysStartCycle	= chrono::duration_cast<masterCycles_t>( dbgStartCycle );
-	dbgSysTargetCycle	= chrono::duration_cast<masterCycles_t>( dbgTargetCycle );
+	dbgSysStartCycle	= chrono::duration_cast<masterCycle_t>( dbgStartCycle );
+	dbgSysTargetCycle	= chrono::duration_cast<masterCycle_t>( dbgTargetCycle );
 
 	while ( cpuCycle < nextCpuCycle )
 	{

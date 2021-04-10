@@ -113,7 +113,7 @@ private:
 	PPU							ppu;
 	APU							apu;
 	uint8_t						memory[ PhysicalMemorySize ];
-	masterCycles_t				sysCycles;
+	masterCycle_t				sysCycles;
 	bool						replayFinished;
 	bool						debugNTEnable;
 	timePoint_t					previousTime;
@@ -155,7 +155,7 @@ public:
 
 	void Reset()
 	{
-		sysCycles = masterCycles_t( 0 );
+		sysCycles = masterCycle_t( 0 );
 		previousTime = std::chrono::steady_clock::now();
 
 		memset( memory, 0, PhysicalMemorySize );
@@ -235,7 +235,7 @@ public:
 	void					GenerateChrRomTables( wtPatternTableImage chrRom[32] );
 	void					GetChrRomPalette( const uint8_t paletteId, RGBA palette[ 4 ] );
 	void					GetGrayscalePalette( RGBA palette[ 4 ] );
-	bool					Run( const masterCycles_t& nextCycle );
+	bool					Run( const masterCycle_t& nextCycle );
 	int						RunFrame();
 	uint8_t					ReadInput( const uint16_t address );
 	void					WriteInput( const uint16_t address, const uint8_t value );

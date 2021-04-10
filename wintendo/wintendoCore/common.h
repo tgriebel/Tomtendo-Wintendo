@@ -24,7 +24,7 @@ const uint64_t PpuCyclesPerScanline	= 341;
 const uint64_t FPS					= 60;
 const uint64_t MinFPS				= 30;
 
-using masterCycles_t	= std::chrono::duration< uint64_t, std::ratio<1, MasterClockHz> >;
+using masterCycle_t		= std::chrono::duration< uint64_t, std::ratio<1, MasterClockHz> >;
 using ppuCycle_t		= std::chrono::duration< uint64_t, std::ratio<PpuClockDivide, MasterClockHz> >;
 using cpuCycle_t		= std::chrono::duration< uint64_t, std::ratio<CpuClockDivide, MasterClockHz> >;
 using apuCycle_t		= std::chrono::duration< uint64_t, std::ratio<ApuClockDivide, MasterClockHz> >;
@@ -220,8 +220,8 @@ struct debugTiming_t
 	uint64_t		frameNumber;
 	uint64_t		framePerRun;
 	uint64_t		runInvocations;
-	masterCycles_t	cycleBegin;
-	masterCycles_t	cycleEnd;
+	masterCycle_t	cycleBegin;
+	masterCycle_t	cycleEnd;
 };
 
 
@@ -439,7 +439,7 @@ public:
 	{
 		bytes = nullptr;
 		byteCount = 0;
-		cycle = masterCycles_t( 0 );
+		cycle = masterCycle_t( 0 );
 	}
 
 	~wtStateBlob()
@@ -495,14 +495,14 @@ public:
 			delete[] bytes;
 			byteCount = 0;
 		}
-		cycle = masterCycles_t( 0 );
+		cycle = masterCycle_t( 0 );
 	}
 
 	stateHeader_t	header;
 private:
 	uint8_t*		bytes;
 	uint32_t		byteCount;
-	masterCycles_t	cycle;
+	masterCycle_t	cycle;
 };
 
 FORCE_INLINE uint16_t Combine( const uint8_t lsb, const uint8_t msb )

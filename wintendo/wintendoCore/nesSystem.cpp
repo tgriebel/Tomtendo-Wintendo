@@ -579,11 +579,11 @@ void wtSystem::LoadState()
 }
 
 
-bool wtSystem::Run( const masterCycles_t& nextCycle )
+bool wtSystem::Run( const masterCycle_t& nextCycle )
 {
 	bool isRunning = true;
 
-	static constexpr masterCycles_t ticks( CpuClockDivide );
+	static constexpr masterCycle_t ticks( CpuClockDivide );
 
 	apu.Begin();
 
@@ -599,9 +599,9 @@ bool wtSystem::Run( const masterCycles_t& nextCycle )
 	apu.End();
 
 #if DEBUG_MODE == 1
-	dbgInfo.masterCpu = chrono::duration_cast<masterCycles_t>( cpu.cycle );
-	dbgInfo.masterPpu = chrono::duration_cast<masterCycles_t>( ppu.cycle );
-	dbgInfo.masterApu = chrono::duration_cast<masterCycles_t>( apu.cpuCycle );
+	dbgInfo.masterCpu = chrono::duration_cast<masterCycle_t>( cpu.cycle );
+	dbgInfo.masterPpu = chrono::duration_cast<masterCycle_t>( ppu.cycle );
+	dbgInfo.masterApu = chrono::duration_cast<masterCycle_t>( apu.cpuCycle );
 #endif // #if DEBUG_MODE == 1
 
 #if DEBUG_ADDR == 1
@@ -799,24 +799,24 @@ int wtSystem::RunFrame()
 	const timePoint_t currentTime = chrono::steady_clock::now();
 	const std::chrono::nanoseconds elapsed = ( currentTime - previousTime );
 
-	masterCycles_t cyclesPerFrame;
+	masterCycle_t cyclesPerFrame;
 	if ( elapsed > MaxFrameLatencyNs ) // Clamp simulation catch-up for hitches/debugging
 	{
-		cyclesPerFrame = std::chrono::duration_cast<masterCycles_t>( MaxFrameLatencyNs );
+		cyclesPerFrame = std::chrono::duration_cast<masterCycle_t>( MaxFrameLatencyNs );
 		previousTime = currentTime;
 	}
 	else if ( elapsed > FrameLatencyNs ) // Don't skip frames, instead even out bubbles over a few frames
 	{
-		cyclesPerFrame = std::chrono::duration_cast<masterCycles_t>( FrameLatencyNs );
+		cyclesPerFrame = std::chrono::duration_cast<masterCycle_t>( FrameLatencyNs );
 		previousTime += std::chrono::duration_cast<std::chrono::nanoseconds>( cyclesPerFrame );
 	}
 	else
 	{
-		cyclesPerFrame = std::chrono::duration_cast<masterCycles_t>( elapsed );
+		cyclesPerFrame = std::chrono::duration_cast<masterCycle_t>( elapsed );
 		previousTime = currentTime;
 	}
 
-	const masterCycles_t nextCycle = sysCycles + cyclesPerFrame;
+	const masterCycle_t nextCycle = sysCycles + cyclesPerFrame;
 
 	frameTogglesPerRun = 0;
 	if ( toggledFrame )

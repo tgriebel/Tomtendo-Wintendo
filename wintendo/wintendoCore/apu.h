@@ -488,8 +488,8 @@ private:
 
 	apuCycle_t		dbgStartCycle;
 	apuCycle_t		dbgTargetCycle;
-	masterCycles_t	dbgSysStartCycle;
-	masterCycles_t	dbgSysTargetCycle;
+	masterCycle_t	dbgSysStartCycle;
+	masterCycle_t	dbgSysTargetCycle;
 	uint32_t		dbgHalfClkTicks;
 	uint32_t		dbgQuarterClkTicks;
 	uint32_t		dbgIrqEvents;
