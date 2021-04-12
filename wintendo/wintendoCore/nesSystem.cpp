@@ -581,7 +581,7 @@ bool wtSystem::Run( const masterCycle_t& nextCycle )
 {
 	bool isRunning = true;
 
-	static constexpr masterCycle_t ticks( CpuClockDivide );
+	static const masterCycle_t ticks( CpuClockDivide );
 
 	apu.Begin();
 
@@ -827,11 +827,11 @@ int wtSystem::RunEpoch( const std::chrono::nanoseconds& runEpoch )
 
 	if ( ( runEpoch > MaxFrameLatencyNs ) && stallLimit ) // Clamp simulation catch-up for hitches/debugging
 	{
-		cyclesPerFrame = std::chrono::duration_cast<masterCycle_t>( MaxFrameLatencyNs );
+		cyclesPerFrame = NanoToCycle( MaxFrameLatencyNs.count() );
 	}
 	else if ( ( runEpoch > FrameLatencyNs ) && clampFps ) // Don't skip frames, instead even out bubbles over a few frames
 	{
-		cyclesPerFrame = std::chrono::duration_cast<masterCycle_t>( FrameLatencyNs );
+		cyclesPerFrame = NanoToCycle( FrameLatencyNs.count() );
 		overflowCycles = ( runEpoch - FrameLatencyNs ).count();
 	}
 	else
@@ -863,7 +863,7 @@ int wtSystem::RunEpoch( const std::chrono::nanoseconds& runEpoch )
 	const double frameTimeUs = emuTime.GetElapsedUs();
 	dbgInfo.frameTimeUs = static_cast<uint32_t>( frameTimeUs );
 	dbgInfo.totalTimeUs += dbgInfo.frameTimeUs;
-	dbgInfo.simulationTimeUs = static_cast<uint32_t>( std::chrono::duration_cast<std::chrono::microseconds>( endCycle - startCycle ).count() );
+	dbgInfo.simulationTimeUs = 0;//static_cast<uint32_t>( std::chrono::duration_cast<std::chrono::microseconds>( endCycle - startCycle ).count() );
 	dbgInfo.realTimeUs = static_cast<uint32_t>( std::chrono::duration_cast<std::chrono::microseconds>( runEpoch ).count() );
 	dbgInfo.frameNumber = frameNumber;
 	dbgInfo.framePerRun += frameNumber - previousFrameNumber;

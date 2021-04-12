@@ -13,7 +13,7 @@ static void TestRomUnit( std::wstring& testFilePath )
 	traceCmd.parms[ 0 ].u = 1;
 	app.system->SubmitCommand( traceCmd );
 
-	app.system->Run( cpuCycle_t( 30000 ) );
+	app.system->Run( MasterClockHz / 60 );
 	app.system->GetFrameResult( testFr );
 	std::string logText;
 	logText.resize( 0 );

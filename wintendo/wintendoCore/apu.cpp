@@ -558,12 +558,12 @@ void APU::RunFrameClock( const bool halfClk, const bool quarterClk, const bool i
 
 bool APU::Step( const cpuCycle_t& nextCpuCycle )
 {
-	const apuCycle_t nextApuCycle = chrono::duration_cast<apuCycle_t>( nextCpuCycle );
+	const apuCycle_t nextApuCycle = CpuToApuCycle( nextCpuCycle );
 
-	dbgStartCycle		= apuCycle;
-	dbgTargetCycle		= nextApuCycle;
-	dbgSysStartCycle	= chrono::duration_cast<masterCycle_t>( dbgStartCycle );
-	dbgSysTargetCycle	= chrono::duration_cast<masterCycle_t>( dbgTargetCycle );
+	//dbgStartCycle		= apuCycle;
+	//dbgTargetCycle	= nextApuCycle;
+	//dbgSysStartCycle	= chrono::duration_cast<masterCycle_t>( dbgStartCycle );
+	//dbgSysTargetCycle	= chrono::duration_cast<masterCycle_t>( dbgTargetCycle );
 
 	while ( cpuCycle < nextCpuCycle )
 	{
@@ -584,7 +584,7 @@ bool APU::Step( const cpuCycle_t& nextCpuCycle )
 		++cpuCycle;
 		++frameSeqTick;
 	}
-	apuCycle = chrono::duration_cast<apuCycle_t>( cpuCycle );
+	apuCycle = CpuToApuCycle( cpuCycle );
 
 	return true;
 }

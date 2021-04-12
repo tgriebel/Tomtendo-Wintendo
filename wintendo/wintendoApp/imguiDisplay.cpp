@@ -478,7 +478,7 @@ void wtRenderer::BuildImguiCommandList()
 				ImGui::Text( "Bytes Remaining: %i",			apuDebug.dmc.bytesRemaining );
 				ImGui::Text( "Period: %i",					apuDebug.dmc.period );
 				ImGui::Text( "Period Counter: %i",			apuDebug.dmc.periodCounter );
-				ImGui::Text( "Frequency: %i",				CPU_HZ / apuDebug.dmc.period );
+				ImGui::Text( "Frequency: %f",				CPU_HZ / apuDebug.dmc.period );
 				ImGui::NextColumn();
 				ImGui::Text( "$4010 - Loop: %i",			apuDebug.dmc.regCtrl.sem.loop );
 				ImGui::Text( "$4010 - Freq: %i",			apuDebug.dmc.regCtrl.sem.freq );

@@ -11,22 +11,6 @@ const uint64_t PpuCyclesPerScanline	= 341;
 const uint64_t FPS					= 60;
 const uint64_t MinFPS				= 30;
 
-using masterCycle_t	= std::chrono::duration< uint64_t, std::ratio<1, MasterClockHz> >;
-using ppuCycle_t	= std::chrono::duration< uint64_t, std::ratio<PpuClockDivide, MasterClockHz> >;
-using cpuCycle_t	= std::chrono::duration< uint64_t, std::ratio<CpuClockDivide, MasterClockHz> >;
-using apuCycle_t	= std::chrono::duration< uint64_t, std::ratio<ApuClockDivide, MasterClockHz> >;
-using apuSeqCycle_t	= std::chrono::duration< uint64_t, std::ratio<ApuSequenceDivide, MasterClockHz> >;
-using scanCycle_t	= std::chrono::duration< uint64_t, std::ratio<PpuCyclesPerScanline* PpuClockDivide, MasterClockHz> >; // TODO: Verify
-using frameRate_t	= std::chrono::duration< double, std::ratio<1, FPS> >;
-using timePoint_t	= std::chrono::time_point< std::chrono::steady_clock >;
-
-static constexpr uint64_t CPU_HZ = chrono::duration_cast<cpuCycle_t>( chrono::seconds( 1 ) ).count();
-static constexpr uint64_t APU_HZ = chrono::duration_cast<apuCycle_t>( chrono::seconds( 1 ) ).count();
-static constexpr uint64_t PPU_HZ = chrono::duration_cast<ppuCycle_t>( chrono::seconds( 1 ) ).count();
-
-static const std::chrono::nanoseconds FrameLatencyNs = std::chrono::duration_cast<chrono::nanoseconds>( frameRate_t( 1 ) );
-static const std::chrono::nanoseconds MaxFrameLatencyNs = 4 * FrameLatencyNs;
-
 static const uint64_t NanoToSeconds		= 1000000000;
 static const uint64_t MicroToSeconds	= 1000000;
 static const uint64_t MilliToSeconds	= 1000;
@@ -45,6 +29,11 @@ template< class T, class PERIOD >
 class duration_t
 {
 public:
+	duration_t()
+	{
+		ticks = 0;
+	}
+
 	duration_t( uint64_t _ticks )
 	{
 		ticks = _ticks;
@@ -60,12 +49,42 @@ public:
 		return ( ticks * PERIOD::r );
 	}
 
+	duration_t< T, PERIOD >& operator++()
+	{
+		++ticks;
+		return *this;
+	}
+
+	duration_t< T, PERIOD >& operator+=( const duration_t< T, PERIOD >& rhs )
+	{
+		ticks += rhs.count();
+		return *this;
+	}
+
 private:
 	using rep		= T;
 	using period	= typename PERIOD::type;
 
 	T ticks;
 };
+
+template< class T, class PERIOD >
+inline bool operator<( const duration_t< T, PERIOD >& lhs, const duration_t< T, PERIOD >& rhs )
+{
+	return ( lhs.count() < rhs.count() );
+}
+
+template< class T, class PERIOD >
+inline duration_t< T, PERIOD > operator+( const duration_t< T, PERIOD >& lhs, const duration_t< T, PERIOD >& rhs )
+{
+	return ( lhs.count() + rhs.count() );
+}
+
+template< class T, class PERIOD >
+inline duration_t< T, PERIOD > operator-( const duration_t< T, PERIOD >& lhs, const duration_t< T, PERIOD >& rhs )
+{
+	return ( lhs.count() - rhs.count() );
+}
 
 using nanosec_t		= ratio_t< 1, NanoToSeconds >;
 using microsec_t	= ratio_t< 1, MicroToSeconds >;
@@ -75,6 +94,22 @@ using nano_t = duration_t< uint64_t, nanosec_t >;
 using micro_t = duration_t< uint64_t, microsec_t >;
 using milli_t = duration_t< uint64_t, millisec_t >;
 
+using masterCycle_t = duration_t< uint64_t, ratio_t< 1,					MasterClockHz > >;
+using ppuCycle_t	= duration_t< uint64_t, ratio_t< PpuClockDivide,	MasterClockHz > >;
+using cpuCycle_t	= duration_t< uint64_t, ratio_t< CpuClockDivide,	MasterClockHz > >;
+using apuCycle_t	= duration_t< uint64_t, ratio_t< ApuClockDivide,	MasterClockHz > >;
+using apuSeqCycle_t = duration_t< uint64_t, ratio_t< ApuSequenceDivide, MasterClockHz> >;
+using scanCycle_t	= duration_t< uint64_t, ratio_t< PpuCyclesPerScanline * PpuClockDivide, MasterClockHz> >; // TODO: Verify
+using frameRate_t	= duration_t< double, std::ratio<1, FPS> >;
+using timePoint_t	= std::chrono::time_point< std::chrono::steady_clock >;
+
+static constexpr float CPU_HZ = ( MasterClockHz / CpuClockDivide );
+static constexpr float APU_HZ = ( MasterClockHz / ApuClockDivide );
+static constexpr float PPU_HZ = ( MasterClockHz / PpuClockDivide );
+
+static const std::chrono::nanoseconds FrameLatencyNs = std::chrono::nanoseconds( 16666667 );
+static const std::chrono::nanoseconds MaxFrameLatencyNs = 4 * FrameLatencyNs;
+
 static inline masterCycle_t NanoToCycle( const nano_t& nanoseconds )
 {
 	return masterCycle_t( static_cast<uint64_t>( nanoseconds.ToSeconds() * MasterClockHz ) );
@@ -82,15 +117,20 @@ static inline masterCycle_t NanoToCycle( const nano_t& nanoseconds )
 
 static inline cpuCycle_t MasterToCpuCycle( const masterCycle_t& cycle )
 {
-	return std::chrono::duration_cast<cpuCycle_t>( cycle );
+	return cpuCycle_t( cycle.count() / CpuClockDivide );
 }
 
 static inline ppuCycle_t MasterToPpuCycle( const masterCycle_t& cycle )
 {
-	return std::chrono::duration_cast<ppuCycle_t>( cycle );
+	return ppuCycle_t( cycle.count() / PpuClockDivide );
 }
 
 static inline apuCycle_t MasterToApuCycle( const masterCycle_t& cycle )
 {
-	return std::chrono::duration_cast<apuCycle_t>( cycle );
+	return apuCycle_t( cycle.count() / ApuClockDivide );
+}
+
+static inline apuCycle_t CpuToApuCycle( const cpuCycle_t& cycle )
+{
+	return apuCycle_t( cycle.count() / 2 );
 }

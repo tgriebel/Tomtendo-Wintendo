@@ -1111,7 +1111,7 @@ ppuCycle_t PPU::Exec()
 	if ( cycleCount == 0 )
 	{
 		// Idle cycle
-		execCycles++;
+		++execCycles;
 	}
 	else if ( cycleCount < 256 )
 	{
@@ -1179,7 +1179,7 @@ ppuCycle_t PPU::Exec()
 	}
 	else if ( cycleCount <= 336 ) // [321 - 336]
 	{
-		execCycles++;
+		++execCycles;
 
 		if( BgDataFetchEnabled() ) {
 			BgPipelineShiftRegisters();
@@ -1194,7 +1194,7 @@ ppuCycle_t PPU::Exec()
 		}
 
 		// 2 unused fetches
-		execCycles++;
+		++execCycles;
 	}
 	else if ( cycleCount <= 340 )
 	{
@@ -1213,7 +1213,7 @@ ppuCycle_t PPU::Exec()
 			beamPosition.y++;
 		}
 
-		execCycles++;
+		++execCycles;
 	//	assert( currentScanline == GetScanline() );
 	}
 
