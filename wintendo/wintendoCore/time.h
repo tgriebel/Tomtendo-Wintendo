@@ -115,6 +115,11 @@ static inline masterCycle_t NanoToCycle( const nano_t& nanoseconds )
 	return masterCycle_t( static_cast<uint64_t>( nanoseconds.ToSeconds() * MasterClockHz ) );
 }
 
+static inline nano_t CycleToNano( const masterCycle_t& cycle )
+{
+	return nano_t( static_cast<uint64_t>( cycle.ToSeconds() * NanoToSeconds ) );
+}
+
 static inline cpuCycle_t MasterToCpuCycle( const masterCycle_t& cycle )
 {
 	return cpuCycle_t( cycle.count() / CpuClockDivide );

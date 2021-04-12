@@ -863,7 +863,7 @@ int wtSystem::RunEpoch( const std::chrono::nanoseconds& runEpoch )
 	const double frameTimeUs = emuTime.GetElapsedUs();
 	dbgInfo.frameTimeUs = static_cast<uint32_t>( frameTimeUs );
 	dbgInfo.totalTimeUs += dbgInfo.frameTimeUs;
-	dbgInfo.simulationTimeUs = 0;//static_cast<uint32_t>( std::chrono::duration_cast<std::chrono::microseconds>( endCycle - startCycle ).count() );
+	dbgInfo.simulationTimeUs = static_cast<uint32_t>( CycleToNano( endCycle - startCycle ).count() / 1000.0f );
 	dbgInfo.realTimeUs = static_cast<uint32_t>( std::chrono::duration_cast<std::chrono::microseconds>( runEpoch ).count() );
 	dbgInfo.frameNumber = frameNumber;
 	dbgInfo.framePerRun += frameNumber - previousFrameNumber;
