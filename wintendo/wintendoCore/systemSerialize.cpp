@@ -98,7 +98,6 @@ void PPU::Serialize( Serializer& serializer )
 	SerializeCycle( serializer, cycle );
 
 	serializer.Next8b( *reinterpret_cast<uint8_t*>( &genNMI ) );
-	serializer.Next8b( *reinterpret_cast<uint8_t*>( &loadingSecondaryOAM ) );
 	serializer.Next8b( *reinterpret_cast<uint8_t*>( &nmiOccurred ) );
 	serializer.Next8b( *reinterpret_cast<uint8_t*>( &vramAccessed ) );
 	serializer.Next8b( *reinterpret_cast<uint8_t*>( &vramWritePending ) );

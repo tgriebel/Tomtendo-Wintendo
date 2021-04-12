@@ -234,7 +234,6 @@ private:
 	bool			nmiOccurred;
 	bool			vramWritePending;
 	bool			vramAccessed;
-	bool			loadingSecondaryOAM;
 
 	// Internal registers
 	ppuScroll_t		regV;
@@ -302,7 +301,6 @@ public:
 		chrShifts[0]			= 0;
 		chrShifts[1]			= 0;
 		vramAccessed			= false;
-		loadingSecondaryOAM		= false;
 		nmiOccurred				= false;
 		palLatch[0]				= 0;
 		palLatch[1]				= 0;

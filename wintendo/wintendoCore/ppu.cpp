@@ -796,14 +796,10 @@ void PPU::DrawDebugPalette( wtPaletteImage& imageBuffer )
 }
 
 
-void PPU::LoadSecondaryOAM()
+FORCE_INLINE void PPU::LoadSecondaryOAM()
 {
-	if( !loadingSecondaryOAM ) {
-		return;
-	}
-
 	uint8_t destSpriteNum = 0;
-	memset( &secondaryOAM, 0xFF, OamSize );
+	memset( &secondaryOAM, 0xFF, system->GetConfig()->ppu.spriteLimit );
 
 	for ( uint8_t spriteNum = 0; spriteNum < 64; ++spriteNum )
 	{
@@ -830,7 +826,6 @@ void PPU::LoadSecondaryOAM()
 	}
 
 	secondaryOamSpriteCnt = destSpriteNum;
-	loadingSecondaryOAM = false;
 }
 
 
@@ -1113,13 +1108,12 @@ ppuCycle_t PPU::Exec()
 		// Idle cycle
 		++execCycles;
 	}
-	else if ( cycleCount < 256 )
+	else if ( cycleCount <= 256 )
 	{
 		if ( BgDataFetchEnabled() )
 		{
 			if ( cycleCount == 1 )
 			{
-				loadingSecondaryOAM = true;
 				LoadSecondaryOAM();
 			}
 
@@ -1133,16 +1127,11 @@ ppuCycle_t PPU::Exec()
 			beamPosition.x++;
 		}
 
-		execCycles += ppuCycle_t( 1 );	
-	}
-	else if ( cycleCount == 256 )
-	{
-		if ( BgDataFetchEnabled() ) {
-			BgPipelineFetch( cycleCount & 0x07 );
+		if( cycleCount == 256 ) {
+			AdvanceYScroll();
 		}
-		AdvanceYScroll();
 
-		execCycles += ppuCycle_t( 1 );
+		execCycles += ppuCycle_t( 1 );	
 	}
 	else if ( cycleCount == 257 )
 	{
