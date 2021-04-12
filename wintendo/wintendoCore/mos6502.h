@@ -184,8 +184,6 @@ public:
 	cpuCycle_t			cycle;
 
 #if DEBUG_ADDR == 1
-	std::stringstream	debugAddr;
-	std::ofstream		logFile;
 	bool				logToFile = false;
 	int32_t				logFrameCount = 0;
 	int32_t				logFrameTotal = 0;
@@ -211,11 +209,6 @@ public:
 
 private:
 	bool				halt;
-
-	cpuCycle_t			dbgStartCycle;
-	cpuCycle_t			dbgTargetCycle;
-	masterCycle_t		dbgSysStartCycle;
-	masterCycle_t		dbgSysTargetCycle;
 
 public:
 	void Reset()

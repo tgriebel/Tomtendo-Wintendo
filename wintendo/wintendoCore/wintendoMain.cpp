@@ -14,9 +14,14 @@ wtSystem nesSystem;
 
 int main()
 {
-	nesSystem.Init( L"Games/Contra.nes", wtSystemFlags::HEADLESS );
+	nesSystem.Init( L"Games/Contra.nes" );
 
-	nesSystem.RunFrame();
+	config_t cfg;
+	wtSystem::InitConfig( cfg );
+	cfg.sys.flags = emulationFlags_t::HEADLESS;
+	nesSystem.SetConfig( cfg );
+
+	nesSystem.RunEpoch( FrameLatencyNs );
 
 	nesSystem.Shutdown();
 }

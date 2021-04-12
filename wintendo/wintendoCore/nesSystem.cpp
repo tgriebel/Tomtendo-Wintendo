@@ -47,16 +47,17 @@ void wtSystem::DebugPrintFlushLog()
 	if ( !cpu.IsTraceLogOpen() && cpu.logToFile )
 	{
 		string dbgString;
-		cpu.logFile.open( fileName + L".log" );
+		std::ofstream logFile;
+		logFile.open( fileName + L".log" );
 		cpu.dbgLog.ToString( dbgString, 0, 0, true );
-		cpu.logFile << dbgString << endl;
-		cpu.logFile.close();
+		logFile << dbgString << endl;
+		logFile.close();
 	}
 #endif
 }
 
 
-int wtSystem::Init( const wstring& filePath, wtSystemFlags sysFlags, const uint32_t resetVectorManual )
+int wtSystem::Init( const wstring& filePath, const uint32_t resetVectorManual )
 {
 	Reset();
 
@@ -78,7 +79,6 @@ int wtSystem::Init( const wstring& filePath, wtSystemFlags sysFlags, const uint3
 
 	const size_t offset = fileName.find( L".nes", 0 );
 	baseFileName = fileName.substr( 0, offset );
-	flags = sysFlags;
 
 	LoadSRam();
 
@@ -88,11 +88,6 @@ int wtSystem::Init( const wstring& filePath, wtSystemFlags sysFlags, const uint3
 
 void wtSystem::Shutdown()
 {
-#if DEBUG_ADDR == 1
-	if ( cpu.logFile.is_open() ) {
-		cpu.logFile.close();
-	}
-#endif // #if DEBUG_ADDR == 1
 }
 
 
@@ -426,23 +421,26 @@ wtDisplayImage* wtSystem::GetBackbuffer()
 
 void wtSystem::InitConfig( config_t& config )
 {
+	// System
+	config.sys.flags			= (emulationFlags_t)( (uint32_t)emulationFlags_t::CLAMP_FPS | (uint32_t)emulationFlags_t::LIMIT_STALL );
+
 	// PPU
-	config.ppu.chrPalette = 0;
-	config.ppu.showBG = true;
-	config.ppu.showSprite = true;
-	config.ppu.spriteLimit = PPU::SecondarySprites;
+	config.ppu.chrPalette		= 0;
+	config.ppu.showBG			= true;
+	config.ppu.showSprite		= true;
+	config.ppu.spriteLimit		= PPU::SecondarySprites;
 
 	// APU
-	config.apu.frequencyScale = 1.0f;
-	config.apu.volume = 1.0f;
-	config.apu.waveShift = 0;
-	config.apu.disableSweep = false;
-	config.apu.disableEnvelope = false;
-	config.apu.mutePulse1 = false;
-	config.apu.mutePulse2 = false;
-	config.apu.muteTri = false;
-	config.apu.muteNoise = false;
-	config.apu.muteDMC = false;
+	config.apu.frequencyScale	= 1.0f;
+	config.apu.volume			= 1.0f;
+	config.apu.waveShift		= 0;
+	config.apu.disableSweep		= false;
+	config.apu.disableEnvelope	= false;
+	config.apu.mutePulse1		= false;
+	config.apu.mutePulse2		= false;
+	config.apu.muteTri			= false;
+	config.apu.muteNoise		= false;
+	config.apu.muteDMC			= false;
 }
 
 
@@ -592,9 +590,9 @@ bool wtSystem::Run( const masterCycle_t& nextCycle )
 	{
 		sysCycles += ticks;
 
-		isRunning = cpu.Step( chrono::duration_cast<cpuCycle_t>( sysCycles ) );
-		ppu.Step( chrono::duration_cast<ppuCycle_t>( sysCycles ) );
-		apu.Step( chrono::duration_cast<cpuCycle_t>( sysCycles ) );
+		isRunning = cpu.Step( MasterToCpuCycle( sysCycles ) );
+		ppu.Step( MasterToPpuCycle( sysCycles ) );
+		apu.Step( MasterToCpuCycle( sysCycles ) );
 	}
 	apu.End();
 
@@ -815,32 +813,35 @@ void wtSystem::ToggleFrame()
 }
 
 
-int wtSystem::RunFrame()
+int wtSystem::RunEpoch( const std::chrono::nanoseconds& runEpoch )
 {
 	ProcessCommands();
 
-	const timePoint_t currentTime = chrono::steady_clock::now();
-	const std::chrono::nanoseconds elapsed = ( currentTime - previousTime );
+	const nano_t e = nano_t( runEpoch.count() );
 
-	masterCycle_t cyclesPerFrame;
-	if ( elapsed > MaxFrameLatencyNs ) // Clamp simulation catch-up for hitches/debugging
+	masterCycle_t cyclesPerFrame = masterCycle_t( overflowCycles );
+	overflowCycles = 0;
+
+	const bool clampFps = ( config->sys.flags & emulationFlags_t::CLAMP_FPS );
+	const bool stallLimit = ( config->sys.flags & emulationFlags_t::LIMIT_STALL );
+
+	if ( ( runEpoch > MaxFrameLatencyNs ) && stallLimit ) // Clamp simulation catch-up for hitches/debugging
 	{
 		cyclesPerFrame = std::chrono::duration_cast<masterCycle_t>( MaxFrameLatencyNs );
-		previousTime = currentTime;
 	}
-	else if ( elapsed > FrameLatencyNs ) // Don't skip frames, instead even out bubbles over a few frames
+	else if ( ( runEpoch > FrameLatencyNs ) && clampFps ) // Don't skip frames, instead even out bubbles over a few frames
 	{
 		cyclesPerFrame = std::chrono::duration_cast<masterCycle_t>( FrameLatencyNs );
-		previousTime += std::chrono::duration_cast<std::chrono::nanoseconds>( cyclesPerFrame );
+		overflowCycles = ( runEpoch - FrameLatencyNs ).count();
 	}
 	else
 	{
-		cyclesPerFrame = std::chrono::duration_cast<masterCycle_t>( elapsed );
-		previousTime = currentTime;
+		cyclesPerFrame = masterCycle_t( NanoToCycle( e ) );
 	}
 	
 	RunStateControl( toggledFrame );
 
+	const masterCycle_t startCycle = sysCycles;
 	const masterCycle_t nextCycle = sysCycles + cyclesPerFrame;
 	
 	toggledFrame = false;
@@ -854,19 +855,23 @@ int wtSystem::RunFrame()
 	bool isRunning = Run( nextCycle );
 	emuTime.Stop();
 
-	dbgInfo.cycleEnd = sysCycles;
+	const masterCycle_t endCycle = sysCycles;
+	overflowCycles += ( endCycle - nextCycle ).count();
+
+	dbgInfo.cycleEnd = endCycle;
 
 	const double frameTimeUs = emuTime.GetElapsedUs();
 	dbgInfo.frameTimeUs = static_cast<uint32_t>( frameTimeUs );
 	dbgInfo.totalTimeUs += dbgInfo.frameTimeUs;
-	dbgInfo.elapsedTimeUs = static_cast<uint32_t>( elapsed.count() / 1000.0f );
+	dbgInfo.simulationTimeUs = static_cast<uint32_t>( std::chrono::duration_cast<std::chrono::microseconds>( endCycle - startCycle ).count() );
+	dbgInfo.realTimeUs = static_cast<uint32_t>( std::chrono::duration_cast<std::chrono::microseconds>( runEpoch ).count() );
 	dbgInfo.frameNumber = frameNumber;
 	dbgInfo.framePerRun += frameNumber - previousFrameNumber;
 	dbgInfo.runInvocations++;
 
 	DebugPrintFlushLog();
 
-	if ( ( flags & wtSystemFlags::HEADLESS ) != 0 ) {
+	if ( ( config->sys.flags & emulationFlags_t::HEADLESS ) != 0 ) {
 		return isRunning;
 	}
 

@@ -5,7 +5,7 @@ static void TestRomUnit( std::wstring& testFilePath )
 {
 	static wtFrameResult testFr;
 	wtSystem::InitConfig( app.systemConfig );
-	app.system->Init( testFilePath, wtSystemFlags::HEADLESS, 0xC000 );
+	app.system->Init( testFilePath, 0xC000 );
 	app.system->SetConfig( app.systemConfig );
 
 	sysCmd_t traceCmd;

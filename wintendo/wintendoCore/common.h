@@ -9,36 +9,12 @@
 #include "util.h"
 #include "serializer.h"
 #include "assert.h"
+#include "time.h"
 
 #define NES_MODE			(1)
 #define DEBUG_MODE			(0)
 #define DEBUG_ADDR			(1)
 #define MIRROR_OPTIMIZATION	(1)
-
-const uint64_t MasterClockHz		= 21477272;
-const uint64_t CpuClockDivide		= 12;
-const uint64_t ApuClockDivide		= 24;
-const uint64_t ApuSequenceDivide	= 89490;
-const uint64_t PpuClockDivide		= 4;
-const uint64_t PpuCyclesPerScanline	= 341;
-const uint64_t FPS					= 60;
-const uint64_t MinFPS				= 30;
-
-using masterCycle_t		= std::chrono::duration< uint64_t, std::ratio<1, MasterClockHz> >;
-using ppuCycle_t		= std::chrono::duration< uint64_t, std::ratio<PpuClockDivide, MasterClockHz> >;
-using cpuCycle_t		= std::chrono::duration< uint64_t, std::ratio<CpuClockDivide, MasterClockHz> >;
-using apuCycle_t		= std::chrono::duration< uint64_t, std::ratio<ApuClockDivide, MasterClockHz> >;
-using apuSeqCycle_t		= std::chrono::duration< uint64_t, std::ratio<ApuSequenceDivide, MasterClockHz> >;
-using scanCycle_t		= std::chrono::duration< uint64_t, std::ratio<PpuCyclesPerScanline * PpuClockDivide, MasterClockHz> >; // TODO: Verify
-using frameRate_t		= std::chrono::duration< double, std::ratio<1, FPS> >;
-using timePoint_t		= std::chrono::time_point< std::chrono::steady_clock >;
-
-static constexpr uint64_t CPU_HZ = chrono::duration_cast<cpuCycle_t>( chrono::seconds( 1 ) ).count();
-static constexpr uint64_t APU_HZ = chrono::duration_cast<apuCycle_t>( chrono::seconds( 1 ) ).count();
-static constexpr uint64_t PPU_HZ = chrono::duration_cast<ppuCycle_t>( chrono::seconds( 1 ) ).count();
-
-static const std::chrono::nanoseconds FrameLatencyNs = std::chrono::duration_cast<chrono::nanoseconds>( frameRate_t( 1 ) );
-static const std::chrono::nanoseconds MaxFrameLatencyNs = 4 * FrameLatencyNs;
 
 const uint32_t KB_1		= 1024;
 const uint32_t MB_1		= 1024 * KB_1;
@@ -49,12 +25,28 @@ const uint32_t MB_1		= 1024 * KB_1;
 
 #define FORCE_INLINE __forceinline
 
+#define DEFINE_ENUM_OPERATORS( enumType, intType )														\
+inline enumType operator|=( enumType lhs, enumType rhs )												\
+{																										\
+	return static_cast< enumType >( static_cast< intType >( lhs ) | static_cast< intType >( rhs ) );	\
+}																										\
+																										\
+inline bool operator&( enumType lhs, enumType rhs )														\
+{																										\
+	return ( ( static_cast< intType >( lhs ) & static_cast< intType >( rhs ) ) != 0 );					\
+}																										\
+																										\
+inline enumType operator>>( const enumType lhs, const enumType rhs )									\
+{																										\
+	return static_cast<enumType>( static_cast<intType>( lhs ) >> static_cast<intType>( rhs ) );			\
+}																										\
+																										\
+inline enumType operator<<( const enumType lhs, const enumType rhs )									\
+{																										\
+	return static_cast<enumType>( static_cast<intType>( lhs ) << static_cast<intType>( rhs ) );			\
+}
+
 class wtSystem;
-
-struct Controller
-{
-};
-
 
 enum analogMode_t
 {
@@ -216,7 +208,8 @@ struct debugTiming_t
 {
 	uint32_t		frameTimeUs;
 	uint32_t		totalTimeUs;
-	uint32_t		elapsedTimeUs;
+	uint32_t		simulationTimeUs;
+	uint32_t		realTimeUs;
 	uint64_t		frameNumber;
 	uint64_t		framePerRun;
 	uint64_t		runInvocations;
@@ -226,11 +219,23 @@ struct debugTiming_t
 };
 
 
+enum class emulationFlags_t : uint32_t
+{
+	NONE		= 0,
+	CLAMP_FPS	= BIT_MASK( 1 ),
+	LIMIT_STALL = BIT_MASK( 2 ),
+	HEADLESS	= BIT_MASK( 3 ),
+	ALL			= 0xFFFFFFFF,
+};
+DEFINE_ENUM_OPERATORS( emulationFlags_t, uint32_t )
+
+
 struct config_t
 {
-	//struct System
-	//{
-	//} sys;
+	struct System
+	{
+		emulationFlags_t	flags;
+	} sys;
 
 	//struct CPU
 	//{
@@ -238,24 +243,24 @@ struct config_t
 
 	struct APU
 	{
-		float		volume;
-		float		frequencyScale;
-		int32_t		waveShift;
-		bool		disableSweep;
-		bool		disableEnvelope;
-		bool		mutePulse1;
-		bool		mutePulse2;
-		bool		muteTri;
-		bool		muteNoise;
-		bool		muteDMC;
+		float				volume;
+		float				frequencyScale;
+		int32_t				waveShift;
+		bool				disableSweep;
+		bool				disableEnvelope;
+		bool				mutePulse1;
+		bool				mutePulse2;
+		bool				muteTri;
+		bool				muteNoise;
+		bool				muteDMC;
 	} apu;
 
 	struct PPU
 	{
-		int32_t		chrPalette;
-		int32_t		spriteLimit;
-		bool		showBG;
-		bool		showSprite;
+		int32_t				chrPalette;
+		int32_t				spriteLimit;
+		bool				showBG;
+		bool				showSprite;
 	} ppu;
 };
 

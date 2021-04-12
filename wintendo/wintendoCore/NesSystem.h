@@ -25,13 +25,6 @@ struct debugTiming_t;
 struct config_t;
 struct command_t;
 
-enum wtSystemFlags : uint32_t
-{
-	NONE,
-	HEADLESS,
-};
-
-
 struct wtFrameResult
 {
 	uint64_t					currentFrame;
@@ -116,7 +109,7 @@ private:
 	masterCycle_t				sysCycles;
 	bool						replayFinished;
 	bool						debugNTEnable;
-	timePoint_t					previousTime;
+	int64_t						overflowCycles;
 	debugTiming_t				dbgInfo;
 #if DEBUG_ADDR == 1
 	std::map<uint16_t, uint8_t>	memoryDebug;
@@ -138,7 +131,6 @@ private:
 	playbackState_t				playbackState;
 	wtInput						input;
 	const config_t*				config;
-	wtSystemFlags				flags;
 	uint32_t					currentFrameIx;
 	uint32_t					finishedFrameIx;
 	uint64_t					frameNumber;
@@ -156,7 +148,6 @@ public:
 	void Reset()
 	{
 		sysCycles = masterCycle_t( 0 );
-		previousTime = std::chrono::steady_clock::now();
 
 		memset( memory, 0, PhysicalMemorySize );
 
@@ -168,7 +159,6 @@ public:
 
 		mirrorMode = MIRROR_MODE_HORIZONTAL;
 
-		flags = wtSystemFlags::NONE;
 		debugNTEnable = true;
 
 		replayFinished = true;
@@ -202,7 +192,6 @@ public:
 		currentFrameIx = 0;
 		finishedFrameIx = 1;
 		frameNumber = 0;
-		previousTime = chrono::steady_clock::now();
 
 		memset( &dbgInfo, 0, sizeof( dbgInfo ) );
 	}
@@ -227,7 +216,7 @@ public:
 	unique_ptr<wtMapper>	AssignMapper( const uint32_t mapperId ); // In "mapper.h"
 
 	// External functions
-	int						Init( const wstring& filePath, wtSystemFlags flags, const uint32_t resetVectorManual = 0x10000 );
+	int						Init( const wstring& filePath, const uint32_t resetVectorManual = 0x10000 );
 	void					Shutdown();
 	void					LoadProgram( const uint32_t resetVectorManual = 0x10000 );
 	string					GetPrgBankDissambly( const uint8_t bankNum );
@@ -236,7 +225,7 @@ public:
 	void					GetChrRomPalette( const uint8_t paletteId, RGBA palette[ 4 ] );
 	void					GetGrayscalePalette( RGBA palette[ 4 ] );
 	bool					Run( const masterCycle_t& nextCycle );
-	int						RunFrame();
+	int						RunEpoch( const std::chrono::nanoseconds& runCycles );
 	uint8_t					ReadInput( const uint16_t address );
 	void					WriteInput( const uint16_t address, const uint8_t value );
 	void					GetFrameResult( wtFrameResult& outFrameResult );

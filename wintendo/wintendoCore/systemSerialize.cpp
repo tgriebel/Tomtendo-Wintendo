@@ -57,16 +57,10 @@ void wtSystem::Serialize( Serializer& serializer )
 {
 	SerializeCycle( serializer, sysCycles );
 
-	if( serializer.GetMode() == serializeMode_t::LOAD ) {
-		previousTime = chrono::steady_clock::now(); // This might not be needed
-	}
-
 	serializer.Next64b( frameNumber );
 	serializer.Next8b( *reinterpret_cast<uint8_t*>( &strobeOn ) );
 	serializer.Next8b( btnShift[ 0 ] );
 	serializer.Next8b( btnShift[ 1 ] );
-	uint32_t f = static_cast<uint32_t>( flags );
-	serializer.Next32b( f );
 
 	serializer.NewLabel( STATE_MEMORY_LABEL );
 	serializer.NextArray( memory, PhysicalMemorySize );

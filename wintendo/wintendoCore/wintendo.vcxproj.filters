@@ -87,6 +87,9 @@
     <ClInclude Include="assert.h">
       <Filter>Source Files\Debug</Filter>
     </ClInclude>
+    <ClInclude Include="time.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">

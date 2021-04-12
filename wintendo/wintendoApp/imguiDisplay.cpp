@@ -143,19 +143,21 @@ void wtRenderer::BuildImguiCommandList()
 
 			if ( ImGui::CollapsingHeader( "Timing", ImGuiTreeNodeFlags_OpenOnArrow ) )
 			{
-				ImGui::Text( "Frame Cycle Start: %u",	fr->dbgInfo.cycleBegin );
-				ImGui::Text( "Frame Cycle End: %u",		fr->dbgInfo.cycleEnd );
-				ImGui::Text( "Frame Cycles: %u",		( fr->dbgInfo.cycleEnd - fr->dbgInfo.cycleBegin ) );
-				ImGui::Text( "State Cycle: %u",			fr->dbgInfo.stateCycle );
+				ImGui::Text( "Frame Cycle Start: %u",					fr->dbgInfo.cycleBegin );
+				ImGui::Text( "Frame Cycle End: %u",						fr->dbgInfo.cycleEnd );
+				ImGui::Text( "Frame Cycles: %u",						( fr->dbgInfo.cycleEnd - fr->dbgInfo.cycleBegin ) );
+				ImGui::Text( "State Cycle: %u",							fr->dbgInfo.stateCycle );
 				ImGui::Separator();
-				ImGui::Text( "Avg %.3f ms/frame (%.1f FPS)", avgFrameTime / 1000.0f, 1000000.0f / avgFrameTime );
-				ImGui::Text( "Display Frame #%i", frameNumber );
-				ImGui::Text( "Emulator Frame #%i", fr->dbgInfo.frameNumber );
-				ImGui::Text( "Emulator Run Invocations #%i", fr->dbgInfo.runInvocations );
-				ImGui::Text( "Avg Frames Emulated %f", fr->dbgInfo.framePerRun / (float)fr->dbgInfo.runInvocations );
-				ImGui::Text( "Copy time: %4.2f ms", app->t.copyTime );
-				ImGui::Text( "Time since last invocation: %4.2f ms", app->t.elapsedCopyTime );
-				ImGui::Text( "Toggled Frames: %i", fr->frameToggleCount );
+				ImGui::Text( "Avg %.3f ms/frame (%.1f FPS)",			avgFrameTime / 1000.0f, 1000000.0f / avgFrameTime );
+				ImGui::Text( "Display Frame #%i",						frameNumber );
+				ImGui::Text( "Emulator Frame #%i",						fr->dbgInfo.frameNumber );
+				ImGui::Text( "Emulator Run Invocations #%i",			fr->dbgInfo.runInvocations );
+				ImGui::Text( "Emulator Time (ms): %4.2f",				fr->dbgInfo.simulationTimeUs / 1000.0f );
+				ImGui::Text( "Real Time (ms): %4.2f",					fr->dbgInfo.realTimeUs / 1000.0f );
+				ImGui::Text( "Avg Frames Emulated %f",					fr->dbgInfo.framePerRun / (float)fr->dbgInfo.runInvocations );
+				ImGui::Text( "Copy time: %4.2f ms",						app->t.copyTime );
+				ImGui::Text( "Time since last invocation: %4.2f ms",	app->t.elapsedCopyTime );
+				ImGui::Text( "Toggled Frames: %i",						fr->frameToggleCount );
 				if ( fr->frameToggleCount > 1 ) {
 					ImGui::SameLine();
 					ImGui::Text( "- Warning!" );
@@ -253,10 +255,10 @@ void wtRenderer::BuildImguiCommandList()
 
 				if ( fr->stateCount > 0 )
 				{
-					int displayFrame = static_cast<int>( fr->playbackState.currentFrame );
-					int maxFrames = static_cast< int >( fr->stateCount );
-					int playFrame = displayFrame;
-					ImGui::SliderInt( "", &playFrame, 0, fr->stateCount );
+					const int32_t displayFrame = static_cast<int>( fr->playbackState.currentFrame );
+					const int32_t maxFrames = static_cast< int >( fr->stateCount );
+					int32_t playFrame = displayFrame;
+					ImGui::SliderInt( "", &playFrame, 0, (int32_t)fr->stateCount );
 					ImGui::SameLine();
 					ImGui::Text( "%i", fr->stateCount );
 
