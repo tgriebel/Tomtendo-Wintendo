@@ -166,6 +166,7 @@
   <ItemGroup>
     <ClInclude Include="apu.h" />
     <ClInclude Include="assert.h" />
+    <ClInclude Include="cart.h" />
     <ClInclude Include="command.h" />
     <ClInclude Include="input.h" />
     <ClInclude Include="mappers\MMC1.h" />

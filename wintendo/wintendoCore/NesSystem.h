@@ -18,6 +18,7 @@
 #include "command.h"
 #include "playback.h"
 #include "serializer.h"
+#include "cart.h"
 
 struct cpuDebug_t;
 struct wtFrameResult;
