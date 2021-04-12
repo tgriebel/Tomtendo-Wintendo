@@ -46,7 +46,6 @@ inline enumType operator<<( const enumType lhs, const enumType rhs )									\
 	return static_cast<enumType>( static_cast<intType>( lhs ) << static_cast<intType>( rhs ) );			\
 }
 
-
 enum analogMode_t
 {
 	NTSC,

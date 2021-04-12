@@ -4,7 +4,9 @@
 #include "common.h"
 #include "serializer.h"
 
-static const uint32_t		ApuSamplesPerSec	= static_cast<uint32_t>( CPU_HZ + 1 );
+class wtSystem;
+
+static constexpr uint32_t	ApuSamplesPerSec	= static_cast<uint32_t>( CPU_HZ + 1 );
 static constexpr uint32_t	ApuBufferMs			= static_cast<uint32_t>( 1000.0f / MinFPS );
 static constexpr uint32_t	ApuBufferSize		= static_cast<uint32_t>( ApuSamplesPerSec *  ( ApuBufferMs / 1000.0f ) );
 
