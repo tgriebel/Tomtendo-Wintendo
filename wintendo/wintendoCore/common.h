@@ -23,7 +23,11 @@ const uint32_t MB_1		= 1024 * KB_1;
 #define BIT_MASK(n)	( 1 << n )
 #define SELECT_BIT( word, bit ) ( (word) & (BIT_MASK_##bit) ) >> (BIT_##bit)
 
+#ifdef _MSC_BUILD
 #define FORCE_INLINE __forceinline
+#else
+#define FORCE_INLINE inline
+#endif
 
 #define DEFINE_ENUM_OPERATORS( enumType, intType )														\
 inline enumType operator|=( enumType lhs, enumType rhs )												\
