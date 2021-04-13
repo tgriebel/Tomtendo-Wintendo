@@ -439,10 +439,10 @@ uint8_t PPU::GetChrRomBank8x8( const uint32_t tileId, const uint8_t plane, const
 
 uint8_t PPU::GetChrRomPalette( const uint8_t plane0, const uint8_t plane1, const uint8_t col )
 {
-	const uint16_t xBitMask = ( 0x80 >> col );
-	const uint8_t lowerBits = ( ( plane0 & xBitMask ) >> ( 7 - col ) ) | ( ( ( plane1 & xBitMask ) >> ( 7 - col ) ) << 1 );
+	const uint8_t planeBit0 = ( plane0 >> ( 7 - col ) ) & 0x01;
+	const uint8_t planeBit1 = ( ( plane1 >> ( 7 - col ) ) & 0x01 ) << 1;
 
-	return ( lowerBits & 0x03 );
+	return ( planeBit0 | planeBit1 );
 }
 
 
@@ -980,8 +980,8 @@ void PPU::Render()
 		pixelColor.rgba = palette[ colorIx ];
 		{
 			// Debugging features
-			const float scanlineValue = currentScanline / 341.0f;
-			const float pixelValue = ( imageIx / 61440.0f );
+			// const float scanlineValue = currentScanline / 341.0f;
+			// const float pixelValue = ( imageIx / 61440.0f );
 			//pixelColor.rgba.red = static_cast<uint8_t>( 255.0f * scanlineValue );
 			//pixelColor.rgba.blue = static_cast<uint8_t>( 255.0f * scanlineValue );
 			//pixelColor.rgba.green = static_cast<uint8_t>( 255.0f * scanlineValue );
