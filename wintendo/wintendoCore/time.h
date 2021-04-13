@@ -139,3 +139,8 @@ static inline apuCycle_t CpuToApuCycle( const cpuCycle_t& cycle )
 {
 	return apuCycle_t( cycle.count() / 2 );
 }
+
+static inline masterCycle_t CpuToMasterCycle( const cpuCycle_t& cycle )
+{
+	return masterCycle_t( cycle.count() * CpuClockDivide );
+}
