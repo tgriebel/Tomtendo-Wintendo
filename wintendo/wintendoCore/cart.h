@@ -46,11 +46,11 @@ public:
 
 	virtual uint8_t			OnLoadCpu() { return 0; };
 	virtual uint8_t			OnLoadPpu() { return 0; };
-	virtual uint8_t			ReadRom( const uint16_t addr ) = 0;
-	virtual uint8_t			ReadChrRom( const uint16_t addr ) { return 0; };
+	virtual uint8_t			ReadRom( const uint16_t addr ) const = 0;
+	virtual uint8_t			ReadChrRom( const uint16_t addr ) const { return 0; };
 	virtual uint8_t			WriteChrRam( const uint16_t addr, const uint8_t value ) { return 0; };
 	virtual uint8_t			Write( const uint16_t addr, const uint8_t value ) { return 0; };
-	virtual bool			InWriteWindow( const uint16_t addr, const uint16_t offset ) { return false; };
+	virtual bool			InWriteWindow( const uint16_t addr, const uint16_t offset ) const { return false; };
 
 	virtual void			Serialize( Serializer& serializer ) {};
 	virtual void			Clock() {};
@@ -67,7 +67,7 @@ private:
 
 public:
 	wtRomHeader				h;
-	unique_ptr<wtMapper>	mapper;
+	shared_ptr<wtMapper>	mapper;
 
 	wtCart()
 	{

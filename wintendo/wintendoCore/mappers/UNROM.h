@@ -40,7 +40,7 @@ public:
 		return 0;
 	};
 
-	uint8_t	ReadRom( const uint16_t addr ) override
+	uint8_t	ReadRom( const uint16_t addr ) const override
 	{
 		const uint8_t bank = ( addr >> 14 ) & 0x01;
 		const uint16_t offset = ( addr & ( wtSystem::BankSize - 1 ) );
@@ -48,7 +48,7 @@ public:
 		return prgBanks[ bank ][ offset ];
 	}
 
-	uint8_t	ReadChrRom( const uint16_t addr ) override
+	uint8_t	ReadChrRom( const uint16_t addr ) const override
 	{
 		return chrBank[ addr ];
 	}
@@ -69,7 +69,7 @@ public:
 		return 0;
 	};
 
-	bool InWriteWindow( const uint16_t addr, const uint16_t offset ) override
+	bool InWriteWindow( const uint16_t addr, const uint16_t offset ) const override
 	{
 		const uint16_t address = ( addr + offset );
 		return InRange( address, wtSystem::ExpansionRomBase, wtSystem::Bank1End );

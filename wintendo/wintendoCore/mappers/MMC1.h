@@ -172,7 +172,7 @@ public:
 		return 0;
 	}
 
-	uint8_t	ReadRom( const uint16_t addr ) override
+	uint8_t	ReadRom( const uint16_t addr ) const override
 	{
 		if ( InRange( addr, wtSystem::Bank0, wtSystem::Bank0End ) )
 		{
@@ -194,7 +194,7 @@ public:
 		return 0;
 	}
 
-	uint8_t	ReadChrRom( const uint16_t addr ) override
+	uint8_t	ReadChrRom( const uint16_t addr ) const override
 	{
 		if ( InRange( addr, 0x0000, 0x1FFF ) && system->cart->HasChrRam() ) {
 			return chrRam[ addr ];
@@ -218,7 +218,7 @@ public:
 		return 0;
 	}
 
-	bool InWriteWindow( const uint16_t addr, const uint16_t offset ) override
+	bool InWriteWindow( const uint16_t addr, const uint16_t offset ) const override
 	{
 		const uint16_t address = ( addr + offset );
 		return ( system->cart->GetMapperId() == mapperId ) && InRange( address, wtSystem::ExpansionRomBase, wtSystem::Bank1End );

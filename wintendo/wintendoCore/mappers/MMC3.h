@@ -131,7 +131,7 @@ public:
 		return 0;
 	}
 
-	bool InWriteWindow( const uint16_t addr, const uint16_t offset ) override
+	bool InWriteWindow( const uint16_t addr, const uint16_t offset ) const override
 	{
 		const uint16_t address = ( addr + offset );
 		return ( system->cart->GetMapperId() == mapperId ) && InRange( address, wtSystem::ExpansionRomBase, 0xFFFF );
@@ -150,7 +150,7 @@ public:
 		}
 	}
 
-	uint8_t	ReadRom( const uint16_t addr ) override
+	uint8_t	ReadRom( const uint16_t addr ) const override
 	{	
 		//uint8_t bank = 0;
 		//switch ( ( addr >> 13 ) & 3 )
@@ -166,8 +166,6 @@ public:
 		//{
 		//	return system->cart->GetPrgRomBankAddr( address );
 		//}
-
-		SetPrgBanks();
 
 		if ( InRange( addr, 0x8000, 0x9FFF ) )
 		{
@@ -198,10 +196,8 @@ public:
 		return 0;
 	}
 
-	uint8_t	ReadChrRom( const uint16_t addr ) override
+	uint8_t	ReadChrRom( const uint16_t addr ) const override
 	{
-		SetChrBanks();
-
 		if ( system->cart->HasChrRam() && InRange( addr, 0x0000, 0x1FFF ) ) {
 			return chrRam[ addr ];
 		}
@@ -301,6 +297,9 @@ public:
 		{
 			irqEnable = isOdd;
 		}
+
+		SetPrgBanks();
+		SetChrBanks();
 		
 		return 0;
 	}
