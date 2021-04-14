@@ -474,30 +474,27 @@ FORCE_INLINE uint8_t PPU::ReadVram( const uint16_t addr )
 
 void PPU::WriteVram()
 {
-	if ( vramWritePending )
+	if ( vramWritePending && DataportEnabled()  )
 	{
-		if ( DataportEnabled() )
-		{
-			const uint16_t adjustedAddr = MirrorVram( regV.byte2x );
-			// assert( adjustedAddr < PhysicalMemorySize );
+		const uint16_t adjustedAddr = MirrorVram( regV.byte2x );
+		// assert( adjustedAddr < PhysicalMemorySize );
 
-			if ( InRange( adjustedAddr, 0x0000, 0x1FFF ) ) {
-				system->cart->mapper->WriteChrRam( adjustedAddr, registers[ PPUREG_DATA ] );
-			} else if ( InRange( adjustedAddr, 0x2000, 0x3EFF ) ) {
-				nt[ adjustedAddr - 0x2000 ] = registers[ PPUREG_DATA ];
-			} else if ( InRange( adjustedAddr, 0x3F00, 0x3F0F ) ) {
-				imgPal[ adjustedAddr - 0x3F00 ] = registers[ PPUREG_DATA ];
-			} else if ( InRange( adjustedAddr, 0x3F10, 0x3F1F ) ) {
-				sprPal[ adjustedAddr - 0x3F10 ] = registers[ PPUREG_DATA ];
-			} else {
-				assert( 0 );
-			}
-
-			debugVramWriteCounter[adjustedAddr]++;
+		if ( InRange( adjustedAddr, 0x0000, 0x1FFF ) ) {
+			system->cart->mapper->WriteChrRam( adjustedAddr, registers[ PPUREG_DATA ] );
+		} else if ( InRange( adjustedAddr, 0x2000, 0x3EFF ) ) {
+			nt[ adjustedAddr - 0x2000 ] = registers[ PPUREG_DATA ];
+		} else if ( InRange( adjustedAddr, 0x3F00, 0x3F0F ) ) {
+			imgPal[ adjustedAddr - 0x3F00 ] = registers[ PPUREG_DATA ];
+		} else if ( InRange( adjustedAddr, 0x3F10, 0x3F1F ) ) {
+			sprPal[ adjustedAddr - 0x3F10 ] = registers[ PPUREG_DATA ];
+		} else {
+			assert( 0 );
 		}
 
-		vramWritePending = false;
+		debugVramWriteCounter[adjustedAddr]++;
 	}
+
+	vramWritePending = false;
 }
 
 
@@ -848,9 +845,6 @@ void PPU::AdvanceXScroll()
 
 void PPU::AdvanceYScroll()
 {
-	if ( !RenderEnabled() )
-		return;
-	
 	if ( regV.sem.fineY < 7 )
 	{
 		regV.byte2x += 0x1000; // regV.sem.fineY + 1 with overflow
@@ -1013,7 +1007,6 @@ ppuCycle_t PPU::Exec()
 
 	// Cycle timing
 	const uint64_t cycleCount = cycle.count() % ScanlineCycles;
-	//currentScanline = cycle.count() / ScanlineCycles;
 
 	if ( regStatus.hasLatch )
 	{
@@ -1038,7 +1031,7 @@ ppuCycle_t PPU::Exec()
 	// Scanlines take multiple cycles
 	if ( currentScanline == POSTRENDER_SCANLINE )
 	{
-		execCycles += ppuCycle_t( 1 );
+		++execCycles;
 
 		if ( ( cycleCount + 1 ) >= ScanlineCycles )
 		{
@@ -1087,15 +1080,22 @@ ppuCycle_t PPU::Exec()
 				system->RequestNMI();
 			}
 		}
-	}
-	else if ( ( currentScanline >= POSTRENDER_SCANLINE ) && ( currentScanline < PRERENDER_SCANLINE ) )
-	{
-		//execCycles++;
 
-		//if ( cycleCount >= ScanlineCycles ) {
-		//	++currentScanline;
-		//}
-		//return execCycles;
+		++execCycles;
+		if ( cycleCount == 340 ) {
+			++currentScanline;
+		}
+
+		return execCycles;
+	}
+	else if ( ( currentScanline >= 242 ) && ( currentScanline < PRERENDER_SCANLINE ) )
+	{
+		++execCycles;
+		if( cycleCount == 340 ) {
+			++currentScanline;
+		}
+
+		return execCycles;
 	}
 
 	///////////////////////////////////////////////////////////////////////////
@@ -1110,82 +1110,66 @@ ppuCycle_t PPU::Exec()
 	}
 	else if ( cycleCount <= 256 )
 	{
-		if ( BgDataFetchEnabled() )
+		if ( currentScanline < POSTRENDER_SCANLINE )
 		{
-			if ( cycleCount == 1 )
-			{
+			if ( cycleCount == 1 ) {
 				LoadSecondaryOAM();
 			}
 
-			if( currentScanline < POSTRENDER_SCANLINE )
-			{
-				Render();
-			}
-	
+			Render();
+				
 			BgPipelineShiftRegisters();
 			BgPipelineFetch( cycleCount & 0x07 );
 			beamPosition.x++;
 		}
 
-		if( cycleCount == 256 ) {
-			AdvanceYScroll();
-		}
-
-		execCycles += ppuCycle_t( 1 );	
+		++execCycles;
 	}
 	else if ( cycleCount == 257 )
 	{
-		if ( BgDataFetchEnabled() ) {
-		//	BgPipelineFetch<0>( cycleCount );
-		}
-
 		if ( RenderEnabled() )
 		{
+			AdvanceYScroll(); // technically done on 256
+
 			regV.sem.coarseX = regT.sem.coarseX;
 			regV.sem.ntId = ( regV.sem.ntId & 0x2 ) | ( regT.sem.ntId & 0x1 );
 		}
 
-		execCycles += ppuCycle_t( 1 );
+		++execCycles;
 	}
 	else if ( cycleCount <= 259 ) // [258 - 259]
 	{
-		execCycles += ppuCycle_t( 1 );
+		execCycles += 2;
 	}
 	else if ( cycleCount == 260 )
 	{
-		execCycles += ppuCycle_t( 1 );
-
-		if( BgDataFetchEnabled() && RenderEnabled() ) {
+		if( RenderEnabled() ) {
 			system->cart->mapper->Clock(); // TODO: How big of a hack is this?
 		}
+		++execCycles;
 	}
 	else if ( cycleCount <= 320 ) // [261 - 320]
 	{
 		// Prefetch the 8 sprites on next scanline
-		execCycles += ppuCycle_t( 1 );
-
-	//	BgPipelineFetch( cycleCount ); // Garbage fetches, 8 fetches
+		// Garbage fetches, 8 fetches
+		execCycles += 3;
 	}
 	else if ( cycleCount <= 336 ) // [321 - 336]
 	{
-		++execCycles;
-
-		if( BgDataFetchEnabled() ) {
+		if( RenderEnabled() ) {
 			BgPipelineShiftRegisters();
 			BgPipelineFetch( cycleCount & 0x07 ); // Prefetch first two tiles on next scanline
 			BgPipelineDebugPrefetchFetchTiles();
 		}
+
+		++execCycles;
 	}
 	else if ( cycleCount <= 339 ) // [337 - 339], +3 cycles
 	{
-		if ( BgDataFetchEnabled() ) {
-			BgPipelineFetch( cycleCount & 0x07 );
-		}
-
 		// 2 unused fetches
-		++execCycles;
+		execCycles += 3;
 	}
-	else if ( cycleCount <= 340 )
+	else if ( cycleCount == 340 )
 	{
 		if( currentScanline == PRERENDER_SCANLINE )
 		{
@@ -1203,7 +1187,6 @@ ppuCycle_t PPU::Exec()
 		}
 
 		++execCycles;
-	//	assert( currentScanline == GetScanline() );
 	}
 
 	return execCycles;
