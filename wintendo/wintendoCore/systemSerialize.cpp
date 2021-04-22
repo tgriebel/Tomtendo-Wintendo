@@ -113,8 +113,8 @@ void PPU::Serialize( Serializer& serializer )
 	serializer.Next8b( palShifts[ 1 ] );
 	serializer.Next8b( ppuReadBuffer );
 	serializer.Next32b( *reinterpret_cast<uint32_t*>( &currentScanline ) );
-	serializer.Next32b( *reinterpret_cast<uint32_t*>( &beamPosition.x ) );
-	serializer.Next32b( *reinterpret_cast<uint32_t*>( &beamPosition.y ) );
+	serializer.Next8b( beam.point.x );
+	serializer.Next8b( beam.point.y );
 	serializer.Next16b( regT.byte2x );
 	serializer.Next16b( regV.byte2x );
 	serializer.Next16b( regX );

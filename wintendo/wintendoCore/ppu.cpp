@@ -634,19 +634,15 @@ spriteAttrib_t PPU::GetSpriteData( const uint8_t spriteId, const uint8_t oam[] )
 }
 
 
-bool PPU::DrawSpritePixel( wtDisplayImage& fb, const wtRect& imageRect, const spriteAttrib_t attribs, const wtPoint& point, const uint8_t bgPixel )
+bool PPU::DrawSpritePixel( wtDisplayImage& fb, const spriteAttrib_t attribs, const ppuImageIx_t& beam, const uint8_t bgPixel )
 {
-	if( !regMask.sem.showSprt )
-	{
-		return false;
-	}
 
 	Pixel pixelColor;
 
 	wtPoint spritePt;
 
-	spritePt.x = point.x - attribs.x;
-	spritePt.y = point.y - attribs.y;
+	spritePt.x = beam.point.x - attribs.x;
+	spritePt.y = beam.point.y - attribs.y;
 	spritePt.x = attribs.flippedHorizontal	? ( 7 - spritePt.x ) : spritePt.x;
 
 	uint8_t chrRom0 = 0;
@@ -676,15 +672,12 @@ bool PPU::DrawSpritePixel( wtDisplayImage& fb, const wtRect& imageRect, const sp
 
 	const uint8_t finalPalette = GetChrRomPalette( chrRom0, chrRom1, spritePt.x );
 
-	const uint32_t imageX = imageRect.x;
-	const uint32_t imageY = imageRect.y;
-
 	const uint8_t colorIx = ReadVram( SpritePaletteAddr + attribs.palette + finalPalette );
 
 	// Sprite 0 Hit happens regardless of priority but still draws normal
 	if ( attribs.sprite0 )
 	{
-		if ( ( bgPixel != 0 ) && ( finalPalette != 0 ) && ( point.x != 255 ) && ( regMask.sem.showBg ) )
+		if ( ( bgPixel != 0 ) && ( finalPalette != 0 ) && ( regMask.sem.showBg ) )
 		{
 			regStatus.current.sem.spriteHit = true;
 		}
@@ -703,7 +696,6 @@ bool PPU::DrawSpritePixel( wtDisplayImage& fb, const wtRect& imageRect, const sp
 	}
 
 	pixelColor.rgba = palette[colorIx];
-	const uint32_t imageIndex = imageX + imageY * imageRect.width;
 
 	uint8_t spriteHeight = regCtrl.sem.sprite8x16Mode ? 16 : 8;
 	if ( system->MouseInRegion( { attribs.x, attribs.y, attribs.x + 8, attribs.y + spriteHeight } ) )
@@ -712,11 +704,11 @@ bool PPU::DrawSpritePixel( wtDisplayImage& fb, const wtRect& imageRect, const sp
 		pixelColor.rgba.alpha = 0xFF;
 		
 		dbgInfo.spritePicked = attribs;
-		fb.Set( imageIndex, pixelColor );
+		fb.Set( beam.index, pixelColor );
 	}
 	else
 	{
-		fb.Set( imageIndex, pixelColor );
+		fb.Set( beam.index, pixelColor );
 	}
 
 	return true;
@@ -725,10 +717,8 @@ bool PPU::DrawSpritePixel( wtDisplayImage& fb, const wtRect& imageRect, const sp
 
 void PPU::DrawDebugPatternTables( wtPatternTableImage& imageBuffer, const RGBA dbgPalette[4], const uint32_t tableID, const bool isCartbank )
 {
-	for ( int32_t tileY = 0; tileY < 16; ++tileY )
-	{
-		for ( int32_t tileX = 0; tileX < 16; ++tileX )
-		{
+	for ( int32_t tileY = 0; tileY < 16; ++tileY ) {
+		for ( int32_t tileX = 0; tileX < 16; ++tileX ) {
 			DrawChrRomTile( &imageBuffer, wtRect{ (int32_t)PPU::TilePixels * tileX, (int32_t)PPU::TilePixels * tileY, PPU::PatternTableWidth, PPU::PatternTableHeight }, dbgPalette, (int32_t)( tileX + 16 * tileY ), tableID, isCartbank );
 		}
 	}
@@ -804,11 +794,13 @@ FORCE_INLINE void PPU::LoadSecondaryOAM()
 		const bool isLargeSpriteMode = static_cast<bool>( regCtrl.sem.sprite8x16Mode );
 		const uint32_t spriteHeight = isLargeSpriteMode ? 16 : 8;
 
-		if ( ( beamPosition.y >= static_cast<int32_t>( y + spriteHeight ) ) || ( beamPosition.y < static_cast<int32_t>( y ) ) )
+		if ( ( beam.point.y >= static_cast<int32_t>( y + spriteHeight ) ) || ( beam.point.y < static_cast<int32_t>( y ) ) ) {
 			continue;
+		}
 
-		if ( ( y < 1 ) || (y > 232 ) )
+		if ( ( y < 1 ) || (y > 232 ) ) {
 			continue;
+		}
 
 		secondaryOAM[destSpriteNum] = GetSpriteData( spriteNum, primaryOAM );
 		secondaryOAM[ destSpriteNum ].secondaryOamIndex = destSpriteNum;
@@ -924,8 +916,6 @@ bool PPU::DataportEnabled()
 
 uint32_t PPU::GetScanline() const
 {
-	// assert( ( static_cast<uint32_t>( cycle.count() ) / ScanlineCycles ) == currentScanline );
-//	return ( static_cast<uint32_t>( cycle.count() ) / 340 ) % 262;
 	return currentScanline;
 }
 
@@ -938,16 +928,11 @@ ppuCycle_t PPU::GetCycle() const
 
 void PPU::Render()
 {
-	wtRect imageRect = { beamPosition.x, beamPosition.y, ScreenWidth, ScreenHeight };
-
-	// TODO: don't use globals directly in this function
-	const uint32_t imageX = imageRect.x;
-	const uint32_t imageY = imageRect.y;
-	const uint32_t imageIx = imageX + imageY * imageRect.width;
+	const uint32_t imageIx = beam.index;
 
 	uint8_t bgPixel = 0;
 
-	bool bgMask = ( !regMask.sem.bgLeft && ( beamPosition.x < 8 ) );
+	bool bgMask = ( !regMask.sem.bgLeft && ( beam.point.x < 8 ) );
 	bgMask = bgMask || !regMask.sem.showBg;
 	bgMask = bgMask || !system->GetConfig()->ppu.showBG;
 
@@ -972,37 +957,36 @@ void PPU::Render()
 		// Frame Buffer
 		Pixel pixelColor;
 		pixelColor.rgba = palette[ colorIx ];
-		{
-			// Debugging features
-			// const float scanlineValue = currentScanline / 341.0f;
-			// const float pixelValue = ( imageIx / 61440.0f );
-			//pixelColor.rgba.red = static_cast<uint8_t>( 255.0f * scanlineValue );
-			//pixelColor.rgba.blue = static_cast<uint8_t>( 255.0f * scanlineValue );
-			//pixelColor.rgba.green = static_cast<uint8_t>( 255.0f * scanlineValue );
-		}
 		fb->Set( imageIx, pixelColor );
 	}
 
 	uint8_t spriteCount = secondaryOamSpriteCnt;
-	if ( !regMask.sem.sprtLeft && ( beamPosition.x < 8 ) ) {
+	if ( !regMask.sem.sprtLeft && ( beam.point.x < 8 ) ) {
 		spriteCount = 0;
 	}
 
 	for ( uint8_t spriteIndex = 0; spriteIndex < spriteCount; ++spriteIndex )
 	{
 		spriteAttrib_t& attribs = secondaryOAM[ spriteIndex ];
-		if ( ( beamPosition.x >= ( attribs.x + 8 ) ) || ( beamPosition.x < attribs.x ) )
+		if ( ( beam.point.x >= ( attribs.x + 8 ) ) || ( beam.point.x < attribs.x ) ) {
 			continue;
+		}
 
-		if ( DrawSpritePixel( *fb, imageRect, attribs, beamPosition, bgPixel & 0x03 ) )
+		if ( !regMask.sem.showSprt ) {
+			continue;
+		}
+
+		if ( DrawSpritePixel( *fb, attribs, beam, bgPixel ) ) {
 			break;
+		}
 	}
+
+	++beam.index;
 }
 
 
 ppuCycle_t PPU::Exec()
 {
-	// Function advances 1 - 8 cycles at a time. The logic is built on this constaint.
 	ppuCycle_t execCycles = ppuCycle_t( 0 );
 
 	// Cycle timing
@@ -1029,15 +1013,38 @@ ppuCycle_t PPU::Exec()
 	//                                                                       //
 	///////////////////////////////////////////////////////////////////////////
 	// Scanlines take multiple cycles
-	if ( currentScanline == POSTRENDER_SCANLINE )
+	if ( currentScanline == 241 )
 	{
-		++execCycles;
-
-		if ( ( cycleCount + 1 ) >= ScanlineCycles )
+		// must only exec once!
+		if( cycleCount == 1 )
 		{
+			inVBlank = true;
+			regStatus.current.sem.vBlank = 1;
+
+			system->ToggleFrame(); // frame is complete
+			beam.index = 0;
+
+			const bool isVblank = static_cast<bool>( regCtrl.sem.nmiVblank );
+			if ( isVblank )
+			{
+				system->RequestNMI();
+			}
+		}
+		
+		if ( cycleCount >= 340 ) {
 			++currentScanline;
 		}
 
+		++execCycles;
+		return execCycles;
+	}
+	if ( ( currentScanline >= POSTRENDER_SCANLINE ) && ( currentScanline < PRERENDER_SCANLINE ) )
+	{
+		if ( cycleCount >= 340 ) {
+			++currentScanline;
+		}
+
+		++execCycles;
 		return execCycles;
 	}
 	else if ( currentScanline == PRERENDER_SCANLINE )
@@ -1054,7 +1061,7 @@ ppuCycle_t PPU::Exec()
 
 			system->SaveFrameState();
 		}
-		else if( cycleCount >= 280 && cycleCount <= 304 )
+		else if ( cycleCount >= 280 && cycleCount <= 304 )
 		{
 			if ( RenderEnabled() )
 			{
@@ -1063,39 +1070,6 @@ ppuCycle_t PPU::Exec()
 				regV.sem.ntId = ( regV.sem.ntId & 0x1 ) | ( regT.sem.ntId & 0x2 );
 			}
 		}
-	}
-	else if ( currentScanline == 241 )
-	{
-		// must only exec once!
-		if( cycleCount == 1 )
-		{
-			inVBlank = true;
-			regStatus.current.sem.vBlank = 1;
-
-			system->ToggleFrame(); // frame is complete
-
-			const bool isVblank = static_cast<bool>( regCtrl.sem.nmiVblank );
-			if ( isVblank )
-			{
-				system->RequestNMI();
-			}
-		}
-
-		++execCycles;
-		if ( cycleCount == 340 ) {
-			++currentScanline;
-		}
-
-		return execCycles;
-	}
-	else if ( ( currentScanline >= 242 ) && ( currentScanline < PRERENDER_SCANLINE ) )
-	{
-		++execCycles;
-		if( cycleCount == 340 ) {
-			++currentScanline;
-		}
-
-		return execCycles;
 	}
 
 	///////////////////////////////////////////////////////////////////////////
@@ -1120,7 +1094,6 @@ ppuCycle_t PPU::Exec()
 				
 			BgPipelineShiftRegisters();
 			BgPipelineFetch( cycleCount & 0x07 );
-			beamPosition.x++;
 		}
 
 		++execCycles;
@@ -1150,7 +1123,6 @@ ppuCycle_t PPU::Exec()
 	}
 	else if ( cycleCount <= 320 ) // [261 - 320]
 	{
-		// Prefetch the 8 sprites on next scanline
 		// Garbage fetches, 8 fetches
 		execCycles += 3;
 	}
@@ -1164,27 +1136,14 @@ ppuCycle_t PPU::Exec()
 
 		++execCycles;
 	}
-	else if ( cycleCount <= 339 ) // [337 - 339], +3 cycles
+	else if ( cycleCount <= 339 ) // [337 - 339]
 	{
 		// 2 unused fetches
-		execCycles += 3;
+		++execCycles;
 	}
 	else if ( cycleCount == 340 )
 	{
-		if( currentScanline == PRERENDER_SCANLINE )
-		{
-			currentScanline = 0;
-
-			beamPosition.x = 0;
-			beamPosition.y = 0;
-		}
-		else
-		{
-			currentScanline++;
-			
-			beamPosition.x = 0;
-			beamPosition.y++;
-		}
+		currentScanline = ( currentScanline + 1 ) % PRERENDER_SCANLINE;
 
 		++execCycles;
 	}

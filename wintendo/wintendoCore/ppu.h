@@ -162,6 +162,17 @@ enum ppuScanLine_t
 };
 
 
+union ppuImageIx_t
+{
+	struct point_t
+	{
+		uint8_t x;
+		uint8_t y;
+	} point;
+	uint16_t index;
+};
+
+
 struct ppuDebug_t
 {
 	spriteAttrib_t	spritePicked;
@@ -226,7 +237,7 @@ private:
 	ppuMask_t		regMask;
 	ppuStatus_t		regStatus;
 
-	wtPoint			beamPosition;
+	ppuImageIx_t	beam;
 
 	bool			debugPrefetchTiles = false;
 
@@ -314,8 +325,8 @@ public:
 
 		vramWritePending		= false;
 
-		beamPosition.x			= 0;
-		beamPosition.y			= 0;
+		beam.point.x	= 0;
+		beam.point.y	= 0;
 
 		regT.byte2x				= 0;
 		regV.byte2x				= 0;
@@ -355,7 +366,7 @@ private:
 	void			DrawBlankScanline( wtDisplayImage& imageBuffer, const wtRect& imageRect, const uint8_t scanY );
 	void			DrawTile( wtNameTableImage& imageBuffer, const wtRect& imageRect, const wtPoint& nametableTile, const uint32_t ntId, const uint32_t ptrnTableId );
 	void			DrawChrRomTile( wtRawImageInterface* imageBuffer, const wtRect& imageRect, const RGBA palette[4], const uint32_t tileId, const uint32_t tableId, const bool cartBank, const bool is8x16 = false, const bool isUpper = false );
-	bool			DrawSpritePixel( wtDisplayImage& fb, const wtRect& imageRect, const spriteAttrib_t attribs, const wtPoint& point, const uint8_t bgPixel );
+	bool			DrawSpritePixel( wtDisplayImage& fb, const spriteAttrib_t attribs, const ppuImageIx_t& index, const uint8_t bgPixel );
 
 	bool			BgDataFetchEnabled();
 	void			BgPipelineShiftRegisters();
