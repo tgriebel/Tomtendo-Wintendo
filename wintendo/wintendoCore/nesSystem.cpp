@@ -590,9 +590,14 @@ bool wtSystem::Run( const masterCycle_t& nextCycle )
 	{
 		sysCycles += ticks;
 
-		isRunning = cpu.Step( MasterToCpuCycle( sysCycles ) );
-		ppu.Step( MasterToPpuCycle( sysCycles ) );
-		apu.Step( MasterToCpuCycle( sysCycles ) );
+		const cpuCycle_t nextCpuCycle = MasterToCpuCycle( sysCycles );
+		const ppuCycle_t nextPpuCycle = MasterToPpuCycle( sysCycles );
+
+		isRunning = cpu.Step( nextCpuCycle );
+		ppu.Step( nextPpuCycle );
+#ifndef _DEBUG
+		apu.Step( nextCpuCycle );
+#endif
 	}
 	apu.End();
 

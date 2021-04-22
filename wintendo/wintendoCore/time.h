@@ -7,6 +7,7 @@ const uint64_t CpuClockDivide		= 12;
 const uint64_t ApuClockDivide		= 24;
 const uint64_t ApuSequenceDivide	= 89490;
 const uint64_t PpuClockDivide		= 4;
+const uint64_t PpuCyclesPerCpuCycle = ( CpuClockDivide / PpuClockDivide );
 const uint64_t PpuCyclesPerScanline	= 341;
 const uint64_t FPS					= 60;
 const uint64_t MinFPS				= 30;
