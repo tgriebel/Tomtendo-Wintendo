@@ -227,7 +227,7 @@ public:
 	pulseRamp_t			regRamp;
 	timerCtrl_t			regTune;
 	BitCounter<12>		periodTimer;
-	BitCounter<12>		period;
+	BitCounter<11>		period;
 	uint8_t				lengthCounter;
 	cpuCycle_t			lastCycle;
 	apuCycle_t			lastApuCycle;

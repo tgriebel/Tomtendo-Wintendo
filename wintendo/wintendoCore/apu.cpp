@@ -59,14 +59,14 @@ void APU::WriteReg( const uint16_t addr, const uint8_t value )
 
 		case 0x4006: {
 			pulse2.regTune.sem1.lower = value;
-			pulse2.periodTimer.Reload( pulse2.regTune.sem0.timer );
+			pulse2.period.Reload( pulse2.regTune.sem0.timer );
 		} break;
 
 		case 0x4007:
 		{
 			pulse2.regTune.sem1.upper = value;
 			pulse2.lengthCounter = LengthLUT[ pulse2.regTune.sem0.counter ];
-			pulse2.periodTimer.Reload( pulse2.regTune.sem0.timer );
+			pulse2.period.Reload( pulse2.regTune.sem0.timer );
 			pulse2.sequenceStep = 0;
 			pulse2.envelope.startFlag = true;
 		} break;
@@ -308,9 +308,9 @@ void APU::ExecPulseChannel( PulseChannel& pulse )
 	if ( pulse.periodTimer.IsZero() )
 	{
 		pulse.periodTimer.Reload( pulse.period.Value() + 1 );
-		pulse.sequenceStep = ( pulse.sequenceStep + 1 ) & 0x0F;
+		pulse.sequenceStep = ( pulse.sequenceStep + 1 ) & 0x07;
 	}
-
+	
 	float pulseSample = pulse.envelope.output;
 	if ( ( pulse.lengthCounter == 0 ) ||
 		( pulse.period.Value() < 8 ) ||
@@ -572,7 +572,7 @@ bool APU::Step( const cpuCycle_t& nextCpuCycle )
 		ExecChannelDMC();
 
 		//apuCycle = chrono::duration_cast<apuCycle_t>( cpuCycle );
-		if ( ( cpuCycle.count() % 2 ) == 0 )
+		if ( ( cpuCycle.count() & 1 ) == 0 )
 		{
 			ExecPulseChannel( pulse1 );
 			ExecPulseChannel( pulse2 );
