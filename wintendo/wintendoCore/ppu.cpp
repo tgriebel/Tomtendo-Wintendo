@@ -636,7 +636,6 @@ spriteAttrib_t PPU::GetSpriteData( const uint8_t spriteId, const uint8_t oam[] )
 
 bool PPU::DrawSpritePixel( wtDisplayImage& fb, const spriteAttrib_t attribs, const ppuImageIx_t& beam, const uint8_t bgPixel )
 {
-
 	Pixel pixelColor;
 
 	wtPoint spritePt;
@@ -976,7 +975,7 @@ void PPU::Render()
 			continue;
 		}
 
-		if ( DrawSpritePixel( *fb, attribs, beam, bgPixel ) ) {
+		if ( DrawSpritePixel( *fb, attribs, beam, bgPixel & 0x03 ) ) {
 			break;
 		}
 	}
