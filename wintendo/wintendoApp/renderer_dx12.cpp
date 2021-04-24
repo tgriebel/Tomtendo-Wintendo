@@ -33,8 +33,10 @@ void wtRenderer::AdvanceNextFrame()
 
 uint32_t wtRenderer::InitD3D12()
 {
-	view.viewport = CD3DX12_VIEWPORT( 0.0f, 0.0f, static_cast<float>( view.defaultWidth ), static_cast<float>( view.defaultHeight ) );
-	view.scissorRect = CD3DX12_RECT( 0, view.overscanY0, view.defaultWidth, view.overscanY1 );
+	view.width = view.defaultWidth;
+	view.height = view.defaultHeight;
+	view.viewport = CD3DX12_VIEWPORT( 0.0f, 0.0f, static_cast<float>( view.width ), static_cast<float>( view.height ) );
+	view.scissorRect = CD3DX12_RECT( 0, 0, view.defaultWidth, view.defaultHeight );
 
 	UINT dxgiFactoryFlags = 0;
 
@@ -325,7 +327,7 @@ void wtRenderer::BuildDrawCommandList()
 	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle( swapChain.rtvHeap->GetCPUDescriptorHandleForHeapStart(), currentFrameIx, swapChain.rtvDescriptorSize );
 	cmd.commandList[ currentFrameIx ]->OMSetRenderTargets( 1, &rtvHandle, FALSE, nullptr );
 
-	const float clearColor[] = { 0.1f, 0.2f, 0.2f, 1.0f };
+	const float clearColor[] = { 0.1f, 0.1f, 0.1f, 1.0f };
 	cmd.commandList[ currentFrameIx ]->ClearRenderTargetView( rtvHandle, clearColor, 0, nullptr );
 	cmd.commandList[ currentFrameIx ]->IASetPrimitiveTopology( D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST );
 	cmd.commandList[ currentFrameIx ]->IASetVertexBuffers( 0, 1, &pipeline.vbView );
@@ -517,13 +519,14 @@ void wtRenderer::InitImgui()
 
 void wtRenderer::DestroyD3D12()
 {
+	WaitForGpu();
+
 #ifdef IMGUI_ENABLE
 	ImGui_ImplDX12_Shutdown();
 	ImGui_ImplWin32_Shutdown();
 	ImGui::DestroyContext();
 #endif
 
-	WaitForGpu();
 	CloseHandle( sync.fenceEvent );
 	for ( uint32_t i = 0; i < FrameResultCount; ++i )
 	{
@@ -532,9 +535,18 @@ void wtRenderer::DestroyD3D12()
 		CloseHandle( sync.audioWriteLock[ i ] );
 		CloseHandle( sync.audioReadLock[ i ] );
 	}
-	sync.cpyFence->Release();
-	sync.fence->Release();
+
 	initD3D12 = false;
+}
+
+
+bool wtRenderer::NeedsResize( const uint32_t width, const uint32_t height )
+{
+	if ( !initD3D12 ) {
+		return false;
+	}
+
+	return ( width != view.width || height != view.height );
 }
 
 
@@ -544,16 +556,35 @@ void wtRenderer::RecreateSwapChain( const uint32_t width, const uint32_t height 
 		return;
 	}
 
-	DXGI_MODE_DESC desc;
-	desc.Width				= width;
-	desc.Height				= height;
-	desc.RefreshRate		= { 60, 1 };
-	desc.Format				= DXGI_FORMAT_R8G8B8A8_UNORM;
-	desc.ScanlineOrdering	= DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
-	desc.Scaling			= DXGI_MODE_SCALING_CENTERED;
+	// Flush all current GPU commands.
+	WaitForGpu();
 
-	swapChain.dxgi->ResizeBuffers( FrameCount, width, height, DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT );
-	swapChain.dxgi->ResizeTarget( &desc );
+	for ( uint32_t i = 0; i < FrameCount; i++ )
+	{
+		swapChain.renderTargets[ i ].Reset();
+		sync.fenceValues[ i ] = sync.fenceValues[ currentFrameIx ];
+	}
+
+	// Resize the swap chain to the desired dimensions.
+	DXGI_SWAP_CHAIN_DESC desc = {};
+	swapChain.dxgi->GetDesc( &desc );
+	ThrowIfFailed( swapChain.dxgi->ResizeBuffers( FrameCount, width, height, desc.BufferDesc.Format, desc.Flags ) );
+
+	// Reset the frame index to the current back buffer index.
+	currentFrameIx = swapChain.dxgi->GetCurrentBackBufferIndex();
+
+	view.width = width;
+	view.height = height;
+	view.viewport = CD3DX12_VIEWPORT( 0.0f, 0.0f, static_cast<float>( width ), static_cast<float>( height ) );
+	view.scissorRect = CD3DX12_RECT( 0, 0, width, height );
+
+	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle( swapChain.rtvHeap->GetCPUDescriptorHandleForHeapStart() );
+	for ( uint32_t i = 0; i < FrameCount; ++i )
+	{
+		ThrowIfFailed( swapChain.dxgi->GetBuffer( i, IID_PPV_ARGS( &swapChain.renderTargets[ i ] ) ) );
+		d3d12device->CreateRenderTargetView( swapChain.renderTargets[ i ].Get(), nullptr, rtvHandle );
+		rtvHandle.Offset( 1, swapChain.rtvDescriptorSize );
+	}
 }
 
 

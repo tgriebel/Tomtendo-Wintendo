@@ -1,5 +1,5 @@
 #include "wintendoApp.h"
-extern wtAppInterface_t	app;
+extern wtAppInterface	app;
 
 static void TestRomUnit( std::wstring& testFilePath )
 {
@@ -22,5 +22,5 @@ static void TestRomUnit( std::wstring& testFilePath )
 	std::ofstream log( "testNes.log" );
 	log << logText;
 	log.close();
-	app.emulatorRunning = false;
+	app.TerminateEmulator();
 }

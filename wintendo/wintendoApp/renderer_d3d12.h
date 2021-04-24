@@ -88,6 +88,8 @@ struct view_t
 	static const int32_t			defaultHeight = displayScalar * nesHeight + debugAreaY;
 	CD3DX12_VIEWPORT				viewport;
 	CD3DX12_RECT					scissorRect;
+	uint32_t						width;
+	uint32_t						height;
 };
 
 
@@ -97,7 +99,7 @@ struct pipeline_t
 	DisplayConstantBuffer			shaderData;
 	ComPtr<ID3D12Resource>			vb;
 	D3D12_VERTEX_BUFFER_VIEW		vbView;
-	UINT8* pCbvDataBegin;
+	UINT8*							pCbvDataBegin;
 	UINT							cbvSrvUavDescStride;
 	ComPtr<ID3D12DescriptorHeap>	cbvSrvUavHeap;
 	CD3DX12_CPU_DESCRIPTOR_HANDLE	cbvSrvCpuHandle;
@@ -164,15 +166,25 @@ private:
 	std::vector<wtAppTextureD3D12>			textureResources[ FrameCount ];
 
 public:
-	bool									initD3D12 = false;
-	uint32_t								currentFrameIx = 0;
-	uint32_t								frameResultIx = 0;
-	uint64_t								frameNumber = 0;
-	uint64_t								lastFrameDrawn = 0;
+
+	wtRenderer()
+	{
+		currentFrameIx = 0;
+		frameResultIx = 0;
+		frameNumber = 0;
+		lastFrameDrawn = 0;
+		initD3D12 = false;
+	}
+
+	bool									initD3D12;
+	uint32_t								currentFrameIx;
+	uint32_t								frameResultIx;
+	uint64_t								frameNumber;
+	uint64_t								lastFrameDrawn;
 	view_t									view;
 	sync_t									sync = { 0 };
 	HWND									hWnd;
-	wtAppInterface_t*						app;
+	wtAppInterface*						app;
 
 	void									WaitForGpu();
 	void									AdvanceNextFrame();
@@ -191,6 +203,7 @@ public:
 	void									UpdateD3D12();
 	void									DestroyD3D12();
 
+	bool									NeedsResize( const uint32_t width, const uint32_t height );
 	void									RecreateSwapChain( const uint32_t width, const uint32_t height );
 
 	void									IssueTextureCopyCommands( const uint32_t srcFrameIx, const uint32_t renderFrameIx );
