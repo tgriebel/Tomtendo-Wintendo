@@ -58,10 +58,11 @@ void wtRenderer::BuildImguiCommandList()
 				ImGui::Text( "A: %i",			fr->cpuDebug.A );
 				ImGui::Text( "X: %i",			fr->cpuDebug.X );
 				ImGui::Text( "Y: %i",			fr->cpuDebug.Y );
-				ImGui::Text( "PC: %i",			fr->cpuDebug.PC );
-				ImGui::Text( "SP: %i",			fr->cpuDebug.SP );
+				ImGui::Text( "PC: %X",			fr->cpuDebug.PC );
+				ImGui::Text( "SP: %X",			fr->cpuDebug.SP );
+				ImGui::Text( "Status: %X",		fr->cpuDebug.P.byte );
 				ImGui::NextColumn();
-				ImGui::Text( "Status Flags" );
+				ImGui::Text( "Status Flags" );			
 				ImGui::Text( "Carry: %i",		fr->cpuDebug.P.bit.c );
 				ImGui::Text( "Zero: %i",		fr->cpuDebug.P.bit.z );
 				ImGui::Text( "Interrupt: %i",	fr->cpuDebug.P.bit.i );
