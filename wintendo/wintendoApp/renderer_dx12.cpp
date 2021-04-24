@@ -538,6 +538,25 @@ void wtRenderer::DestroyD3D12()
 }
 
 
+void wtRenderer::RecreateSwapChain( const uint32_t width, const uint32_t height )
+{
+	if( !initD3D12 ) {
+		return;
+	}
+
+	DXGI_MODE_DESC desc;
+	desc.Width				= width;
+	desc.Height				= height;
+	desc.RefreshRate		= { 60, 1 };
+	desc.Format				= DXGI_FORMAT_R8G8B8A8_UNORM;
+	desc.ScanlineOrdering	= DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
+	desc.Scaling			= DXGI_MODE_SCALING_CENTERED;
+
+	swapChain.dxgi->ResizeBuffers( FrameCount, width, height, DXGI_FORMAT_R8G8B8A8_UNORM, DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT );
+	swapChain.dxgi->ResizeTarget( &desc );
+}
+
+
 void wtRenderer::IssueTextureCopyCommands( const uint32_t srcFrameIx, const uint32_t renderFrameIx )
 {
 	ThrowIfFailed( cmd.cpyCommandAllocator[ renderFrameIx ]->Reset() );

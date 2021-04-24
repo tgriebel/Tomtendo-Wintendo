@@ -191,6 +191,8 @@ public:
 	void									UpdateD3D12();
 	void									DestroyD3D12();
 
+	void									RecreateSwapChain( const uint32_t width, const uint32_t height );
+
 	void									IssueTextureCopyCommands( const uint32_t srcFrameIx, const uint32_t renderFrameIx );
 	void									BuildImguiCommandList();
 	void									BuildDrawCommandList();
