@@ -10,6 +10,8 @@ static constexpr uint32_t	ApuSamplesPerSec	= static_cast<uint32_t>( CPU_HZ + 1 )
 static constexpr uint32_t	ApuBufferMs			= static_cast<uint32_t>( 1000.0f / MinFPS );
 static constexpr uint32_t	ApuBufferSize		= static_cast<uint32_t>( ApuSamplesPerSec *  ( ApuBufferMs / 1000.0f ) );
 
+#define DEBUG_APU_CHANNELS 1
+
 static const uint8_t TriLUT[ 32 ] =
 {
 	0x0F, 0x0E, 0x0D, 0x0C, 0x0B, 0x0A,	0x09, 0x08,

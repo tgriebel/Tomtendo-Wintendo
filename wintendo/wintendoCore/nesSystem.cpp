@@ -441,6 +441,7 @@ void wtSystem::InitConfig( config_t& config )
 	config.apu.muteTri			= false;
 	config.apu.muteNoise		= false;
 	config.apu.muteDMC			= false;
+	config.apu.dbgChannelBits	= 0;
 }
 
 

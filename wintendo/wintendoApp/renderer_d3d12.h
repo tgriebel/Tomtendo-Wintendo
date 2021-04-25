@@ -128,10 +128,6 @@ struct sync_t
 	ComPtr<ID3D12Fence>					fence;
 	ComPtr<ID3D12Fence>					cpyFence;
 	UINT64								fenceValues[ FrameCount ];
-	HANDLE								frameSubmitWriteLock[ FrameResultCount ];
-	HANDLE								frameSubmitReadLock[ FrameResultCount ];
-	HANDLE								audioWriteLock[ FrameResultCount ];
-	HANDLE								audioReadLock[ FrameResultCount ];
 };
 
 
@@ -184,7 +180,7 @@ public:
 	view_t									view;
 	sync_t									sync = { 0 };
 	HWND									hWnd;
-	wtAppInterface*						app;
+	wtAppInterface*							app;
 
 	void									WaitForGpu();
 	void									AdvanceNextFrame();

@@ -68,7 +68,7 @@ void wtAudioEngine::Shutdown()
 }
 
 
-void wtAudioEngine::EncodeSamples( wtSampleQueue& soundQueue )
+void wtAudioEngine::EncodeSamples( wtSampleQueue& soundQueue, wtSampleQueue* dbgQueue )
 {
 	bool buffersFull = false;
 	int32_t* destIx = &soundBufferBytesCnt[ currentSndBufferIx ];
@@ -81,10 +81,9 @@ void wtAudioEngine::EncodeSamples( wtSampleQueue& soundQueue )
 		int16_t encodedSample = static_cast<int16_t>( rawSample );
 		soundDataBuffer[ currentSndBufferIx ][ ( *destIx )++ ] = encodedSample & 0xFF;
 		soundDataBuffer[ currentSndBufferIx ][ ( *destIx )++ ] = ( encodedSample >> 8 ) & 0xFF;
-		dbgSoundFrameData.Write( rawSample );
-		if ( dbgSoundFrameData.IsFull() )
-		{
-			dbgSoundFrameData.Reset();
+		
+		if( dbgQueue != nullptr ) {
+			dbgQueue->EnqueFIFO( rawSample );
 		}
 
 		int32_t target = static_cast<int32_t>( BytesPerSubmit - 1 );

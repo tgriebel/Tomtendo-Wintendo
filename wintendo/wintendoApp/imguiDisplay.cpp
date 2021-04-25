@@ -5,9 +5,15 @@ static const uint32_t FramePlotSampleCount = 500;
 using frameSampleBuffer = wtQueue< float, FramePlotSampleCount >;
 static frameSampleBuffer frameTimePlot;
 
-static float ImGuiGetWtQueueSample( void* data, int32_t idx )
+static float ImGuiGetFrameSample( void* data, int32_t idx )
 {
 	frameSampleBuffer* queue = reinterpret_cast<frameSampleBuffer*>( data );
+	return queue->Peek( idx );
+}
+
+static float ImGuiGetSoundSample( void* data, int32_t idx )
+{
+	wtSampleQueue* queue = reinterpret_cast<wtSampleQueue*>( data );
 	return queue->Peek( idx );
 }
 
@@ -165,7 +171,7 @@ void wtRenderer::BuildImguiCommandList()
 				}
 				ImGui::Text( "Copy size: %i MB", sizeof( *fr ) / 1024 / 1024 );
 
-				ImGui::PlotHistogram( "", &ImGuiGetWtQueueSample,
+				ImGui::PlotHistogram( "", &ImGuiGetFrameSample,
 					reinterpret_cast<void*>( &frameTimePlot ),
 					FramePlotSampleCount,
 					0,
@@ -379,6 +385,7 @@ void wtRenderer::BuildImguiCommandList()
 		}
 
 		bool apuTabOpen = true;
+		systemConfig.apu.dbgChannelBits = 0x00;
 		if ( ImGui::BeginTabItem( "APU", &apuTabOpen ) )
 		{
 			apuDebug_t& apuDebug = fr->apuDebug;
@@ -386,6 +393,8 @@ void wtRenderer::BuildImguiCommandList()
 			const float maxVolume = 2 * systemConfig.apu.volume;
 			if ( ImGui::CollapsingHeader( "Pulse 1", ImGuiTreeNodeFlags_OpenOnArrow ) )
 			{
+				systemConfig.apu.dbgChannelBits = 0x01;
+
 				ImGui::Checkbox( "Mute",					&systemConfig.apu.mutePulse1 );
 				ImGui::SameLine();
 				ImGui::Text( "| $4015 - Enabled: %i",		apuDebug.status.sem.p1 );
@@ -404,10 +413,20 @@ void wtRenderer::BuildImguiCommandList()
 				ImGui::Text( "$4001 - Sweep Shift: %i",		apuDebug.pulse1.regRamp.sem.shift );
 				ImGui::Text( "$4001 - Sweep Negate: %i",	apuDebug.pulse1.regRamp.sem.negate );
 				ImGui::Columns( 1 );
-				ImGui::PlotHistogram( "Wave", GetQueueSample, &fr->soundOutput->dbgPulse1, fr->soundOutput->dbgPulse1.GetSampleCnt(), 0, "", -15, 15, ImVec2( 1000.0f, 100.0f ) );
+
+				ImGui::PlotLines( "Pulse1 Wave", &ImGuiGetSoundSample,
+					reinterpret_cast<void*>( &fr->soundOutput->dbgPulse1 ),
+					ApuBufferSize,
+					0,
+					NULL,
+					-32768.0f,
+					32768.0f,
+					ImVec2( 1000.0f, 100.0f ) );
 			}
 			if ( ImGui::CollapsingHeader( "Pulse 2", ImGuiTreeNodeFlags_OpenOnArrow ) )
 			{
+				systemConfig.apu.dbgChannelBits = 0x02;
+
 				ImGui::Checkbox( "Mute",					&systemConfig.apu.mutePulse2 );
 				ImGui::SameLine();
 				ImGui::Text( "| $4015 - Enabled: %i",		apuDebug.status.sem.p2 );
@@ -427,10 +446,20 @@ void wtRenderer::BuildImguiCommandList()
 				ImGui::Text( "$4005 - Sweep Shift: %i",		apuDebug.pulse2.regRamp.sem.shift );
 				ImGui::Text( "$4005 - Sweep Negate: %i",	apuDebug.pulse2.regRamp.sem.negate );
 				ImGui::Columns( 1 );
-				ImGui::PlotHistogram( "Wave", GetQueueSample, &fr->soundOutput->dbgPulse2, fr->soundOutput->dbgPulse2.GetSampleCnt(), 0, "", -15, 15, ImVec2( 1000.0f, 100.0f ) );
+
+				ImGui::PlotLines( "Pulse2 Wave", &ImGuiGetSoundSample,
+					reinterpret_cast<void*>( &fr->soundOutput->dbgPulse2 ),
+					ApuBufferSize,
+					0,
+					NULL,
+					-32768.0f,
+					32768.0f,
+					ImVec2( 1000.0f, 100.0f ) );
 			}
 			if ( ImGui::CollapsingHeader( "Triangle", ImGuiTreeNodeFlags_OpenOnArrow ) )
 			{
+				systemConfig.apu.dbgChannelBits = 0x04;
+
 				ImGui::Checkbox( "Mute",					&systemConfig.apu.muteTri );
 				ImGui::SameLine();
 				ImGui::Text( "| $4015 - Enabled: %i",		apuDebug.status.sem.t );
@@ -445,10 +474,20 @@ void wtRenderer::BuildImguiCommandList()
 				ImGui::Text( "$400A - Timer: %i",			apuDebug.triangle.regTimer.sem0.timer );
 				ImGui::Text( "$400B - Counter: %i",			apuDebug.triangle.regTimer.sem0.counter );
 				ImGui::Columns( 1 );
-				ImGui::PlotHistogram( "Wave", GetQueueSample, &fr->soundOutput->dbgTri, fr->soundOutput->dbgTri.GetSampleCnt(), 0, "", -30, 30, ImVec2( 1000.0f, 100.0f ) );
+
+				ImGui::PlotLines( "Triangle Wave", &ImGuiGetSoundSample,
+					reinterpret_cast<void*>( &fr->soundOutput->dbgTri ),
+					ApuBufferSize,
+					0,
+					NULL,
+					-32768.0f,
+					32768.0f,
+					ImVec2( 1000.0f, 100.0f ) );
 			}
 			if ( ImGui::CollapsingHeader( "Noise", ImGuiTreeNodeFlags_OpenOnArrow ) )
 			{
+				systemConfig.apu.dbgChannelBits = 0x08;
+
 				ImGui::Checkbox( "Mute",					&systemConfig.apu.muteNoise );
 				ImGui::SameLine();
 				ImGui::Text( "| $4015 - Enabled: %i",		apuDebug.status.sem.n );
@@ -464,10 +503,20 @@ void wtRenderer::BuildImguiCommandList()
 				ImGui::Text( "$400E - Period: %i",			apuDebug.noise.regFreq1.sem.period );
 				ImGui::Text( "$400F - Length Counter: %i",	apuDebug.noise.regFreq2.sem.length );
 				ImGui::Columns( 1 );
-				ImGui::PlotHistogram( "Wave", GetQueueSample, &fr->soundOutput->dbgNoise, fr->soundOutput->dbgNoise.GetSampleCnt(), 0, "", -30, 30, ImVec2( 1000.0f, 100.0f ) );
+
+				ImGui::PlotLines( "Noise Wave", &ImGuiGetSoundSample,
+					reinterpret_cast<void*>( &fr->soundOutput->dbgNoise ),
+					ApuBufferSize,
+					0,
+					NULL,
+					-32768.0f,
+					32768.0f,
+					ImVec2( 1000.0f, 100.0f ) );
 			}
 			if ( ImGui::CollapsingHeader( "DMC", ImGuiTreeNodeFlags_OpenOnArrow ) )
 			{
+				systemConfig.apu.dbgChannelBits = 0x10;
+
 				ImGui::Checkbox( "Mute",					&systemConfig.apu.muteDMC );
 				ImGui::SameLine();
 				ImGui::Text( "| $4015 - Enabled: %i",		apuDebug.status.sem.d );
@@ -488,7 +537,15 @@ void wtRenderer::BuildImguiCommandList()
 				ImGui::Text( "$4012 - Addr: %X",			apuDebug.dmc.regAddr );
 				ImGui::Text( "$4013 - Length: %i",			apuDebug.dmc.regLength );
 				ImGui::Columns( 1 );
-				ImGui::PlotHistogram( "Wave", GetQueueSample, &fr->soundOutput->dbgDmc, fr->soundOutput->dbgDmc.GetSampleCnt(), 0, "", -30, 30, ImVec2( 1000.0f, 100.0f ) );
+
+				ImGui::PlotLines( "DMC Wave", &ImGuiGetSoundSample,
+					reinterpret_cast<void*>( &fr->soundOutput->dbgDmc ),
+					ApuBufferSize,
+					0,
+					NULL,
+					-32768.0f,
+					32768.0f,
+					ImVec2( 1000.0f, 100.0f ) );
 			}
 			if ( ImGui::CollapsingHeader( "Frame Counter", ImGuiTreeNodeFlags_OpenOnArrow ) )
 			{
@@ -517,7 +574,15 @@ void wtRenderer::BuildImguiCommandList()
 				ImGui::InputFloat( "LowPass Freq:",		&app->audio->F3 );
 			}
 
-			ImGui::PlotLines( "Audio Wave",				app->audio->dbgSoundFrameData.GetRawBuffer(), ApuBufferSize, 0, "", -32768.0f, 32768.0f, ImVec2( 1000.0f, 100.0f ) );
+			ImGui::PlotLines( "Audio Wave", &ImGuiGetSoundSample,
+				reinterpret_cast<void*>( &app->audio->dbgSoundMixed ),
+				ApuBufferSize,
+				0,
+				NULL,
+				-32768.0f,
+				32768.0f,
+				ImVec2( 1000.0f, 100.0f ) );
+
 			ImGui::Text( "Sample Length: %i",			app->audio->dbgLastSoundSampleLength );
 			ImGui::Text( "Target MS: %4.2f",			1000.0f * app->audio->dbgLastSoundSampleLength / (float)wtAudioEngine::SourceFreqHz );
 			ImGui::Text( "Average MS: %4.2f",			voiceCallback.totalDuration / voiceCallback.processedQueues );

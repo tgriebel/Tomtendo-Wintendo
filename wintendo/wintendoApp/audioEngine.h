@@ -36,7 +36,7 @@ struct wtAudioEngine
 	int32_t								soundBufferState[ SndBufferCnt ];
 	byte								soundDataBuffer[ SndBufferCnt ][ BufferSize ];
 
-	wtSoundBuffer						dbgSoundFrameData;
+	wtSampleQueue						dbgSoundMixed;
 
 	UINT32								OperationSetCounter	= 0;
 
@@ -64,7 +64,7 @@ struct wtAudioEngine
 
 	void								Init();
 	void								Shutdown();
-	void								EncodeSamples( wtSampleQueue& soundQueue );
+	void								EncodeSamples( wtSampleQueue& soundQueue, wtSampleQueue* dbgQueue );
 	bool								AudioSubmit();
 };
 

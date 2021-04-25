@@ -36,7 +36,7 @@ uint32_t wtRenderer::InitD3D12()
 	view.width = view.defaultWidth;
 	view.height = view.defaultHeight;
 	view.viewport = CD3DX12_VIEWPORT( 0.0f, 0.0f, static_cast<float>( view.width ), static_cast<float>( view.height ) );
-	view.scissorRect = CD3DX12_RECT( 0, 0, view.defaultWidth, view.defaultHeight );
+	view.scissorRect = CD3DX12_RECT( 0, view.overscanY0, view.defaultWidth, view.overscanY1 );
 
 	UINT dxgiFactoryFlags = 0;
 
@@ -227,14 +227,6 @@ void wtRenderer::CreateConstantBuffers()
 
 void wtRenderer::CreateSyncObjects()
 {
-	for ( uint32_t i = 0; i < FrameResultCount; ++i )
-	{
-		sync.frameSubmitWriteLock[ i ] = CreateSemaphore( NULL, 1, 1, NULL );
-		sync.frameSubmitReadLock[ i ] = CreateSemaphore( NULL, 1, 1, NULL );
-		sync.audioWriteLock[ i ] = CreateSemaphore( NULL, 1, 1, NULL );
-		sync.audioReadLock[ i ] = CreateSemaphore( NULL, 1, 1, NULL );
-	}
-
 	ThrowIfFailed( d3d12device->CreateFence( 0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS( &sync.fence ) ) );
 	ThrowIfFailed( d3d12device->CreateFence( 0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS( &sync.cpyFence ) ) );
 	sync.fenceValues[ currentFrameIx ]++;
@@ -528,13 +520,6 @@ void wtRenderer::DestroyD3D12()
 #endif
 
 	CloseHandle( sync.fenceEvent );
-	for ( uint32_t i = 0; i < FrameResultCount; ++i )
-	{
-		CloseHandle( sync.frameSubmitWriteLock[ i ] );
-		CloseHandle( sync.frameSubmitReadLock[ i ] );
-		CloseHandle( sync.audioWriteLock[ i ] );
-		CloseHandle( sync.audioReadLock[ i ] );
-	}
 
 	initD3D12 = false;
 }
@@ -576,7 +561,7 @@ void wtRenderer::RecreateSwapChain( const uint32_t width, const uint32_t height 
 	view.width = width;
 	view.height = height;
 	view.viewport = CD3DX12_VIEWPORT( 0.0f, 0.0f, static_cast<float>( width ), static_cast<float>( height ) );
-	view.scissorRect = CD3DX12_RECT( 0, 0, width, height );
+	view.scissorRect = CD3DX12_RECT( 0, view.overscanY0, width, height );
 
 	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle( swapChain.rtvHeap->GetCPUDescriptorHandleForHeapStart() );
 	for ( uint32_t i = 0; i < FrameCount; ++i )

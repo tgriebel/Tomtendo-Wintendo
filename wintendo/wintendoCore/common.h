@@ -106,6 +106,7 @@ struct config_t
 		bool				muteTri;
 		bool				muteNoise;
 		bool				muteDMC;
+		uint8_t				dbgChannelBits;
 	} apu;
 
 	struct PPU
