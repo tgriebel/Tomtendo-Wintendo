@@ -68,24 +68,19 @@ void wtAudioEngine::Shutdown()
 }
 
 
-void wtAudioEngine::EncodeSamples( wtSampleQueue& soundQueue, wtSampleQueue* dbgQueue )
+void wtAudioEngine::EncodeSamples( wtSampleQueue& soundQueue )
 {
 	bool buffersFull = false;
 	int32_t* destIx = &soundBufferBytesCnt[ currentSndBufferIx ];
-	while ( !soundQueue.IsEmpty() )
-	//for( uint32_t sampleIx = 0; sampleIx < soundQueue.GetSampleCnt(); ++sampleIx )
+	for( uint32_t sampleIx = 0; sampleIx < soundQueue.GetSampleCnt(); ++sampleIx )
 	{
 		assert( soundBufferState[ currentSndBufferIx ] != SOUND_STATE_SUBMITTED );
 
-		float rawSample = soundQueue.Deque();//soundQueue.Peek( sampleIx );
+		float rawSample = soundQueue.Peek( sampleIx );
 		int16_t encodedSample = static_cast<int16_t>( rawSample );
 		soundDataBuffer[ currentSndBufferIx ][ ( *destIx )++ ] = encodedSample & 0xFF;
 		soundDataBuffer[ currentSndBufferIx ][ ( *destIx )++ ] = ( encodedSample >> 8 ) & 0xFF;
 		
-		if( dbgQueue != nullptr ) {
-			dbgQueue->EnqueFIFO( rawSample );
-		}
-
 		int32_t target = static_cast<int32_t>( BytesPerSubmit - 1 );
 		if ( *destIx >= target )
 		{
@@ -219,15 +214,15 @@ void LogApu( wtFrameResult& frameResult )
 	const wtSampleQueue& triangle = frameResult.soundOutput->dbgTri;
 	const wtSampleQueue& noise = frameResult.soundOutput->dbgNoise;
 	const wtSampleQueue& dmc = frameResult.soundOutput->dbgDmc;
-	const wtSampleQueue& master = frameResult.soundOutput->master;
+	const wtSampleQueue& mixed = frameResult.soundOutput->dbgMixed;
 
-	sndLog << "ix,pulse1,pulse2,triangle,noise,dmc,master\n";
+	sndLog << "ix,pulse1,pulse2,triangle,noise,dmc,mixed\n";
 
-	const uint32_t sampleCnt = master.GetSampleCnt();
+	const uint32_t sampleCnt = mixed.GetSampleCnt();
 	for ( uint32_t i = 0; i < sampleCnt; ++i )
 	{
 		sndLog << i << "," << pulse1.Peek( i ) << "," << pulse2.Peek( i ) << "," << triangle.Peek( i );
-		sndLog << "," << noise.Peek( i ) << "," << dmc.Peek( i ) << "," << master.Peek( i ) << "\n";
+		sndLog << "," << noise.Peek( i ) << "," << dmc.Peek( i ) << "," << mixed.Peek( i ) << "\n";
 	}
 
 	sndLog.close();

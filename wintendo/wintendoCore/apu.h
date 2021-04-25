@@ -442,12 +442,13 @@ static const uint8_t PulseLUT[4][8] =
 
 struct apuOutput_t
 {
+	wtSampleQueue	dbgMixed;
 	wtSampleQueue	dbgPulse1;
 	wtSampleQueue	dbgPulse2;
 	wtSampleQueue	dbgTri;
 	wtSampleQueue	dbgNoise;
 	wtSampleQueue	dbgDmc;
-	wtSampleQueue	master;
+	wtSampleQueue	mixed;
 };
 
 
@@ -550,12 +551,13 @@ public:
 
 		for ( uint32_t i = 0; i < SoundBufferCnt; ++i )
 		{
-			soundOutputBuffers[i].master.Reset();
+			soundOutputBuffers[i].mixed.Reset();
 			soundOutputBuffers[i].dbgPulse1.Reset();
 			soundOutputBuffers[i].dbgPulse2.Reset();
 			soundOutputBuffers[i].dbgTri.Reset();
 			soundOutputBuffers[i].dbgNoise.Reset();
 			soundOutputBuffers[i].dbgDmc.Reset();
+			soundOutputBuffers[i].dbgMixed.Reset();
 		}
 
 		system = nullptr;

@@ -597,7 +597,7 @@ void APU::End()
 	currentBuffer = ( currentBuffer + 1 ) % SoundBufferCnt;
 	soundOutput = &soundOutputBuffers[ currentBuffer ];
 
-	soundOutput->master.Reset();
+	soundOutput->mixed.Reset();
 }
 
 
@@ -673,29 +673,32 @@ void APU::Mixer()
 
 	assert( pulseMixed < 0.3f );
 
-	const float volumeScale = 32767.0f;
+	soundOutput->mixed.Enque( 32767.0f * mixedSample );
 
 #if DEBUG_APU_CHANNELS
-	if( config->dbgChannelBits & 0x01 ) {
+	const float volumeScale = 1.0f;
+	if ( config->dbgChannelBits & 0x01 ) {
+		soundOutput->dbgMixed.EnqueFIFO( volumeScale * mixedSample );
+	}
+	if( config->dbgChannelBits & 0x02 ) {
 		const float pulseMixed = PulseMixer( (uint32_t)pulse1Sample, 0 );
 		soundOutput->dbgPulse1.EnqueFIFO( volumeScale * pulseMixed );
 	}
-	if ( config->dbgChannelBits & 0x02 ) {
+	if ( config->dbgChannelBits & 0x04 ) {
 		const float pulseMixed = PulseMixer( 0, (uint32_t)pulse2Sample );
 		soundOutput->dbgPulse2.EnqueFIFO( volumeScale * pulseMixed );
 	}
-	if ( config->dbgChannelBits & 0x04 ) {
+	if ( config->dbgChannelBits & 0x08 ) {
 		const float triMixed = TndMixer( (uint32_t)triSample, 0, 0 );
 		soundOutput->dbgTri.EnqueFIFO( volumeScale * triMixed );
 	}
-	if ( config->dbgChannelBits & 0x08 ) {
+	if ( config->dbgChannelBits & 0x10 ) {
 		const float noiseMixed = TndMixer( 0, (uint32_t)noiseSample, 0 );
 		soundOutput->dbgNoise.EnqueFIFO( volumeScale * noiseMixed );
 	}
-	if ( config->dbgChannelBits & 0x10 ) {
+	if ( config->dbgChannelBits & 0x20 ) {
 		const float dmcMixed = TndMixer( 0, 0, (uint32_t)dmcSample );
 		soundOutput->dbgDmc.EnqueFIFO( volumeScale * dmcMixed );
 	}
 #endif
-	soundOutput->master.Enque( volumeScale * mixedSample );
 }

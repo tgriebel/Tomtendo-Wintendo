@@ -386,14 +386,18 @@ void wtRenderer::BuildImguiCommandList()
 
 		bool apuTabOpen = true;
 		systemConfig.apu.dbgChannelBits = 0x00;
+
 		if ( ImGui::BeginTabItem( "APU", &apuTabOpen ) )
 		{
+			const float waveGraphScale = 0.5f;
+			systemConfig.apu.dbgChannelBits |= 0x01;
+
 			apuDebug_t& apuDebug = fr->apuDebug;
 			ImGui::Checkbox( "Play Sound", &app->audio->enableSound );
 			const float maxVolume = 2 * systemConfig.apu.volume;
 			if ( ImGui::CollapsingHeader( "Pulse 1", ImGuiTreeNodeFlags_OpenOnArrow ) )
 			{
-				systemConfig.apu.dbgChannelBits = 0x01;
+				systemConfig.apu.dbgChannelBits |= 0x02;
 
 				ImGui::Checkbox( "Mute",					&systemConfig.apu.mutePulse1 );
 				ImGui::SameLine();
@@ -419,13 +423,13 @@ void wtRenderer::BuildImguiCommandList()
 					ApuBufferSize,
 					0,
 					NULL,
-					-32768.0f,
-					32768.0f,
+					-waveGraphScale,
+					waveGraphScale,
 					ImVec2( 1000.0f, 100.0f ) );
 			}
 			if ( ImGui::CollapsingHeader( "Pulse 2", ImGuiTreeNodeFlags_OpenOnArrow ) )
 			{
-				systemConfig.apu.dbgChannelBits = 0x02;
+				systemConfig.apu.dbgChannelBits |= 0x04;
 
 				ImGui::Checkbox( "Mute",					&systemConfig.apu.mutePulse2 );
 				ImGui::SameLine();
@@ -452,13 +456,13 @@ void wtRenderer::BuildImguiCommandList()
 					ApuBufferSize,
 					0,
 					NULL,
-					-32768.0f,
-					32768.0f,
+					-waveGraphScale,
+					waveGraphScale,
 					ImVec2( 1000.0f, 100.0f ) );
 			}
 			if ( ImGui::CollapsingHeader( "Triangle", ImGuiTreeNodeFlags_OpenOnArrow ) )
 			{
-				systemConfig.apu.dbgChannelBits = 0x04;
+				systemConfig.apu.dbgChannelBits |= 0x08;
 
 				ImGui::Checkbox( "Mute",					&systemConfig.apu.muteTri );
 				ImGui::SameLine();
@@ -480,13 +484,13 @@ void wtRenderer::BuildImguiCommandList()
 					ApuBufferSize,
 					0,
 					NULL,
-					-32768.0f,
-					32768.0f,
+					-waveGraphScale,
+					waveGraphScale,
 					ImVec2( 1000.0f, 100.0f ) );
 			}
 			if ( ImGui::CollapsingHeader( "Noise", ImGuiTreeNodeFlags_OpenOnArrow ) )
 			{
-				systemConfig.apu.dbgChannelBits = 0x08;
+				systemConfig.apu.dbgChannelBits |= 0x10;
 
 				ImGui::Checkbox( "Mute",					&systemConfig.apu.muteNoise );
 				ImGui::SameLine();
@@ -509,13 +513,13 @@ void wtRenderer::BuildImguiCommandList()
 					ApuBufferSize,
 					0,
 					NULL,
-					-32768.0f,
-					32768.0f,
+					-waveGraphScale,
+					waveGraphScale,
 					ImVec2( 1000.0f, 100.0f ) );
 			}
 			if ( ImGui::CollapsingHeader( "DMC", ImGuiTreeNodeFlags_OpenOnArrow ) )
 			{
-				systemConfig.apu.dbgChannelBits = 0x10;
+				systemConfig.apu.dbgChannelBits |= 0x20;
 
 				ImGui::Checkbox( "Mute",					&systemConfig.apu.muteDMC );
 				ImGui::SameLine();
@@ -543,8 +547,8 @@ void wtRenderer::BuildImguiCommandList()
 					ApuBufferSize,
 					0,
 					NULL,
-					-32768.0f,
-					32768.0f,
+					-waveGraphScale,
+					waveGraphScale,
 					ImVec2( 1000.0f, 100.0f ) );
 			}
 			if ( ImGui::CollapsingHeader( "Frame Counter", ImGuiTreeNodeFlags_OpenOnArrow ) )
@@ -575,18 +579,19 @@ void wtRenderer::BuildImguiCommandList()
 			}
 
 			ImGui::PlotLines( "Audio Wave", &ImGuiGetSoundSample,
-				reinterpret_cast<void*>( &app->audio->dbgSoundMixed ),
+				reinterpret_cast<void*>( &fr->soundOutput->dbgMixed ),
 				ApuBufferSize,
 				0,
 				NULL,
-				-32768.0f,
-				32768.0f,
+				-waveGraphScale,
+				waveGraphScale,
 				ImVec2( 1000.0f, 100.0f ) );
 
-			ImGui::Text( "Sample Length: %i",			app->audio->dbgLastSoundSampleLength );
+			ImGui::Text( "Emulated Samples: %i",		fr->soundOutput->mixed.GetSampleCnt() );
+			ImGui::Text( "Submitted Samples: %i",		app->audio->dbgLastSoundSampleLength );
 			ImGui::Text( "Target MS: %4.2f",			1000.0f * app->audio->dbgLastSoundSampleLength / (float)wtAudioEngine::SourceFreqHz );
 			ImGui::Text( "Average MS: %4.2f",			voiceCallback.totalDuration / voiceCallback.processedQueues );
-			ImGui::Text( "Time since last submit: %i",	(int)app->t.audioSubmitTime );
+			ImGui::Text( "Time since last submit: %4.2f",app->t.audioSubmitTime );
 			ImGui::Text( "Queues: %i",					app->audio->audioState.BuffersQueued );
 			ImGui::Text( "Queues Started: %i",			voiceCallback.totalQueues );
 			ImGui::EndTabItem();
