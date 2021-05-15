@@ -1,4 +1,4 @@
-# Wintendo / Tomtendo
+# Wintendo / TomTendo!
 
 Work-in-progress Nintendo Entertainment System emulator.
 
