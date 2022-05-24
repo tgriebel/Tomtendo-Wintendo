@@ -1,6 +1,6 @@
 # Wintendo / TomTendo!
 
-Work-in-progress Nintendo Entertainment System emulator.
+Nintendo Entertainment System emulator.
 
 The system is divided into a Windows frontend and platform-agnostic backend.
 
