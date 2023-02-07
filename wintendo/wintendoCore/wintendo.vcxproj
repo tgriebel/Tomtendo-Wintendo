@@ -164,48 +164,46 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="apu.h" />
-    <ClInclude Include="assert.h" />
-    <ClInclude Include="cart.h" />
-    <ClInclude Include="command.h" />
-    <ClInclude Include="input.h" />
-    <ClInclude Include="mappers\MMC1.h" />
-    <ClInclude Include="mappers\MMC3.h" />
-    <ClInclude Include="mappers\NROM.h" />
-    <ClInclude Include="mappers\UNROM.h" />
-    <ClInclude Include="mos6502.h" />
-    <ClInclude Include="bitmap.h" />
-    <ClInclude Include="debug.h" />
-    <ClInclude Include="mos6502_ops.h" />
-    <ClInclude Include="mapper.h" />
-    <ClInclude Include="NesSystem.h" />
-    <ClInclude Include="playback.h" />
-    <ClInclude Include="ppu.h" />
-    <ClInclude Include="serializer.h" />
+    <ClInclude Include="include\tomtendo\audio.h" />
+    <ClInclude Include="include\tomtendo\command.h" />
+    <ClInclude Include="include\tomtendo\input.h" />
+    <ClInclude Include="include\tomtendo\interface.h" />
+    <ClInclude Include="include\tomtendo\image.h" />
+    <ClInclude Include="include\tomtendo\log.h" />
+    <ClInclude Include="include\tomtendo\playback.h" />
+    <ClInclude Include="include\tomtendo\time.h" />
+    <ClInclude Include="include\tomtendo\timer.h" />
+    <ClInclude Include="include\tomtendo\util.h" />
+    <ClInclude Include="src\assert.h" />
+    <ClInclude Include="src\common.h" />
+    <ClInclude Include="src\debug.h" />
+    <ClInclude Include="src\mappers\MMC1.h" />
+    <ClInclude Include="src\mappers\MMC3.h" />
+    <ClInclude Include="src\mappers\NROM.h" />
+    <ClInclude Include="src\mappers\UNROM.h" />
+    <ClInclude Include="src\processors\apu.h" />
+    <ClInclude Include="src\processors\mos6502.h" />
+    <ClInclude Include="src\processors\mos6502_ops.h" />
+    <ClInclude Include="src\processors\ppu.h" />
+    <ClInclude Include="src\system\cart.h" />
+    <ClInclude Include="src\system\mapper.h" />
+    <ClInclude Include="src\system\NesSystem.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
-    <ClInclude Include="common.h" />
-    <ClInclude Include="time.h" />
-    <ClInclude Include="timer.h" />
-    <ClInclude Include="util.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="apu.cpp" />
-    <ClCompile Include="command.cpp" />
-    <ClCompile Include="debug.cpp" />
-    <ClCompile Include="mos6502.cpp" />
-    <ClCompile Include="bitmap.cpp" />
-    <ClCompile Include="nesSystem.cpp" />
-    <ClCompile Include="ppu.cpp" />
-    <ClCompile Include="serializer.cpp" />
-    <ClCompile Include="systemSerialize.cpp" />
-    <ClCompile Include="wintendoMain.cpp" />
-    <ClCompile Include="stdafx.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
-    </ClCompile>
+    <ClCompile Include="src\debug.cpp" />
+    <ClCompile Include="src\interface.cpp" />
+    <ClCompile Include="src\processors\apu.cpp" />
+    <ClCompile Include="src\processors\mos6502.cpp" />
+    <ClCompile Include="src\processors\ppu.cpp" />
+    <ClCompile Include="src\serializer.cpp" />
+    <ClCompile Include="src\system\command.cpp" />
+    <ClCompile Include="src\system\nesSystem.cpp" />
+    <ClCompile Include="src\system\state.cpp" />
+    <ClCompile Include="src\system\systemSerialize.cpp" />
+    <ClCompile Include="src\wintendoMain.cpp" />
+    <ClCompile Include="stdafx.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

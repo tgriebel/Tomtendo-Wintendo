@@ -21,37 +21,34 @@
 * SOFTWARE.
 */
 
-#include "wintendoApp.h"
+#pragma once
 
-#include <fstream>
+#include <cstdint>
 
-extern wtAppInterface	app;
-
-static void TestRomUnit( std::wstring& testFilePath )
+namespace Tomtendo
 {
-	using namespace Tomtendo;
-	using namespace std::chrono_literals;
+	enum class sysCmdType_t
+	{
+		LOAD_STATE,
+		SAVE_STATE,
+		RECORD,
+		REPLAY,
+		START_TRACE,
+		STOP_TRACE,
+	};
 
-	static wtFrameResult testFr;
-	InitConfig( app.systemConfig );
-	app.system->Boot( testFilePath, 0xC000 );
-	app.system->SetConfig( app.systemConfig );
+	struct sysCmd_t
+	{
+		static const uint32_t MaxParms = 10;
 
-	sysCmd_t traceCmd;
-	traceCmd.type = sysCmdType_t::START_TRACE;
-	traceCmd.parms[ 0 ].u = 1;
-	app.system->SubmitCommand( traceCmd );
+		union parm_t
+		{
+			int64_t		i;
+			double		f;
+			uint64_t	u;
+		};
 
-	std::chrono::nanoseconds ns = std::chrono::duration_cast<std::chrono::nanoseconds>( 60s );
-
-	app.system->RunEpoch( ns );
-	app.system->GetFrameResult( testFr );
-	std::string logText;
-	logText.resize( 0 );
-	logText.reserve( 400 * testFr.dbgLog->GetRecordCount() );
-	testFr.dbgLog->ToString( logText, 0, testFr.dbgLog->GetRecordCount(), true );
-	std::ofstream log( "testNes.log" );
-	log << logText;
-	log.close();
-	app.TerminateEmulator();
-}
+		sysCmdType_t	type;
+		parm_t			parms[ MaxParms ];
+	};
+};

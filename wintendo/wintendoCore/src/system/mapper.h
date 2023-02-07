@@ -21,37 +21,23 @@
 * SOFTWARE.
 */
 
-#include "wintendoApp.h"
+#pragma once
 
-#include <fstream>
+#include <memory>
+#include "../common.h"
+#include "../mappers/NROM.h"
+#include "../mappers/MMC1.h"
+#include "../mappers/MMC3.h"
+#include "../mappers/UNROM.h"
 
-extern wtAppInterface	app;
-
-static void TestRomUnit( std::wstring& testFilePath )
+std::unique_ptr<wtMapper> wtSystem::AssignMapper( const uint32_t mapperId )
 {
-	using namespace Tomtendo;
-	using namespace std::chrono_literals;
-
-	static wtFrameResult testFr;
-	InitConfig( app.systemConfig );
-	app.system->Boot( testFilePath, 0xC000 );
-	app.system->SetConfig( app.systemConfig );
-
-	sysCmd_t traceCmd;
-	traceCmd.type = sysCmdType_t::START_TRACE;
-	traceCmd.parms[ 0 ].u = 1;
-	app.system->SubmitCommand( traceCmd );
-
-	std::chrono::nanoseconds ns = std::chrono::duration_cast<std::chrono::nanoseconds>( 60s );
-
-	app.system->RunEpoch( ns );
-	app.system->GetFrameResult( testFr );
-	std::string logText;
-	logText.resize( 0 );
-	logText.reserve( 400 * testFr.dbgLog->GetRecordCount() );
-	testFr.dbgLog->ToString( logText, 0, testFr.dbgLog->GetRecordCount(), true );
-	std::ofstream log( "testNes.log" );
-	log << logText;
-	log.close();
-	app.TerminateEmulator();
+	switch ( mapperId )
+	{
+		default:
+		case 0: return std::make_unique<NROM>( mapperId );	break;
+		case 1:	return std::make_unique<MMC1>( mapperId );	break;
+		case 2:	return std::make_unique<UNROM>( mapperId );	break;
+		case 4:	return std::make_unique<MMC3>( mapperId );	break;
+	}
 }

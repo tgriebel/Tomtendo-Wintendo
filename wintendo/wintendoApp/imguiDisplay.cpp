@@ -42,8 +42,9 @@ static float ImGuiGetSoundSample( void* data, int32_t idx )
 
 void wtRenderer::BuildImguiCommandList()
 {
+	using namespace Tomtendo;
 #ifdef IMGUI_ENABLE
-	wtSystem&		nesSystem		= *app->system;
+	Emulator&		nesSystem		= *app->system;
 	config_t&		systemConfig	= app->systemConfig;
 	wtAppDebug_t&	debugData		= app->debugData;
 	wtAudioEngine&	audio			= *app->audio;
@@ -89,17 +90,17 @@ void wtRenderer::BuildImguiCommandList()
 				ImGui::Text( "Y: %i",			fr->cpuDebug.Y );
 				ImGui::Text( "PC: %X",			fr->cpuDebug.PC );
 				ImGui::Text( "SP: %X",			fr->cpuDebug.SP );
-				ImGui::Text( "Status: %X",		fr->cpuDebug.P.byte );
+				ImGui::Text( "Status: %X",		fr->cpuDebug.P );
 				ImGui::NextColumn();
 				ImGui::Text( "Status Flags" );			
-				ImGui::Text( "Carry: %i",		fr->cpuDebug.P.bit.c );
-				ImGui::Text( "Zero: %i",		fr->cpuDebug.P.bit.z );
-				ImGui::Text( "Interrupt: %i",	fr->cpuDebug.P.bit.i );
-				ImGui::Text( "Decimal: %i",		fr->cpuDebug.P.bit.d );
-				ImGui::Text( "Unused: %i",		fr->cpuDebug.P.bit.u );
-				ImGui::Text( "Break: %i",		fr->cpuDebug.P.bit.b );
-				ImGui::Text( "Overflow: %i",	fr->cpuDebug.P.bit.v );
-				ImGui::Text( "Negative: %i",	fr->cpuDebug.P.bit.n );
+				ImGui::Text( "Carry: %i",		fr->cpuDebug.carry );
+				ImGui::Text( "Zero: %i",		fr->cpuDebug.zero );
+				ImGui::Text( "Interrupt: %i",	fr->cpuDebug.interrupt );
+				ImGui::Text( "Decimal: %i",		fr->cpuDebug.decimal );
+				ImGui::Text( "Unused: %i",		fr->cpuDebug.unused );
+				ImGui::Text( "Break: %i",		fr->cpuDebug.brk );
+				ImGui::Text( "Overflow: %i",	fr->cpuDebug.overflow );
+				ImGui::Text( "Negative: %i",	fr->cpuDebug.negative );
 				ImGui::Columns( 1 );
 			}
 
@@ -375,7 +376,7 @@ void wtRenderer::BuildImguiCommandList()
 			{
 				ImGui::Checkbox( "Show BG",			&systemConfig.ppu.showBG );
 				ImGui::Checkbox( "Show Sprite",		&systemConfig.ppu.showSprite );
-				ImGui::SliderInt( "Line Sprites",	&systemConfig.ppu.spriteLimit, 1, PPU::TotalSprites );
+				ImGui::SliderInt( "Line Sprites",	&systemConfig.ppu.spriteLimit, 1, SpriteLimit() );
 			}
 
 			if ( ImGui::CollapsingHeader( "Picked Object", ImGuiTreeNodeFlags_OpenOnArrow ) )
@@ -384,16 +385,16 @@ void wtRenderer::BuildImguiCommandList()
 				const wtRawImageInterface* srcImage = fr->pickedObj8x16;
 
 				ImGui::Columns( 3 );
-				ImGui::Text( "X: %i",				fr->ppuDebug.spritePicked.x );
-				ImGui::Text( "Y: %i",				fr->ppuDebug.spritePicked.y );
-				ImGui::Text( "Palette: %i",			fr->ppuDebug.spritePicked.palette );
-				ImGui::Text( "Priority: %i",		fr->ppuDebug.spritePicked.priority >> 2 );
+				ImGui::Text( "X: %i",				fr->ppuDebug.picked.x );
+				ImGui::Text( "Y: %i",				fr->ppuDebug.picked.y );
+				ImGui::Text( "Palette: %i",			fr->ppuDebug.picked.palette );
+				ImGui::Text( "Priority: %i",		fr->ppuDebug.picked.priority >> 2 );
 				ImGui::NextColumn();
-				ImGui::Text( "Flipped X: %i",		fr->ppuDebug.spritePicked.flippedHorizontal );
-				ImGui::Text( "Flipped Y: %i",		fr->ppuDebug.spritePicked.flippedVertical );
-				ImGui::Text( "Tile ID: %i",			fr->ppuDebug.spritePicked.tileId );
-				ImGui::Text( "OAM Index: %i",		fr->ppuDebug.spritePicked.oamIndex );
-				ImGui::Text( "2nd OAM Index: %i",	fr->ppuDebug.spritePicked.secondaryOamIndex );
+				ImGui::Text( "Flipped X: %i",		fr->ppuDebug.picked.flippedHorizontal );
+				ImGui::Text( "Flipped Y: %i",		fr->ppuDebug.picked.flippedVertical );
+				ImGui::Text( "Tile ID: %i",			fr->ppuDebug.picked.tileId );
+				ImGui::Text( "OAM Index: %i",		fr->ppuDebug.picked.oamIndex );
+				ImGui::Text( "2nd OAM Index: %i",	fr->ppuDebug.picked.secondaryOamIndex );
 				ImGui::NextColumn();
 				ImGui::Image( (ImTextureID)textureResources[ currentFrameIx ][ imageId ].gpuHandle.ptr, ImVec2( 4.0f * srcImage->GetWidth(), 4.0f * srcImage->GetHeight() ) );
 				ImGui::Columns( 1 );
@@ -424,21 +425,21 @@ void wtRenderer::BuildImguiCommandList()
 
 				ImGui::Checkbox( "Mute",					&systemConfig.apu.mutePulse1 );
 				ImGui::SameLine();
-				ImGui::Text( "| $4015 - Enabled: %i",		apuDebug.status.sem.p1 );
+				ImGui::Text( "| $4015 - Enabled: %i",		apuDebug.pulse1Enabled );
 				ImGui::Columns( 2 );
-				ImGui::Text( "$4000 - Duty: %i",			apuDebug.pulse1.regCtrl.sem.duty );
-				ImGui::Text( "$4000 - Constant: %i",		apuDebug.pulse1.regCtrl.sem.isConstant );
-				ImGui::Text( "$4000 - Volume: %i",			apuDebug.pulse1.regCtrl.sem.volume );
-				ImGui::Text( "$4000 - Halt Flag: %i",		apuDebug.pulse1.regCtrl.sem.counterHalt );
-				ImGui::Text( "$4002 - Timer: %i",			apuDebug.pulse1.regTune.sem0.timer );
-				ImGui::Text( "$4003 - Counter: %i",			apuDebug.pulse1.regTune.sem0.counter );
+				ImGui::Text( "$4000 - Duty: %i",			apuDebug.pulse1.duty );
+				ImGui::Text( "$4000 - Constant: %i",		apuDebug.pulse1.constant );
+				ImGui::Text( "$4000 - Volume: %i",			apuDebug.pulse1.volume );
+				ImGui::Text( "$4000 - Halt Flag: %i",		apuDebug.pulse1.counterHalt );
+				ImGui::Text( "$4002 - Timer: %i",			apuDebug.pulse1.timer );
+				ImGui::Text( "$4003 - Counter: %i",			apuDebug.pulse1.counter );
 				ImGui::NextColumn();
-				ImGui::Text( "Pulse Period: %i",			apuDebug.pulse1.period.Value() );
-				ImGui::Text( "Sweep Delta: %i",				abs( apuDebug.pulse1.period.Value() - apuDebug.pulse1.regTune.sem0.timer ) );
-				ImGui::Text( "$4001 - Sweep Enabled: %i",	apuDebug.pulse1.regRamp.sem.enabled );
-				ImGui::Text( "$4001 - Sweep Period: %i",	apuDebug.pulse1.regRamp.sem.period );
-				ImGui::Text( "$4001 - Sweep Shift: %i",		apuDebug.pulse1.regRamp.sem.shift );
-				ImGui::Text( "$4001 - Sweep Negate: %i",	apuDebug.pulse1.regRamp.sem.negate );
+				ImGui::Text( "Pulse Period: %i",			apuDebug.pulse1.period );
+				ImGui::Text( "Sweep Delta: %i",				apuDebug.pulse1.sweepDelta );
+				ImGui::Text( "$4001 - Sweep Enabled: %i",	apuDebug.pulse1.sweepEnabled );
+				ImGui::Text( "$4001 - Sweep Period: %i",	apuDebug.pulse1.sweepPeriod );
+				ImGui::Text( "$4001 - Sweep Shift: %i",		apuDebug.pulse1.sweepShift );
+				ImGui::Text( "$4001 - Sweep Negate: %i",	apuDebug.pulse1.sweepNegate );
 				ImGui::Columns( 1 );
 
 				ImGui::PlotLines( "Pulse1 Wave", &ImGuiGetSoundSample,
@@ -456,22 +457,22 @@ void wtRenderer::BuildImguiCommandList()
 
 				ImGui::Checkbox( "Mute",					&systemConfig.apu.mutePulse2 );
 				ImGui::SameLine();
-				ImGui::Text( "| $4015 - Enabled: %i",		apuDebug.status.sem.p2 );
+				ImGui::Text( "| $4015 - Enabled: %i",		apuDebug.pulse2Enabled );
 				ImGui::Columns( 2 );
 				ImGui::Text( "Samples: %i",					fr->soundOutput->dbgPulse2.GetSampleCnt() );
-				ImGui::Text( "$4004 - Duty: %i",			apuDebug.pulse2.regCtrl.sem.duty );
-				ImGui::Text( "$4004 - Constant: %i",		apuDebug.pulse2.regCtrl.sem.isConstant );
-				ImGui::Text( "$4004 - Reg Volume: %i",		apuDebug.pulse2.regCtrl.sem.volume );
-				ImGui::Text( "$4004 - Halt Flag: %i",		apuDebug.pulse2.regCtrl.sem.counterHalt );
-				ImGui::Text( "$4006 - Timer: %i",			apuDebug.pulse2.regTune.sem0.timer );
-				ImGui::Text( "$4007 - Counter: %i",			apuDebug.pulse2.regTune.sem0.counter );
+				ImGui::Text( "$4004 - Duty: %i",			apuDebug.pulse2.duty );
+				ImGui::Text( "$4004 - Constant: %i",		apuDebug.pulse2.constant );
+				ImGui::Text( "$4004 - Reg Volume: %i",		apuDebug.pulse2.volume );
+				ImGui::Text( "$4004 - Halt Flag: %i",		apuDebug.pulse2.counterHalt );
+				ImGui::Text( "$4006 - Timer: %i",			apuDebug.pulse2.timer );
+				ImGui::Text( "$4007 - Counter: %i",			apuDebug.pulse2.counter );
 				ImGui::NextColumn();
-				ImGui::Text( "Pulse Period: %i",			apuDebug.pulse2.period.Value() );
-				ImGui::Text( "Sweep Delta: %i",				abs( apuDebug.pulse2.period.Value() - apuDebug.pulse2.regTune.sem0.timer ) );
-				ImGui::Text( "$4005 - Sweep Enabled: %i",	apuDebug.pulse2.regRamp.sem.enabled );
-				ImGui::Text( "$4005 - Sweep Period: %i",	apuDebug.pulse2.regRamp.sem.period );
-				ImGui::Text( "$4005 - Sweep Shift: %i",		apuDebug.pulse2.regRamp.sem.shift );
-				ImGui::Text( "$4005 - Sweep Negate: %i",	apuDebug.pulse2.regRamp.sem.negate );
+				ImGui::Text( "Pulse Period: %i",			apuDebug.pulse2.period );
+				ImGui::Text( "Sweep Delta: %i",				apuDebug.pulse2.sweepDelta );
+				ImGui::Text( "$4005 - Sweep Enabled: %i",	apuDebug.pulse2.sweepEnabled );
+				ImGui::Text( "$4005 - Sweep Period: %i",	apuDebug.pulse2.sweepPeriod );
+				ImGui::Text( "$4005 - Sweep Shift: %i",		apuDebug.pulse2.sweepShift );
+				ImGui::Text( "$4005 - Sweep Negate: %i",	apuDebug.pulse2.sweepNegate );
 				ImGui::Columns( 1 );
 
 				ImGui::PlotLines( "Pulse2 Wave", &ImGuiGetSoundSample,
@@ -489,17 +490,17 @@ void wtRenderer::BuildImguiCommandList()
 
 				ImGui::Checkbox( "Mute",					&systemConfig.apu.muteTri );
 				ImGui::SameLine();
-				ImGui::Text( "| $4015 - Enabled: %i",		apuDebug.status.sem.t );
+				ImGui::Text( "| $4015 - Enabled: %i",		apuDebug.triangleEnabled );
 				ImGui::Columns( 2 );
 				ImGui::Text( "Samples: %i",					fr->soundOutput->dbgTri.GetSampleCnt() );
 				ImGui::Text( "Length Counter: %i",			apuDebug.triangle.lengthCounter );
-				ImGui::Text( "Linear Counter: %i",			apuDebug.triangle.linearCounter.Value() );
-				ImGui::Text( "Timer: %i",					apuDebug.triangle.timer.Value() );
+				ImGui::Text( "Linear Counter: %i",			apuDebug.triangle.linearCounter );
+				ImGui::Text( "Timer: %i",					apuDebug.triangle.timer );
 				ImGui::NextColumn();
-				ImGui::Text( "$4008 - Halt Flag: %i",		apuDebug.triangle.regLinear.sem.counterHalt );
-				ImGui::Text( "$4008 - Counter Load: %i",	apuDebug.triangle.regLinear.sem.counterLoad );
-				ImGui::Text( "$400A - Timer: %i",			apuDebug.triangle.regTimer.sem0.timer );
-				ImGui::Text( "$400B - Counter: %i",			apuDebug.triangle.regTimer.sem0.counter );
+				ImGui::Text( "$4008 - Halt Flag: %i",		apuDebug.triangle.reg4008_halt );
+				ImGui::Text( "$4008 - Counter Load: %i",	apuDebug.triangle.reg4008_load );
+				ImGui::Text( "$400A - Timer: %i",			apuDebug.triangle.reg400A_timer );
+				ImGui::Text( "$400B - Counter: %i",			apuDebug.triangle.reg400B_counter );
 				ImGui::Columns( 1 );
 
 				ImGui::PlotLines( "Triangle Wave", &ImGuiGetSoundSample,
@@ -517,18 +518,18 @@ void wtRenderer::BuildImguiCommandList()
 
 				ImGui::Checkbox( "Mute",					&systemConfig.apu.muteNoise );
 				ImGui::SameLine();
-				ImGui::Text( "| $4015 - Enabled: %i",		apuDebug.status.sem.n );
+				ImGui::Text( "| $4015 - Enabled: %i",		apuDebug.noiseEnabled );
 				ImGui::Columns( 2 );
 				ImGui::Text( "Samples: %i",					fr->soundOutput->dbgNoise.GetSampleCnt() );
-				ImGui::Text( "Shifter: %i",					apuDebug.noise.shift.Value() );
+				ImGui::Text( "Shifter: %i",					apuDebug.noise.shifter );
 				ImGui::Text( "Timer: %i",					apuDebug.noise.timer );
 				ImGui::NextColumn();
-				ImGui::Text( "$400C - Halt Flag: %i",		apuDebug.noise.regCtrl.sem.counterHalt );
-				ImGui::Text( "$400C - Constant Volume: %i",	apuDebug.noise.regCtrl.sem.isConstant );
-				ImGui::Text( "$400C - Volume: %i",			apuDebug.noise.regCtrl.sem.volume );
-				ImGui::Text( "$400E - Mode: %i",			apuDebug.noise.regFreq1.sem.mode );
-				ImGui::Text( "$400E - Period: %i",			apuDebug.noise.regFreq1.sem.period );
-				ImGui::Text( "$400F - Length Counter: %i",	apuDebug.noise.regFreq2.sem.length );
+				ImGui::Text( "$400C - Halt Flag: %i",		apuDebug.noise.reg400C_halt );
+				ImGui::Text( "$400C - Constant Volume: %i",	apuDebug.noise.reg400C_constant );
+				ImGui::Text( "$400C - Volume: %i",			apuDebug.noise.reg400C_volume );
+				ImGui::Text( "$400E - Mode: %i",			apuDebug.noise.reg400E_mode );
+				ImGui::Text( "$400E - Period: %i",			apuDebug.noise.reg400E_period );
+				ImGui::Text( "$400F - Length Counter: %i",	apuDebug.noise.reg400E_length );
 				ImGui::Columns( 1 );
 
 				ImGui::PlotLines( "Noise Wave", &ImGuiGetSoundSample,
@@ -546,23 +547,23 @@ void wtRenderer::BuildImguiCommandList()
 
 				ImGui::Checkbox( "Mute",					&systemConfig.apu.muteDMC );
 				ImGui::SameLine();
-				ImGui::Text( "| $4015 - Enabled: %i",		apuDebug.status.sem.d );
+				ImGui::Text( "| $4015 - Enabled: %i",		apuDebug.dmcEnabled );
 				ImGui::Columns( 2 );
 				ImGui::Text( "Samples: %i",					fr->soundOutput->dbgDmc.GetSampleCnt() );
-				ImGui::Text( "Volume: %i",					apuDebug.dmc.outputLevel.Value() );
+				ImGui::Text( "Volume: %i",					apuDebug.dmc.outputLevel );
 				ImGui::Text( "Sample Buffer: %i",			apuDebug.dmc.sampleBuffer );
-				ImGui::Text( "Bit Counter: %i",				apuDebug.dmc.bitCnt );
+				ImGui::Text( "Bit Counter: %i",				apuDebug.dmc.bitCount );
 				ImGui::Text( "Bytes Remaining: %i",			apuDebug.dmc.bytesRemaining );
 				ImGui::Text( "Period: %i",					apuDebug.dmc.period );
 				ImGui::Text( "Period Counter: %i",			apuDebug.dmc.periodCounter );
 				ImGui::Text( "Frequency: %f",				CPU_HZ / apuDebug.dmc.period );
 				ImGui::NextColumn();
-				ImGui::Text( "$4010 - Loop: %i",			apuDebug.dmc.regCtrl.sem.loop );
-				ImGui::Text( "$4010 - Freq: %i",			apuDebug.dmc.regCtrl.sem.freq );
-				ImGui::Text( "$4010 - IRQ: %i",				apuDebug.dmc.regCtrl.sem.irqEnable );
-				ImGui::Text( "$4011 - Load Counter: %i",	apuDebug.dmc.regLoad );
-				ImGui::Text( "$4012 - Addr: %X",			apuDebug.dmc.regAddr );
-				ImGui::Text( "$4013 - Length: %i",			apuDebug.dmc.regLength );
+				ImGui::Text( "$4010 - Loop: %i",			apuDebug.dmc.reg4010_Loop );
+				ImGui::Text( "$4010 - Freq: %i",			apuDebug.dmc.reg4010_Freq );
+				ImGui::Text( "$4010 - IRQ: %i",				apuDebug.dmc.reg4010_Irq );
+				ImGui::Text( "$4011 - Load Counter: %i",	apuDebug.dmc.reg4011_load );
+				ImGui::Text( "$4012 - Addr: %X",			apuDebug.dmc.reg4012_addr );
+				ImGui::Text( "$4013 - Length: %i",			apuDebug.dmc.reg4013_length );
 				ImGui::Columns( 1 );
 
 				ImGui::PlotLines( "DMC Wave", &ImGuiGetSoundSample,

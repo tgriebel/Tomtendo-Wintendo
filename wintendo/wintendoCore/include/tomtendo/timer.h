@@ -21,37 +21,58 @@
 * SOFTWARE.
 */
 
-#include "wintendoApp.h"
+#pragma once
+#include <chrono>
 
-#include <fstream>
-
-extern wtAppInterface	app;
-
-static void TestRomUnit( std::wstring& testFilePath )
+namespace Tomtendo
 {
-	using namespace Tomtendo;
-	using namespace std::chrono_literals;
+	class Timer
+	{
+	public:
+		Timer()
+		{
+			Reset();
+		}
 
-	static wtFrameResult testFr;
-	InitConfig( app.systemConfig );
-	app.system->Boot( testFilePath, 0xC000 );
-	app.system->SetConfig( app.systemConfig );
+		void Reset()
+		{
+			startTimeNs = std::chrono::nanoseconds( 0 );
+			endTimeNs = std::chrono::nanoseconds( 0 );
+			totalTimeNs = std::chrono::nanoseconds( 0 );
+		}
 
-	sysCmd_t traceCmd;
-	traceCmd.type = sysCmdType_t::START_TRACE;
-	traceCmd.parms[ 0 ].u = 1;
-	app.system->SubmitCommand( traceCmd );
+		void Start()
+		{
+			startTimeNs = std::chrono::system_clock::now().time_since_epoch();
+			endTimeNs = startTimeNs;
+		}
 
-	std::chrono::nanoseconds ns = std::chrono::duration_cast<std::chrono::nanoseconds>( 60s );
+		void Stop()
+		{
+			endTimeNs = std::chrono::system_clock::now().time_since_epoch();
+			totalTimeNs += ( endTimeNs - startTimeNs );
+			startTimeNs = endTimeNs;
+		}
 
-	app.system->RunEpoch( ns );
-	app.system->GetFrameResult( testFr );
-	std::string logText;
-	logText.resize( 0 );
-	logText.reserve( 400 * testFr.dbgLog->GetRecordCount() );
-	testFr.dbgLog->ToString( logText, 0, testFr.dbgLog->GetRecordCount(), true );
-	std::ofstream log( "testNes.log" );
-	log << logText;
-	log.close();
-	app.TerminateEmulator();
-}
+		double GetElapsedNs()
+		{
+			endTimeNs = std::chrono::system_clock::now().time_since_epoch();
+			return static_cast<double>( totalTimeNs.count() + ( endTimeNs - startTimeNs ).count() );
+		}
+
+		double GetElapsedUs()
+		{
+			return ( GetElapsedNs() / 1000.0f );
+		}
+
+		double GetElapsedMs()
+		{
+			return ( GetElapsedUs() / 1000.0f );
+		}
+
+	private:
+		std::chrono::nanoseconds startTimeNs;
+		std::chrono::nanoseconds endTimeNs;
+		std::chrono::nanoseconds totalTimeNs;
+	};
+};

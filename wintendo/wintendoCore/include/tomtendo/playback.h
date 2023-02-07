@@ -21,37 +21,25 @@
 * SOFTWARE.
 */
 
-#include "wintendoApp.h"
+#pragma once
+#include <stdint.h>
 
-#include <fstream>
-
-extern wtAppInterface	app;
-
-static void TestRomUnit( std::wstring& testFilePath )
+namespace Tomtendo
 {
-	using namespace Tomtendo;
-	using namespace std::chrono_literals;
+	enum class replayStateCode_t : uint8_t
+	{
+		LIVE,
+		RECORD,
+		REPLAY,
+		FINISHED,
+	};
 
-	static wtFrameResult testFr;
-	InitConfig( app.systemConfig );
-	app.system->Boot( testFilePath, 0xC000 );
-	app.system->SetConfig( app.systemConfig );
-
-	sysCmd_t traceCmd;
-	traceCmd.type = sysCmdType_t::START_TRACE;
-	traceCmd.parms[ 0 ].u = 1;
-	app.system->SubmitCommand( traceCmd );
-
-	std::chrono::nanoseconds ns = std::chrono::duration_cast<std::chrono::nanoseconds>( 60s );
-
-	app.system->RunEpoch( ns );
-	app.system->GetFrameResult( testFr );
-	std::string logText;
-	logText.resize( 0 );
-	logText.reserve( 400 * testFr.dbgLog->GetRecordCount() );
-	testFr.dbgLog->ToString( logText, 0, testFr.dbgLog->GetRecordCount(), true );
-	std::ofstream log( "testNes.log" );
-	log << logText;
-	log.close();
-	app.TerminateEmulator();
-}
+	struct playbackState_t
+	{
+		replayStateCode_t	replayState;
+		int64_t				startFrame;
+		int64_t				currentFrame;
+		int64_t				finalFrame;
+		bool				pause;
+	};
+};

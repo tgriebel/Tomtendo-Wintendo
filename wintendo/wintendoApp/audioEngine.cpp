@@ -22,6 +22,9 @@
 */
 
 #include "audioEngine.h"
+#include <fstream>
+#include <iostream>
+#include <sstream>
 
 VoiceCallback voiceCallback;
 
@@ -225,11 +228,11 @@ bool wtAudioEngine::AudioSubmit()
 
 void LogApu( wtFrameResult& frameResult )
 {
-	stringstream sndLogName;
+	std::stringstream sndLogName;
 	sndLogName << "apuLogs/" << "snd" << frameResult.currentFrame << ".csv";
 
-	ofstream sndLog;
-	sndLog.open( sndLogName.str(), ios::out | ios::binary );
+	std::ofstream sndLog;
+	sndLog.open( sndLogName.str(), std::ios::out | std::ios::binary );
 
 	const wtSampleQueue& pulse1 = frameResult.soundOutput->dbgPulse1;
 	const wtSampleQueue& pulse2 = frameResult.soundOutput->dbgPulse2;

@@ -19,114 +19,132 @@
     <Filter Include="Source Files\Debug">
       <UniqueIdentifier>{0aafb935-2020-4ac4-a8c7-01d241f147e3}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Interface">
+      <UniqueIdentifier>{971f43d3-04ad-43d8-810f-e8e5ac969325}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Processors">
+      <UniqueIdentifier>{4aabd05a-6031-4c5f-95a1-804ea7acccf1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="System">
+      <UniqueIdentifier>{3082460d-f9a3-48a6-9aca-124a17e6d241}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\assert.h">
+      <Filter>Source Files\Debug</Filter>
+    </ClInclude>
+    <ClInclude Include="src\debug.h">
+      <Filter>Source Files\Debug</Filter>
+    </ClInclude>
+    <ClInclude Include="src\common.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\mappers\MMC1.h">
+      <Filter>mappers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\mappers\MMC3.h">
+      <Filter>mappers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\mappers\NROM.h">
+      <Filter>mappers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\mappers\UNROM.h">
+      <Filter>mappers</Filter>
+    </ClInclude>
+    <ClInclude Include="src\processors\apu.h">
+      <Filter>Processors</Filter>
+    </ClInclude>
+    <ClInclude Include="src\processors\mos6502.h">
+      <Filter>Processors</Filter>
+    </ClInclude>
+    <ClInclude Include="src\processors\mos6502_ops.h">
+      <Filter>Processors</Filter>
+    </ClInclude>
+    <ClInclude Include="src\processors\ppu.h">
+      <Filter>Processors</Filter>
+    </ClInclude>
+    <ClInclude Include="include\tomtendo\playback.h">
+      <Filter>Interface</Filter>
+    </ClInclude>
+    <ClInclude Include="include\tomtendo\command.h">
+      <Filter>Interface</Filter>
+    </ClInclude>
+    <ClInclude Include="include\tomtendo\input.h">
+      <Filter>Interface</Filter>
+    </ClInclude>
+    <ClInclude Include="include\tomtendo\time.h">
+      <Filter>Interface</Filter>
+    </ClInclude>
+    <ClInclude Include="include\tomtendo\timer.h">
+      <Filter>Interface</Filter>
+    </ClInclude>
+    <ClInclude Include="src\system\mapper.h">
+      <Filter>System</Filter>
+    </ClInclude>
+    <ClInclude Include="src\system\NesSystem.h">
+      <Filter>System</Filter>
+    </ClInclude>
+    <ClInclude Include="include\tomtendo\interface.h">
+      <Filter>Interface</Filter>
+    </ClInclude>
     <ClInclude Include="stdafx.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="targetver.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="NesSystem.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="include\tomtendo\util.h">
+      <Filter>Interface</Filter>
     </ClInclude>
-    <ClInclude Include="ppu.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="src\system\cart.h">
+      <Filter>System</Filter>
     </ClInclude>
-    <ClInclude Include="mos6502.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="include\tomtendo\audio.h">
+      <Filter>Interface</Filter>
     </ClInclude>
-    <ClInclude Include="bitmap.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="include\tomtendo\image.h">
+      <Filter>Interface</Filter>
     </ClInclude>
-    <ClInclude Include="common.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="input.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="mappers\MMC1.h">
-      <Filter>mappers</Filter>
-    </ClInclude>
-    <ClInclude Include="mappers\NROM.h">
-      <Filter>mappers</Filter>
-    </ClInclude>
-    <ClInclude Include="mappers\UNROM.h">
-      <Filter>mappers</Filter>
-    </ClInclude>
-    <ClInclude Include="mappers\MMC3.h">
-      <Filter>mappers</Filter>
-    </ClInclude>
-    <ClInclude Include="mos6502_ops.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="apu.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="timer.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="mapper.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="serializer.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="debug.h">
-      <Filter>Source Files\Debug</Filter>
-    </ClInclude>
-    <ClInclude Include="command.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="playback.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="util.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="assert.h">
-      <Filter>Source Files\Debug</Filter>
-    </ClInclude>
-    <ClInclude Include="time.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="cart.h">
-      <Filter>Header Files</Filter>
+    <ClInclude Include="include\tomtendo\log.h">
+      <Filter>Interface</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\debug.cpp">
+      <Filter>Source Files\Debug</Filter>
+    </ClCompile>
+    <ClCompile Include="src\serializer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\processors\apu.cpp">
+      <Filter>Processors</Filter>
+    </ClCompile>
+    <ClCompile Include="src\processors\mos6502.cpp">
+      <Filter>Processors</Filter>
+    </ClCompile>
+    <ClCompile Include="src\processors\ppu.cpp">
+      <Filter>Processors</Filter>
+    </ClCompile>
+    <ClCompile Include="src\system\nesSystem.cpp">
+      <Filter>System</Filter>
+    </ClCompile>
+    <ClCompile Include="src\system\systemSerialize.cpp">
+      <Filter>System</Filter>
+    </ClCompile>
+    <ClCompile Include="src\system\command.cpp">
+      <Filter>System</Filter>
+    </ClCompile>
+    <ClCompile Include="src\wintendoMain.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\interface.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="stdafx.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="bitmap.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="ppu.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="mos6502.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="wintendoMain.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="nesSystem.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="apu.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="serializer.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="systemSerialize.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="debug.cpp">
-      <Filter>Source Files\Debug</Filter>
-    </ClCompile>
-    <ClCompile Include="command.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="src\system\state.cpp">
+      <Filter>System</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>

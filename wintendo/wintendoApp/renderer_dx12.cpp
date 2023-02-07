@@ -278,10 +278,12 @@ void wtRenderer::CreateD3D12Pipeline()
 
 void wtRenderer::CreateVertexBuffers()
 {
+	using namespace Tomtendo;
+
 	const float x0 = NormalizeCoordinate( 0, view.defaultWidth );
-	const float x1 = NormalizeCoordinate( view.displayScalar * PPU::ScreenWidth, view.defaultWidth );
+	const float x1 = NormalizeCoordinate( view.displayScalar * ScreenWidth(), view.defaultWidth );
 	const float y0 = NormalizeCoordinate( 0, view.defaultHeight );
-	const float y1 = NormalizeCoordinate( view.displayScalar * PPU::ScreenHeight, view.defaultHeight );
+	const float y1 = NormalizeCoordinate( view.displayScalar * ScreenHeight(), view.defaultHeight );
 
 	const XMFLOAT4 tintColor = { 1.0f, 0.0f, 1.0f, 1.0f };
 
@@ -429,10 +431,12 @@ void wtRenderer::CreateFrameBuffers()
 
 void wtRenderer::CreateTextureResources( const uint32_t frameIx )
 {
+	using namespace Tomtendo;
+
 	int dbgImageIx = 0;
 	wtPoint sourceImages[ SHADER_RESOURES_TEXTURE_CNT ];
-	sourceImages[ dbgImageIx++ ] = { PPU::ScreenWidth, PPU::ScreenHeight };
-	sourceImages[ dbgImageIx++ ] = { 2 * PPU::NameTableWidthPixels, 2 * PPU::NameTableHeightPixels };
+	sourceImages[ dbgImageIx++ ] = { ScreenWidth(), ScreenHeight() };
+	sourceImages[ dbgImageIx++ ] = { 2 * ScreenWidth(), 2 * ScreenHeight() };
 	sourceImages[ dbgImageIx++ ] = { 16, 2 };
 	sourceImages[ dbgImageIx++ ] = { 128, 128 };
 	sourceImages[ dbgImageIx++ ] = { 128, 128 };

@@ -21,37 +21,30 @@
 * SOFTWARE.
 */
 
-#include "wintendoApp.h"
-
+#include "../stdafx.h"
+#include <iostream>
+#include <iomanip>
 #include <fstream>
+#include <Windows.h>
+#include <string>
+#include <wchar.h>
+#include <sstream>
 
-extern wtAppInterface	app;
+#include "system/NesSystem.h"
+#include "../include/tomtendo/interface.h"
 
-static void TestRomUnit( std::wstring& testFilePath )
+wtSystem nesSystem;
+
+int main()
 {
-	using namespace Tomtendo;
-	using namespace std::chrono_literals;
+	nesSystem.Init( L"Games/Contra.nes" );
 
-	static wtFrameResult testFr;
-	InitConfig( app.systemConfig );
-	app.system->Boot( testFilePath, 0xC000 );
-	app.system->SetConfig( app.systemConfig );
+	Tomtendo::config_t cfg;
+	Tomtendo::InitConfig( cfg );
+	cfg.sys.flags = emulationFlags_t::HEADLESS;
+	nesSystem.SetConfig( cfg );
 
-	sysCmd_t traceCmd;
-	traceCmd.type = sysCmdType_t::START_TRACE;
-	traceCmd.parms[ 0 ].u = 1;
-	app.system->SubmitCommand( traceCmd );
+	nesSystem.RunEpoch( FrameLatencyNs );
 
-	std::chrono::nanoseconds ns = std::chrono::duration_cast<std::chrono::nanoseconds>( 60s );
-
-	app.system->RunEpoch( ns );
-	app.system->GetFrameResult( testFr );
-	std::string logText;
-	logText.resize( 0 );
-	logText.reserve( 400 * testFr.dbgLog->GetRecordCount() );
-	testFr.dbgLog->ToString( logText, 0, testFr.dbgLog->GetRecordCount(), true );
-	std::ofstream log( "testNes.log" );
-	log << logText;
-	log.close();
-	app.TerminateEmulator();
+	nesSystem.Shutdown();
 }

@@ -21,37 +21,49 @@
 * SOFTWARE.
 */
 
-#include "wintendoApp.h"
+#pragma once
 
-#include <fstream>
+#include "../common.h"
+#include "../system/NesSystem.h"
 
-extern wtAppInterface	app;
-
-static void TestRomUnit( std::wstring& testFilePath )
+class NROM : public wtMapper
 {
-	using namespace Tomtendo;
-	using namespace std::chrono_literals;
+private:
+	uint8_t*	prgBanks[2];
+	uint8_t*	chrBank;
+public:
+	NROM( const uint32_t _mapperId )
+	{
+		mapperId = _mapperId;
+		prgBanks[0] = nullptr;
+		prgBanks[1] = nullptr;
+		chrBank = nullptr;
+	}
 
-	static wtFrameResult testFr;
-	InitConfig( app.systemConfig );
-	app.system->Boot( testFilePath, 0xC000 );
-	app.system->SetConfig( app.systemConfig );
+	uint8_t OnLoadCpu() override
+	{
+		const uint8_t bank1 = ( system->cart->GetPrgBankCount() == 1 ) ? 0 : 1;
+		prgBanks[ 0 ] = system->cart->GetPrgRomBank( 0 );
+		prgBanks[ 1 ] = system->cart->GetPrgRomBank( bank1 );
+		return 0;
+	};
 
-	sysCmd_t traceCmd;
-	traceCmd.type = sysCmdType_t::START_TRACE;
-	traceCmd.parms[ 0 ].u = 1;
-	app.system->SubmitCommand( traceCmd );
+	uint8_t OnLoadPpu() override
+	{
+		chrBank = system->cart->GetChrRomBank( 0 );
+		return 0;
+	};
 
-	std::chrono::nanoseconds ns = std::chrono::duration_cast<std::chrono::nanoseconds>( 60s );
+	uint8_t	ReadRom( const uint16_t addr ) const override
+	{
+		const uint8_t bank = ( addr >> 14 ) & 0x01;
+		const uint16_t offset = ( addr & ( wtSystem::BankSize - 1 ) );
 
-	app.system->RunEpoch( ns );
-	app.system->GetFrameResult( testFr );
-	std::string logText;
-	logText.resize( 0 );
-	logText.reserve( 400 * testFr.dbgLog->GetRecordCount() );
-	testFr.dbgLog->ToString( logText, 0, testFr.dbgLog->GetRecordCount(), true );
-	std::ofstream log( "testNes.log" );
-	log << logText;
-	log.close();
-	app.TerminateEmulator();
-}
+		return prgBanks[ bank ][ offset ];
+	}
+
+	uint8_t	ReadChrRom( const uint16_t addr ) const override
+	{
+		return chrBank[ addr ];
+	}
+};

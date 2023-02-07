@@ -81,7 +81,7 @@ struct wtAudioEngine
 	float								F2					= 440.0f;	//
 	float								F3					= 14000.0f;	//
 	bool								logSnd				= false;
-	uint32								dbgLastSoundSampleLength = 0;
+	uint32_t							dbgLastSoundSampleLength = 0;
 
 	void								Init();
 	void								Shutdown();
