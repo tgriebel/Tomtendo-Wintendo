@@ -108,6 +108,9 @@
     <ClInclude Include="include\tomtendo\log.h">
       <Filter>Interface</Filter>
     </ClInclude>
+    <ClInclude Include="include\tomtendo\serializer.h">
+      <Filter>Interface</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\debug.cpp">

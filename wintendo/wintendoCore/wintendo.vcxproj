@@ -171,6 +171,7 @@
     <ClInclude Include="include\tomtendo\image.h" />
     <ClInclude Include="include\tomtendo\log.h" />
     <ClInclude Include="include\tomtendo\playback.h" />
+    <ClInclude Include="include\tomtendo\serializer.h" />
     <ClInclude Include="include\tomtendo\time.h" />
     <ClInclude Include="include\tomtendo\timer.h" />
     <ClInclude Include="include\tomtendo\util.h" />
