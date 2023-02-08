@@ -61,20 +61,11 @@ namespace Tomtendo
 	static const char* STATE_MEMORY_LABEL = "Memory";
 	static const char* STATE_VRAM_LABEL	= "VRAM";
 
-	constexpr uint32_t ScreenWidth()
-	{
-		return 256;	// FIXME
-	}
+	uint32_t ScreenWidth();
 
-	constexpr uint32_t ScreenHeight()
-	{
-		return 240;	// FIXME
-	}
+	uint32_t ScreenHeight();
 
-	constexpr uint32_t SpriteLimit()
-	{
-		return 64; // FIXME
-	}
+	uint32_t SpriteLimit();
 
 	void InitConfig( config_t& config );
 

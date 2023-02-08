@@ -767,7 +767,7 @@ void wtSystem::UpdateDebugImages()
 
 	RGBA pickedPalette[ 4 ];
 	GetChrRomPalette( ( ppu.dbgInfo.picked.palette >> 2 ) + 4, pickedPalette );
-	//ppu.DrawDebugObject( &pickedObj8x16, pickedPalette, ppu.dbgInfo.picked ); // FIXME
+	ppu.DrawDebugObject( &pickedObj8x16, pickedPalette, ppu.dbgInfo.picked );
 
 	if ( debugNTEnable ) {
 		ppu.DrawDebugNametable( nameTableSheet );

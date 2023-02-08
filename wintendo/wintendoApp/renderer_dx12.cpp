@@ -56,10 +56,10 @@ void wtRenderer::AdvanceNextFrame()
 
 uint32_t wtRenderer::InitD3D12()
 {
-	view.width = view.defaultWidth;
-	view.height = view.defaultHeight;
+	view.width = view.DefaultWidth();
+	view.height = view.DefaultHeight();
 	view.viewport = CD3DX12_VIEWPORT( 0.0f, 0.0f, static_cast<float>( view.width ), static_cast<float>( view.height ) );
-	view.scissorRect = CD3DX12_RECT( 0, view.overscanY0, view.defaultWidth, view.overscanY1 );
+	view.scissorRect = CD3DX12_RECT( 0, view.OverscanY0(), view.DefaultWidth(), view.OverscanY1() );
 
 	UINT dxgiFactoryFlags = 0;
 
@@ -210,6 +210,8 @@ void wtRenderer::CreateCommandLists()
 
 void wtRenderer::CreateConstantBuffers()
 {
+	using namespace Tomtendo;
+
 	const UINT constantBufferDataSize = ( sizeof( DisplayConstantBuffer ) + 255 ) & ~255;
 
 	D3D12_HEAP_PROPERTIES props = CD3DX12_HEAP_PROPERTIES( D3D12_HEAP_TYPE_UPLOAD );
@@ -230,8 +232,8 @@ void wtRenderer::CreateConstantBuffers()
 	pipeline.shaderData.maskDark = 0.9f;
 	pipeline.shaderData.maskLight = 1.1f;
 	pipeline.shaderData.warp = { 0.0f, 0.002f };
-	pipeline.shaderData.imageDim = { 0.0f, 0.0f, view.nesWidth, view.nesHeight };
-	pipeline.shaderData.destImageDim = { 0.0f, 0.0f, view.displayScalar * view.nesWidth, view.defaultHeight };
+	pipeline.shaderData.imageDim = { 0.0f, 0.0f, float( ScreenWidth() ), float( ScreenHeight() ) };
+	pipeline.shaderData.destImageDim = { 0.0f, 0.0f, view.displayScalar * float( ScreenWidth() ), float( ScreenHeight() ) };
 	pipeline.shaderData.enable = false;
 
 	pipeline.cbvSrvCpuHandle = CD3DX12_CPU_DESCRIPTOR_HANDLE( pipeline.cbvSrvUavHeap->GetCPUDescriptorHandleForHeapStart(), SHADER_RESOURES_CBV0, pipeline.cbvSrvUavDescStride );
@@ -280,10 +282,10 @@ void wtRenderer::CreateVertexBuffers()
 {
 	using namespace Tomtendo;
 
-	const float x0 = NormalizeCoordinate( 0, view.defaultWidth );
-	const float x1 = NormalizeCoordinate( view.displayScalar * ScreenWidth(), view.defaultWidth );
-	const float y0 = NormalizeCoordinate( 0, view.defaultHeight );
-	const float y1 = NormalizeCoordinate( view.displayScalar * ScreenHeight(), view.defaultHeight );
+	const float x0 = NormalizeCoordinate( 0, view.DefaultWidth() );
+	const float x1 = NormalizeCoordinate( view.displayScalar * ScreenWidth(), view.DefaultWidth() );
+	const float y0 = NormalizeCoordinate( 0, view.DefaultHeight() );
+	const float y1 = NormalizeCoordinate( view.displayScalar * ScreenHeight(), view.DefaultHeight() );
 
 	const XMFLOAT4 tintColor = { 1.0f, 0.0f, 1.0f, 1.0f };
 
@@ -387,8 +389,8 @@ void wtRenderer::SubmitFrame()
 void wtRenderer::CreateFrameBuffers()
 {
 	DXGI_SWAP_CHAIN_DESC1 swapChainDesc = { 0 };
-	swapChainDesc.Width					= view.defaultWidth;
-	swapChainDesc.Height				= view.defaultHeight;
+	swapChainDesc.Width					= view.DefaultWidth();
+	swapChainDesc.Height				= view.DefaultHeight();
 	swapChainDesc.BufferCount			= FrameCount;
 	swapChainDesc.Format				= DXGI_FORMAT_R8G8B8A8_UNORM;
 	swapChainDesc.Stereo				= false;
@@ -435,8 +437,8 @@ void wtRenderer::CreateTextureResources( const uint32_t frameIx )
 
 	int dbgImageIx = 0;
 	wtPoint sourceImages[ SHADER_RESOURES_TEXTURE_CNT ];
-	sourceImages[ dbgImageIx++ ] = { ScreenWidth(), ScreenHeight() };
-	sourceImages[ dbgImageIx++ ] = { 2 * ScreenWidth(), 2 * ScreenHeight() };
+	sourceImages[ dbgImageIx++ ] = { int( ScreenWidth() ), int( ScreenHeight() ) };
+	sourceImages[ dbgImageIx++ ] = { 2 * int( ScreenWidth() ), 2 * int( ScreenHeight() ) };
 	sourceImages[ dbgImageIx++ ] = { 16, 2 };
 	sourceImages[ dbgImageIx++ ] = { 128, 128 };
 	sourceImages[ dbgImageIx++ ] = { 128, 128 };
@@ -588,7 +590,7 @@ void wtRenderer::RecreateSwapChain( const uint32_t width, const uint32_t height 
 	view.width = width;
 	view.height = height;
 	view.viewport = CD3DX12_VIEWPORT( 0.0f, 0.0f, static_cast<float>( width ), static_cast<float>( height ) );
-	view.scissorRect = CD3DX12_RECT( 0, view.overscanY0, width, height );
+	view.scissorRect = CD3DX12_RECT( 0, view.OverscanY0(), width, height );
 
 	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle( swapChain.rtvHeap->GetCPUDescriptorHandleForHeapStart() );
 	for ( uint32_t i = 0; i < FrameCount; ++i )

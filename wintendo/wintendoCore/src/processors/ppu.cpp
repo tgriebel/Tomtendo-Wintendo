@@ -764,8 +764,22 @@ void PPU::DrawDebugPatternTables( wtPatternTableImage& imageBuffer, const RGBA d
 }
 
 
-void PPU::DrawDebugObject( wtRawImageInterface* imageBuffer, const RGBA dbgPalette[ 4 ], const spriteAttrib_t& attrib )
+void PPU::DrawDebugObject( wtRawImageInterface* imageBuffer, const RGBA dbgPalette[ 4 ], const ppuDebug_t::pickedSprite_t& picked )
 {
+	spriteAttrib_t attrib;
+	attrib.flippedHorizontal	= picked.flippedHorizontal;
+	attrib.flippedVertical		= picked.flippedVertical;
+	attrib.is8x16				= picked.is8x16;
+	attrib.oamIndex				= picked.oamIndex;
+	attrib.palette				= picked.palette;
+	attrib.priority				= picked.priority;
+	attrib.secondaryOamIndex	= picked.secondaryOamIndex;
+	attrib.sprite0				= picked.sprite0;
+	attrib.tableId				= picked.tableId;
+	attrib.tileId				= picked.tileId;
+	attrib.x					= picked.x;
+	attrib.y					= picked.y;
+
 	imageBuffer->Clear();
 	const int32_t tileHeight = attrib.is8x16 ? 2 : 1;
 	DrawChrRomTile( imageBuffer, wtRect{ 0, 0, (int32_t)PPU::TilePixels, PPU::TilePixels }, dbgPalette, attrib.tileId, attrib.tableId, false, attrib.is8x16, false );

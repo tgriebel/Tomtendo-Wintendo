@@ -53,10 +53,20 @@ namespace Tomtendo
 		config.apu.dbgChannelBits = 0;
 	}
 
-	//constexpr uint32_t SpriteLimit()
-	//{
-	//	return PPU::TotalSprites;
-	//}
+	uint32_t ScreenWidth()
+	{
+		return PPU::ScreenWidth;
+	}
+
+	uint32_t ScreenHeight()
+	{
+		return PPU::ScreenHeight;
+	}
+
+	uint32_t SpriteLimit()
+	{
+		return PPU::TotalSprites;
+	}
 
 	int Emulator::Boot( const std::wstring& filePath, const uint32_t resetVectorManual )
 	{
@@ -96,7 +106,7 @@ namespace Tomtendo
 
 	void Emulator::GenerateRomDissambly( std::string prgRomAsm[ 128 ] )
 	{
-		//assert( cart->h.prgRomBanks <= 128 ); // FIXME
+		assert( system.cart->h.prgRomBanks <= 128 );
 		for ( uint32_t bankNum = 0; bankNum < system.cart->h.prgRomBanks; ++bankNum )
 		{
 			prgRomAsm[ bankNum ] = system.GetPrgBankDissambly( bankNum );
@@ -105,7 +115,7 @@ namespace Tomtendo
 
 	void Emulator::GenerateChrRomTables( wtPatternTableImage chrRom[ 32 ] )
 	{
-		//assert( cart->GetChrBankCount() <= 32 ); // FIXME
+		assert( system.cart->GetChrBankCount() <= 32 );
 
 		RGBA palette[ 4 ];
 		if ( system.GetConfig()->ppu.chrPalette == -1 ) {
@@ -115,7 +125,7 @@ namespace Tomtendo
 			system.GetChrRomPalette( system.GetConfig()->ppu.chrPalette, palette );
 		}
 
-		//assert( cart->h.chrRomBanks <= 32 ); // FIXME
+		assert( system.cart->h.chrRomBanks <= 32 );
 		for ( uint32_t bankNum = 0; bankNum < system.cart->h.chrRomBanks; ++bankNum ) {
 			system.GetPPU().DrawDebugPatternTables( chrRom[ bankNum ], palette, bankNum, true );
 		}

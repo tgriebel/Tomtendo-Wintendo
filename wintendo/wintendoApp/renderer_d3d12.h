@@ -101,18 +101,35 @@ struct swapChain_t
 struct view_t
 {
 	static const int32_t			displayScalar = 2;
-	static const int32_t			nesWidth = Tomtendo::ScreenWidth();
-	static const int32_t			nesHeight = Tomtendo::ScreenHeight();
-	static const int32_t			overscanY0 = displayScalar * 8;
-	static const int32_t			overscanY1 = displayScalar * ( Tomtendo::ScreenHeight() - 8 );
 	static const int32_t			debugAreaX = 1024;
 	static const int32_t			debugAreaY = 0;
-	static const int32_t			defaultWidth = displayScalar * nesWidth + debugAreaX;
-	static const int32_t			defaultHeight = displayScalar * nesHeight + debugAreaY;
 	CD3DX12_VIEWPORT				viewport;
 	CD3DX12_RECT					scissorRect;
 	uint32_t						width;
 	uint32_t						height;
+
+	inline int32_t DefaultWidth()
+	{
+		return view_t::displayScalar * Tomtendo::ScreenWidth() + view_t::debugAreaX;
+	}
+
+
+	inline int32_t DefaultHeight()
+	{
+		return view_t::displayScalar * Tomtendo::ScreenHeight() + view_t::debugAreaY;
+	}
+
+
+	inline int32_t OverscanY0()
+	{
+		return view_t::displayScalar * 8;
+	}
+
+
+	inline int32_t OverscanY1()
+	{
+		return view_t::displayScalar * ( Tomtendo::ScreenHeight() - 8 );
+	}
 };
 
 

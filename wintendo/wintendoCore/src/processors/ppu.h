@@ -300,7 +300,7 @@ public:
 	uint8_t			ReadReg( uint16_t address );
 
 	void			DrawDebugPatternTables( wtPatternTableImage& imageBuffer, const RGBA dbgPalette[4], const uint32_t tableID, const bool isCartbank ) const;
-	void			DrawDebugObject( wtRawImageInterface* imageBuffer, const RGBA dbgPalette[ 4 ], const spriteAttrib_t& attrib );
+	void			DrawDebugObject( wtRawImageInterface* imageBuffer, const RGBA dbgPalette[ 4 ], const ppuDebug_t::pickedSprite_t& attrib );
 	void			DrawDebugNametable( wtNameTableImage& nameTableSheet );
 	void			DrawDebugPalette( wtPaletteImage& imageBuffer );
 
