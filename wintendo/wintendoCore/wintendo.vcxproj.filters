@@ -99,9 +99,6 @@
     <ClInclude Include="src\system\cart.h">
       <Filter>System</Filter>
     </ClInclude>
-    <ClInclude Include="include\tomtendo\audio.h">
-      <Filter>Interface</Filter>
-    </ClInclude>
     <ClInclude Include="include\tomtendo\image.h">
       <Filter>Interface</Filter>
     </ClInclude>
