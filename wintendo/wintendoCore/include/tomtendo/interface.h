@@ -35,6 +35,8 @@
 
 #include <cstdint>
 
+class wtSystem;
+
 namespace Tomtendo
 {
 	class wtLog;
@@ -43,7 +45,12 @@ namespace Tomtendo
 
 	class Emulator
 	{
+	private:
+		wtSystem* system = nullptr;
 	public:
+
+		~Emulator();
+
 		Input	input;
 
 		int		Boot( const std::wstring& filePath, const uint32_t resetVectorManual = 0x10000 );

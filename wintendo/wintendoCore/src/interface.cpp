@@ -26,8 +26,6 @@
 
 namespace Tomtendo
 {
-	static wtSystem system;
-
 	void InitConfig( config_t& config )
 	{
 		// System
@@ -68,12 +66,20 @@ namespace Tomtendo
 		return PPU::TotalSprites;
 	}
 
+	Emulator::~Emulator()
+	{
+		if ( system != nullptr ) {
+			delete system;
+		}
+	}
+
 	int Emulator::Boot( const std::wstring& filePath, const uint32_t resetVectorManual )
 	{
-		const int ret = system.Init( filePath );
+		system = new wtSystem();
+		const int ret = system->Init( filePath );
 		if( ret == 0 )
 		{
-			system.AttachInputHandler( &input );
+			system->AttachInputHandler( &input );
 			return true;
 		}
 		return false;
@@ -81,53 +87,53 @@ namespace Tomtendo
 
 	int Emulator::RunEpoch( const std::chrono::nanoseconds& runCycles )
 	{
-		return system.RunEpoch( runCycles );
+		return system->RunEpoch( runCycles );
 	}
 
 	void Emulator::GetFrameResult( wtFrameResult& outFrameResult )
 	{
-		system.GetFrameResult( outFrameResult );
+		system->GetFrameResult( outFrameResult );
 	}
 
 	void Emulator::SetConfig( config_t& cfg )
 	{
-		system.SetConfig( cfg );
+		system->SetConfig( cfg );
 	}
 
 	void Emulator::SubmitCommand( const sysCmd_t& cmd )
 	{
-		system.SubmitCommand( cmd );
+		system->SubmitCommand( cmd );
 	}
 
 	void Emulator::UpdateDebugImages()
 	{
-		system.UpdateDebugImages();
+		system->UpdateDebugImages();
 	}
 
 	void Emulator::GenerateRomDissambly( std::string prgRomAsm[ 128 ] )
 	{
-		assert( system.cart->h.prgRomBanks <= 128 );
-		for ( uint32_t bankNum = 0; bankNum < system.cart->h.prgRomBanks; ++bankNum )
+		assert( system->cart->h.prgRomBanks <= 128 );
+		for ( uint32_t bankNum = 0; bankNum < system->cart->h.prgRomBanks; ++bankNum )
 		{
-			prgRomAsm[ bankNum ] = system.GetPrgBankDissambly( bankNum );
+			prgRomAsm[ bankNum ] = system->GetPrgBankDissambly( bankNum );
 		}
 	}
 
 	void Emulator::GenerateChrRomTables( wtPatternTableImage chrRom[ 32 ] )
 	{
-		assert( system.cart->GetChrBankCount() <= 32 );
+		assert( system->cart->GetChrBankCount() <= 32 );
 
 		RGBA palette[ 4 ];
-		if ( system.GetConfig()->ppu.chrPalette == -1 ) {
-			system.GetGrayscalePalette( palette );
+		if ( system->GetConfig()->ppu.chrPalette == -1 ) {
+			system->GetGrayscalePalette( palette );
 		}
 		else {
-			system.GetChrRomPalette( system.GetConfig()->ppu.chrPalette, palette );
+			system->GetChrRomPalette( system->GetConfig()->ppu.chrPalette, palette );
 		}
 
-		assert( system.cart->h.chrRomBanks <= 32 );
-		for ( uint32_t bankNum = 0; bankNum < system.cart->h.chrRomBanks; ++bankNum ) {
-			system.GetPPU().DrawDebugPatternTables( chrRom[ bankNum ], palette, bankNum, true );
+		assert( system->cart->h.chrRomBanks <= 32 );
+		for ( uint32_t bankNum = 0; bankNum < system->cart->h.chrRomBanks; ++bankNum ) {
+			system->GetPPU().DrawDebugPatternTables( chrRom[ bankNum ], palette, bankNum, true );
 		}
 	}
 		
