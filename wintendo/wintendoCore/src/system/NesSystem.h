@@ -63,6 +63,7 @@ public:
 	static const uint32_t ChrRomSize			= 0x1000;
 	static const uint32_t MemoryWrap			= 0x10000;
 	static const uint32_t ZeroPageWrap			= 0x0100;
+	static const uint32_t InvalidAddr			= 0x10000;
 
 	// Partition offsets
 	static const uint16_t StackBase				= 0x0100;
@@ -140,6 +141,18 @@ public:
 		Reset();
 	}
 
+
+	wtSystem( const wstring& filePath, const uint32_t resetVectorManual = InvalidAddr )
+	{
+		Init( filePath, resetVectorManual );
+	}
+
+	
+	~wtSystem()
+	{
+		Shutdown();
+	}
+
 	void Reset()
 	{
 		sysCycles = masterCycle_t( 0 );
@@ -211,9 +224,9 @@ public:
 	unique_ptr<wtMapper>	AssignMapper( const uint32_t mapperId ); // In "mapper.h"
 
 	// External functions
-	int						Init( const wstring& filePath, const uint32_t resetVectorManual = 0x10000 );
+	int						Init( const wstring& filePath, const uint32_t resetVectorManual = InvalidAddr );
 	void					Shutdown();
-	void					LoadProgram( const uint32_t resetVectorManual = 0x10000 );
+	void					LoadProgram( const uint32_t resetVectorManual = InvalidAddr );
 	string					GetPrgBankDissambly( const uint8_t bankNum );
 	void					GetChrRomPalette( const uint8_t paletteId, RGBA palette[ 4 ] );
 	void					GetGrayscalePalette( RGBA palette[ 4 ] );

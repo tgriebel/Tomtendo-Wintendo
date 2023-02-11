@@ -75,6 +75,9 @@ namespace Tomtendo
 
 	int Emulator::Boot( const std::wstring& filePath, const uint32_t resetVectorManual )
 	{
+		if( system != nullptr ) {
+			delete system;
+		}
 		system = new wtSystem();
 		const int ret = system->Init( filePath );
 		if( ret == 0 )

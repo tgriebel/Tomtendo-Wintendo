@@ -84,8 +84,6 @@ int wtSystem::Init( const wstring& filePath, const uint32_t resetVectorManual )
 {
 	Reset();
 
-	SaveSRam();
-
 	LoadNesFile( filePath, cart );
 
 	ppu.Reset();
@@ -111,6 +109,7 @@ int wtSystem::Init( const wstring& filePath, const uint32_t resetVectorManual )
 
 void wtSystem::Shutdown()
 {
+	SaveSRam();
 }
 
 
