@@ -74,7 +74,7 @@ namespace Tomtendo
 
 	uint32_t SpriteLimit();
 
-	void InitConfig( config_t& config );
+	config_t DefaultConfig();
 
 	enum analogMode_t
 	{

@@ -26,8 +26,10 @@
 
 namespace Tomtendo
 {
-	void InitConfig( config_t& config )
+	config_t DefaultConfig()
 	{
+		config_t config;
+
 		// System
 		config.sys.flags = (emulationFlags_t)( (uint32_t)emulationFlags_t::CLAMP_FPS | (uint32_t)emulationFlags_t::LIMIT_STALL );
 
@@ -49,6 +51,8 @@ namespace Tomtendo
 		config.apu.muteNoise = false;
 		config.apu.muteDMC = false;
 		config.apu.dbgChannelBits = 0;
+
+		return config;
 	}
 
 	uint32_t ScreenWidth()

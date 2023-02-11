@@ -33,7 +33,7 @@ static void TestRomUnit( std::wstring& testFilePath )
 	using namespace std::chrono_literals;
 
 	static wtFrameResult testFr;
-	InitConfig( app.systemConfig );
+	app.systemConfig = DefaultConfig();
 	app.system->Boot( testFilePath, 0xC000 );
 	app.system->SetConfig( app.systemConfig );
 

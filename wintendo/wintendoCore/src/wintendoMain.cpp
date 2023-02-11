@@ -39,8 +39,7 @@ int main()
 {
 	nesSystem.Init( L"Games/Contra.nes" );
 
-	Tomtendo::config_t cfg;
-	Tomtendo::InitConfig( cfg );
+	Tomtendo::config_t cfg = Tomtendo::DefaultConfig();
 	cfg.sys.flags = emulationFlags_t::HEADLESS;
 	nesSystem.SetConfig( cfg );
 
