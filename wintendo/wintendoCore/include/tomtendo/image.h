@@ -96,13 +96,13 @@ namespace Tomtendo
 
 		wtRawImage& operator=( const wtRawImage& _image )
 		{
-			for ( uint32_t i = 0; i < _image.length; ++i )
+			if( this != &_image )
 			{
-				buffer[ i ].rawABGR = _image.buffer[ i ].rawABGR;
+				for ( uint32_t i = 0; i < _image.length; ++i ) {
+					buffer[ i ].rawABGR = _image.buffer[ i ].rawABGR;
+				}
+				name = _image.name;
 			}
-
-			name = _image.name;
-
 			return *this;
 		}
 
