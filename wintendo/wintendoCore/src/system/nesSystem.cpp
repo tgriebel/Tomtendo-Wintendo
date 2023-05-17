@@ -809,8 +809,8 @@ int wtSystem::RunEpoch( const std::chrono::nanoseconds& runEpoch )
 	masterCycle_t cyclesPerFrame = masterCycle_t( overflowCycles );
 	overflowCycles = 0;
 
-	const bool clampFps = ( config->sys.flags & emulationFlags_t::CLAMP_FPS );
-	const bool stallLimit = ( config->sys.flags & emulationFlags_t::LIMIT_STALL );
+	const bool clampFps = ( config->sys.flags & emulationFlags_t::CLAMP_FPS ) != 0;
+	const bool stallLimit = ( config->sys.flags & emulationFlags_t::LIMIT_STALL ) != 0;
 
 	if ( ( runEpoch > MaxFrameLatencyNs ) && stallLimit ) // Clamp simulation catch-up for hitches/debugging
 	{

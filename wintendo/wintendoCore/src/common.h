@@ -52,14 +52,10 @@ const uint32_t MB_1		= 1024 * KB_1;
 #endif
 
 #define DEFINE_ENUM_OPERATORS( enumType, intType )														\
-inline enumType operator|=( enumType lhs, enumType rhs )												\
-{																										\
-	return static_cast< enumType >( static_cast< intType >( lhs ) | static_cast< intType >( rhs ) );	\
-}																										\
 																										\
-inline bool operator&( enumType lhs, enumType rhs )														\
+inline intType operator&( enumType lhs, enumType rhs )													\
 {																										\
-	return ( ( static_cast< intType >( lhs ) & static_cast< intType >( rhs ) ) != 0 );					\
+	return ( static_cast< intType >( lhs ) & static_cast< intType >( rhs ) );							\
 }																										\
 																										\
 inline enumType operator>>( const enumType lhs, const enumType rhs )									\

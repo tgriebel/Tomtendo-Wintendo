@@ -92,14 +92,9 @@ namespace Tomtendo
 		ALL				= 0xFFFFFFFF,
 	};
 
-	inline emulationFlags_t operator|=( emulationFlags_t lhs, emulationFlags_t rhs )
+	inline uint32_t operator&( emulationFlags_t lhs, emulationFlags_t rhs )
 	{
-		return static_cast<emulationFlags_t>( static_cast<uint32_t>( lhs ) | static_cast<uint32_t>( rhs ) );
-	}
-	
-	inline bool operator&( emulationFlags_t lhs, emulationFlags_t rhs )
-	{
-		return ( ( static_cast<uint32_t>( lhs ) & static_cast<uint32_t>( rhs ) ) != 0 );
+		return ( static_cast<uint32_t>( lhs ) & static_cast<uint32_t>( rhs ) );
 	}
 
 	struct config_t
