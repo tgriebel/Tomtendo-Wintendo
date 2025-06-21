@@ -164,6 +164,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="include\tomtendo.h" />
     <ClInclude Include="include\tomtendo\command.h" />
     <ClInclude Include="include\tomtendo\input.h" />
     <ClInclude Include="include\tomtendo\interface.h" />
