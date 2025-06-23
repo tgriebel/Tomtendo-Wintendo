@@ -1,7 +1,19 @@
 from os import listdir
 from os.path import isfile, join
 
-filenames = ['command.h', 'image.h', 'input.h', 'log.h', 'playback.h', 'serializer.h', 'time.h', 'timer.h', 'util.h', 'interface.h']
+filenames = [
+    'base.h', # Must be first
+    'command.h',
+    'image.h',
+    'input.h',
+    'log.h',
+    'playback.h',
+    'serializer.h',
+    'time.h',
+    'timer.h',
+    'util.h',
+    'interface.h' # Must be last
+]
 
 combinedFile = ""
 
@@ -25,5 +37,5 @@ for fname in filenames:
     combinedFile += "*=======================================================*/"
     combinedFile += "\n"
 
-with open("tomtendo.h", "w") as f:
+with open("tomtendoCore.h", "w") as f:
     f.write(combinedFile)

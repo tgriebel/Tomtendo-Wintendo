@@ -34,18 +34,18 @@ static void TestRomUnit( std::wstring& testFilePath )
 
 	static wtFrameResult testFr;
 	app.systemConfig = DefaultConfig();
-	app.system->Boot( testFilePath, 0xC000 );
-	app.system->SetConfig( app.systemConfig );
+	Boot( app.system, testFilePath.c_str(), 0xC000 );
+	SetConfig( app.system, app.systemConfig );
 
 	sysCmd_t traceCmd;
 	traceCmd.type = sysCmdType_t::START_TRACE;
 	traceCmd.parms[ 0 ].u = 1;
-	app.system->SubmitCommand( traceCmd );
+	SubmitCommand( app.system, traceCmd );
 
 	std::chrono::nanoseconds ns = std::chrono::duration_cast<std::chrono::nanoseconds>( 60s );
 
-	app.system->RunEpoch( ns );
-	app.system->GetFrameResult( testFr );
+	RunEpoch( app.system, ns );
+	GetFrameResult( app.system, testFr );
 	std::string logText;
 	logText.resize( 0 );
 	logText.reserve( 400 * testFr.dbgLog->GetRecordCount() );
@@ -53,5 +53,6 @@ static void TestRomUnit( std::wstring& testFilePath )
 	std::ofstream log( "testNes.log" );
 	log << logText;
 	log.close();
+	Shutdown( app.system );
 	app.TerminateEmulator();
 }

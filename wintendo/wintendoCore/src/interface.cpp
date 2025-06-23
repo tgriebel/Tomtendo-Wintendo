@@ -55,6 +55,27 @@ namespace Tomtendo
 		return config;
 	}
 
+	void CreateEmulatorInstance( Emulator** emulatorInstance )
+	{
+		if ( emulatorInstance != nullptr )
+		{
+			if( *emulatorInstance != nullptr ) {
+				delete *emulatorInstance;
+			}
+			*emulatorInstance = new Emulator();
+		}
+	}
+
+	void DestroyEmulatorInstance( Emulator** emulatorInstance )
+	{
+		if ( ( emulatorInstance != nullptr ) && ( *emulatorInstance != nullptr ) )
+		{
+			Shutdown( *emulatorInstance );
+			delete *emulatorInstance;
+			*emulatorInstance = nullptr;
+		}
+	}
+
 	uint32_t ScreenWidth()
 	{
 		return PPU::ScreenWidth;
@@ -70,117 +91,147 @@ namespace Tomtendo
 		return PPU::TotalSprites;
 	}
 
-	Emulator::~Emulator()
+	void Shutdown( Emulator* emu )
 	{
+		if( emu == nullptr ) {
+			return;
+		}
 		if ( system != nullptr ) {
-			delete system;
+			delete emu->system;
 		}
 	}
 
-	int Emulator::Boot( const std::wstring& filePath, const uint32_t resetVectorManual )
+	bool Boot( Emulator* emu, const wchar_t* filePath, const uint32_t resetVectorManual )
 	{
-		if( system != nullptr ) {
-			delete system;
+		if ( emu == nullptr ) {
+			return false;
 		}
-		system = new wtSystem();
-		const int ret = system->Init( filePath );
+		if( emu->system != nullptr ) {
+			delete emu->system;
+		}
+		emu->system = new wtSystem();
+		const int ret = emu->system->Init( filePath );
 		if( ret == 0 )
 		{
-			system->AttachInputHandler( &input );
+			emu->system->AttachInputHandler( &emu->input );
 			return true;
 		}
 		return false;
 	}
 
-	int Emulator::RunEpoch( const std::chrono::nanoseconds& runCycles )
+	int RunEpoch( Emulator* emu, const std::chrono::nanoseconds& runCycles )
 	{
-		return system->RunEpoch( runCycles );
+		if ( emu == nullptr ) {
+			return 0;
+		}
+		return emu->system->RunEpoch( runCycles );
 	}
 
-	void Emulator::GetFrameResult( wtFrameResult& outFrameResult )
+	void GetFrameResult( Emulator* emu, wtFrameResult& outFrameResult )
 	{
-		system->GetFrameResult( outFrameResult );
+		if ( emu == nullptr ) {
+			return;
+		}
+		emu->system->GetFrameResult( outFrameResult );
 	}
 
-	void Emulator::SetConfig( config_t& cfg )
+	void SetConfig( Emulator* emu, config_t& cfg )
 	{
-		system->SetConfig( cfg );
+		if ( emu == nullptr ) {
+			return;
+		}
+		emu->system->SetConfig( cfg );
 	}
 
-	void Emulator::SubmitCommand( const sysCmd_t& cmd )
+	void SubmitCommand( Emulator* emu, const sysCmd_t& cmd )
 	{
-		system->SubmitCommand( cmd );
+		if ( emu == nullptr ) {
+			return;
+		}
+		emu->system->SubmitCommand( cmd );
 	}
 
-	void Emulator::UpdateDebugImages()
+	void UpdateDebugImages( Emulator* emu )
 	{
-		system->UpdateDebugImages();
+		if ( emu == nullptr ) {
+			return;
+		}
+		emu->system->UpdateDebugImages();
 	}
 
-	void Emulator::GenerateRomDissambly( std::string prgRomAsm[ 128 ] )
+	void GenerateRomDissambly( Emulator* emu, std::string prgRomAsm[ 128 ] )
 	{
-		assert( system->cart->h.prgRomBanks <= 128 );
-		for ( uint32_t bankNum = 0; bankNum < system->cart->h.prgRomBanks; ++bankNum )
+		if ( emu == nullptr ) {
+			return;
+		}
+
+		assert( emu->system->cart->h.prgRomBanks <= 128 );
+		for ( uint32_t bankNum = 0; bankNum < emu->system->cart->h.prgRomBanks; ++bankNum )
 		{
-			prgRomAsm[ bankNum ] = system->GetPrgBankDissambly( bankNum );
+			prgRomAsm[ bankNum ] = emu->system->GetPrgBankDissambly( bankNum );
 		}
 	}
 
-	void Emulator::GenerateChrRomTables( wtPatternTableImage chrRom[ 32 ] )
+	void GenerateChrRomTables( Emulator* emu, wtPatternTableImage chrRom[ 32 ] )
 	{
-		assert( system->cart->GetChrBankCount() <= 32 );
+		if ( emu == nullptr ) {
+			return;
+		}
+
+		assert( emu->system->cart->GetChrBankCount() <= 32 );
 
 		RGBA palette[ 4 ];
-		if ( system->GetConfig()->ppu.chrPalette == -1 ) {
-			system->GetGrayscalePalette( palette );
+		if ( emu->system->GetConfig()->ppu.chrPalette == -1 ) {
+			emu->system->GetGrayscalePalette( palette );
 		}
 		else {
-			system->GetChrRomPalette( system->GetConfig()->ppu.chrPalette, palette );
+			emu->system->GetChrRomPalette( emu->system->GetConfig()->ppu.chrPalette, palette );
 		}
 
-		assert( system->cart->h.chrRomBanks <= 32 );
-		for ( uint32_t bankNum = 0; bankNum < system->cart->h.chrRomBanks; ++bankNum ) {
-			system->GetPPU().DrawDebugPatternTables( chrRom[ bankNum ], palette, bankNum, true );
+		assert( emu->system->cart->h.chrRomBanks <= 32 );
+		for ( uint32_t bankNum = 0; bankNum < emu->system->cart->h.chrRomBanks; ++bankNum ) {
+			emu->system->GetPPU().DrawDebugPatternTables( chrRom[ bankNum ], palette, bankNum, true );
 		}
 	}
 		
-	ButtonFlags Input::GetKeyBuffer( const ControllerId controllerId ) const
+	ButtonFlags GetKeyBuffer( const Input* input, const ControllerId controllerId )
 	{
 		const uint32_t mapKey = static_cast<uint32_t>( controllerId );
-		return keyBuffer[ mapKey ];
+		return input->keyBuffer[ mapKey ];
 	}
 
-	mouse_t Input::GetMouse() const
+	mouse_t GetMouse( const Input* input )
 	{
-		return mousePoint;
+		return input->mousePoint;
 	}
 
-	void Input::BindKey( const char key, const ControllerId controllerId, const ButtonFlags button )
+	void BindKey( Input* input, const char key, const ControllerId controllerId, const ButtonFlags button )
 	{
-		keyMap[ key ] = keyBinding_t( controllerId, button );
+		input->keyMap[ key ].controllerId = controllerId;
+		input->keyMap[ key ].buttonFlags = button;
 	}
 
-	void Input::StoreKey( const uint32_t key )
+	void StoreKey( Input* input, const uint32_t key )
 	{
-		keyBinding_t keyBinding = keyMap[ key ];
-		const uint32_t mapKey = static_cast<uint32_t>( keyBinding.first );
-		keyBuffer[ mapKey ] = keyBuffer[ mapKey ] | static_cast<ButtonFlags>( keyBinding.second );
+		keyBinding_t keyBinding = input->keyMap[ key ];
+		const uint32_t mapKey = static_cast<uint32_t>( keyBinding.controllerId );
+		input->keyBuffer[ mapKey ] = input->keyBuffer[ mapKey ] | static_cast<ButtonFlags>( keyBinding.buttonFlags );
 	}
 
-	void Input::ReleaseKey( const uint32_t key )
+	void ReleaseKey( Input* input, const uint32_t key )
 	{
-		keyBinding_t keyBinding = keyMap[ key ];
-		const uint32_t mapKey = static_cast<uint32_t>( keyBinding.first );
-		keyBuffer[ mapKey ] = keyBuffer[ mapKey ] & static_cast<ButtonFlags>( ~static_cast<uint8_t>( keyBinding.second ) );
+		keyBinding_t keyBinding = input->keyMap[ key ];
+		const uint32_t mapKey = static_cast<uint32_t>( keyBinding.controllerId );
+		input->keyBuffer[ mapKey ] = input->keyBuffer[ mapKey ] & static_cast<ButtonFlags>( ~static_cast<uint8_t>( keyBinding.buttonFlags ) );
 	}
 
-	void Input::StoreMouseClick( const int32_t x, const int32_t y )
+	void StoreMouseClick( Input* input, const int32_t x, const int32_t y )
 	{
-		mousePoint = mouse_t( { x, y } );
+		input->mousePoint = mouse_t( { x, y } );
 	}
 
-	void Input::ClearMouseClick()
+	void ClearMouseClick( Input* input )
 	{
-		mousePoint = mouse_t( { -1, -1 } );
+		input->mousePoint = mouse_t( { -1, -1 } );
 	}
 };

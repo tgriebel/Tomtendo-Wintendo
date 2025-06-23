@@ -148,7 +148,7 @@ void wtRenderer::BuildImguiCommandList()
 					sysCmd_t traceCmd;
 					traceCmd.type			= sysCmdType_t::START_TRACE;
 					traceCmd.parms[ 0 ].u	= max( 0, frameCount );
-					nesSystem.SubmitCommand( traceCmd );
+					SubmitCommand( &nesSystem, traceCmd );
 					app->traceLog.clear();
 					app->logUnpacked = false;
 				}
@@ -213,7 +213,7 @@ void wtRenderer::BuildImguiCommandList()
 				{
 					sysCmd_t traceCmd;
 					traceCmd.type = sysCmdType_t::LOAD_STATE;
-					nesSystem.SubmitCommand( traceCmd );
+					SubmitCommand( &nesSystem, traceCmd );
 				}
 
 				ImGui::SameLine();
@@ -221,7 +221,7 @@ void wtRenderer::BuildImguiCommandList()
 				{
 					sysCmd_t traceCmd;
 					traceCmd.type = sysCmdType_t::SAVE_STATE;
-					nesSystem.SubmitCommand( traceCmd );
+					SubmitCommand( &nesSystem, traceCmd );
 				}
 
 				if ( ImGui::Button( "Record" ) )
@@ -229,7 +229,7 @@ void wtRenderer::BuildImguiCommandList()
 					sysCmd_t traceCmd;
 					traceCmd.type			= sysCmdType_t::RECORD;
 					traceCmd.parms[ 0 ].i	= -1;
-					nesSystem.SubmitCommand( traceCmd );
+					SubmitCommand( &nesSystem, traceCmd );
 
 					fr->playbackState.currentFrame = 0;
 				}
@@ -241,7 +241,7 @@ void wtRenderer::BuildImguiCommandList()
 					traceCmd.type			= sysCmdType_t::REPLAY;
 					traceCmd.parms[ 0 ].i	= 0;
 					traceCmd.parms[ 1 ].u	= true;
-					nesSystem.SubmitCommand( traceCmd );
+					SubmitCommand( &nesSystem, traceCmd );
 
 					fr->playbackState.currentFrame = 0;
 				}
@@ -253,7 +253,7 @@ void wtRenderer::BuildImguiCommandList()
 					traceCmd.type = sysCmdType_t::REPLAY;
 					traceCmd.parms[ 0 ].i = fr->playbackState.currentFrame;
 					traceCmd.parms[ 1 ].u = false;
-					nesSystem.SubmitCommand( traceCmd );
+					SubmitCommand( &nesSystem, traceCmd );
 				}
 
 				ImGui::SameLine();
@@ -263,7 +263,7 @@ void wtRenderer::BuildImguiCommandList()
 					traceCmd.type			= sysCmdType_t::REPLAY;
 					traceCmd.parms[ 0 ].i	= 0;
 					traceCmd.parms[ 1 ].u	= true;
-					nesSystem.SubmitCommand( traceCmd );
+					SubmitCommand( &nesSystem, traceCmd );
 				}
 
 				ImGui::SameLine();
@@ -272,7 +272,7 @@ void wtRenderer::BuildImguiCommandList()
 					traceCmd.type = sysCmdType_t::REPLAY;
 					traceCmd.parms[ 0 ].i = fr->playbackState.currentFrame > 0 ? ( fr->playbackState.currentFrame - 1 ) : 0;
 					traceCmd.parms[ 1 ].u = true;
-					nesSystem.SubmitCommand( traceCmd );
+					SubmitCommand( &nesSystem, traceCmd );
 				}
 
 				ImGui::SameLine();
@@ -281,7 +281,7 @@ void wtRenderer::BuildImguiCommandList()
 					traceCmd.type = sysCmdType_t::REPLAY;
 					traceCmd.parms[ 0 ].i = ( fr->playbackState.currentFrame + 1 );
 					traceCmd.parms[ 1 ].u = true;
-					nesSystem.SubmitCommand( traceCmd );
+					SubmitCommand( &nesSystem, traceCmd );
 				}
 
 				if ( fr->stateCount > 0 )
@@ -299,7 +299,7 @@ void wtRenderer::BuildImguiCommandList()
 						traceCmd.type = sysCmdType_t::REPLAY;
 						traceCmd.parms[ 0 ].i = playFrame;
 						traceCmd.parms[ 1 ].u = true;
-						nesSystem.SubmitCommand( traceCmd );
+						SubmitCommand( &nesSystem, traceCmd );
 					}
 				}
 			}

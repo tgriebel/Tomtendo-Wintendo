@@ -1,28 +1,6 @@
-/*
-* MIT License
-*
-* Copyright( c ) 2023 Thomas Griebel
-* Permission is hereby granted, free of charge, to any person obtaining a copy
-* of this softwareand associated documentation files( the "Software" ), to deal
-* in the Software without restriction, including without limitation the rights
-* to use, copy, modify, merge, publish, distribute, sublicense, and /or sell
-* copies of the Software, and to permit persons to whom the Software is
-* furnished to do so, subject to the following conditions :
-*
-* The above copyright noticeand this permission notice shall be included in all
-* copies or substantial portions of the Software.
-*
-* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.IN NO EVENT SHALL THE
-* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-* OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-* SOFTWARE.
-*/
-
 #pragma once
 
+#include "base.h"
 #include "input.h"
 #include "command.h"
 #include "playback.h"
@@ -33,8 +11,6 @@
 #include "serializer.h"
 #include "log.h"
 
-#include <cstdint>
-
 class wtSystem;
 
 namespace Tomtendo
@@ -43,38 +19,147 @@ namespace Tomtendo
 	struct config_t;
 	struct wtFrameResult;
 
-	class Emulator
+	struct Emulator
 	{
-	private:
-		wtSystem* system = nullptr;
-	public:
-
-		~Emulator();
-
-		Input	input;
-
-		int		Boot( const std::wstring& filePath, const uint32_t resetVectorManual = 0x10000 );
-		int		RunEpoch( const std::chrono::nanoseconds& runCycles );
-		void	GetFrameResult( wtFrameResult& outFrameResult );
-		void	SetConfig( config_t& cfg );
-
-		void	SubmitCommand( const sysCmd_t& cmd );
-
-		void	UpdateDebugImages();
-		void	GenerateRomDissambly( std::string prgRomAsm[ 128 ] );
-		void	GenerateChrRomTables( wtPatternTableImage chrRom[ 32 ] );
+		wtSystem*	system = nullptr;
+		Input		input;
 	};
+
+	EXPORT_DLL bool	Boot( Emulator* emu, const wchar_t* filePath, const uint32_t resetVectorManual = 0x10000 );
+	EXPORT_DLL void	Shutdown( Emulator* emu );
+	EXPORT_DLL int	RunEpoch( Emulator* emu, const std::chrono::nanoseconds& runCycles );
+	EXPORT_DLL void	GetFrameResult( Emulator* emu, wtFrameResult& outFrameResult );
+	EXPORT_DLL void	SetConfig( Emulator* emu, config_t& cfg );
+
+	EXPORT_DLL void	SubmitCommand( Emulator* emu, const sysCmd_t& cmd );
+
+	EXPORT_DLL void	UpdateDebugImages( Emulator* emu );
+	EXPORT_DLL void	GenerateRomDissambly( Emulator* emu, std::string prgRomAsm[ 128 ] );
+	EXPORT_DLL void	GenerateChrRomTables( Emulator* emu, wtPatternTableImage chrRom[ 32 ] );
 
 	static const char* STATE_MEMORY_LABEL = "Memory";
 	static const char* STATE_VRAM_LABEL	= "VRAM";
 
-	uint32_t ScreenWidth();
+	EXPORT_DLL void CreateEmulatorInstance( Emulator** emulatorInstance );
 
-	uint32_t ScreenHeight();
+	EXPORT_DLL void DestroyEmulatorInstance( Emulator** emulatorInstance );
 
-	uint32_t SpriteLimit();
+	EXPORT_DLL uint32_t	ScreenWidth();
 
-	config_t DefaultConfig();
+	EXPORT_DLL uint32_t	ScreenHeight();
+
+	EXPORT_DLL uint32_t	SpriteLimit();
+
+#ifdef IMPORT_WIN
+	struct runtimeDllInterface_t
+	{
+		typedef void( __cdecl* PFN_CreateEmulatorInstance )( Emulator** emulatorInstance );
+		PFN_CreateEmulatorInstance CreateEmulatorInstance = nullptr;
+
+		typedef void( __cdecl* PFN_DestroyEmulatorInstance )( Emulator** emulatorInstance );
+		PFN_DestroyEmulatorInstance DestroyEmulatorInstance = nullptr;
+
+		typedef bool( __cdecl* PFN_Boot )( Emulator* emu, const wchar_t* filePath, const uint32_t resetVectorManual );
+		PFN_Boot Boot = nullptr;
+
+		typedef void( __cdecl* PFN_Shutdown )( Emulator* emu );
+		PFN_Shutdown Shutdown;
+
+		typedef int( __cdecl* PFN_RunEpoch )( Emulator* emu, const std::chrono::nanoseconds& runCycles );
+		PFN_RunEpoch RunEpoch = nullptr;
+
+		typedef void( __cdecl* PFN_GetFrameResult )( Emulator* emu, wtFrameResult& outFrameResult );
+		PFN_GetFrameResult GetFrameResult;
+
+		typedef uint32_t( __cdecl* PFN_ScreenWidth )( void );
+		PFN_ScreenWidth ScreenWidth = nullptr;
+
+		typedef uint32_t( __cdecl* PFN_ScreenHeight )( void );
+		PFN_ScreenHeight ScreenHeight = nullptr;
+
+		typedef uint32_t( __cdecl* PFN_SpriteLimit )( void );
+		PFN_SpriteLimit SpriteLimit = nullptr;
+
+		typedef Tomtendo::config_t( __cdecl* PFN_DefaultConfig )( );
+		PFN_DefaultConfig DefaultConfig = nullptr;
+
+		typedef void( __cdecl* PFN_SetConfig )( Emulator* emu, config_t& cfg );
+		PFN_SetConfig SetConfig = nullptr;
+
+		typedef void( __cdecl* PFN_SubmitCommand )( Emulator* emu, const sysCmd_t& cmd );
+		PFN_SubmitCommand SubmitCommand = nullptr;
+
+		typedef void( __cdecl* PFN_UpdateDebugImages )( Emulator* emu );
+		PFN_UpdateDebugImages UpdateDebugImages = nullptr;
+
+		typedef void( __cdecl* PFN_GenerateRomDissambly )( Emulator* emu, std::string prgRomAsm[ 128 ] );
+		PFN_GenerateRomDissambly GenerateRomDissambly = nullptr;
+
+		typedef void( __cdecl* PFN_GenerateChrRomTables )( Emulator* emu, wtPatternTableImage chrRom[ 32 ] );
+		PFN_GenerateChrRomTables GenerateChrRomTables = nullptr;
+
+		typedef void( __cdecl* PFN_GetKeyBuffer )( const Input* input, const ControllerId controllerId );
+		PFN_GetKeyBuffer GetKeyBuffer = nullptr;
+
+		typedef void( __cdecl* PFN_GetMouse )( const Input* input );
+		PFN_GetMouse GetMouse = nullptr;
+
+		typedef void( __cdecl* PFN_BindKey )( Input* input, const char key, const ControllerId controllerId, const ButtonFlags button );
+		PFN_BindKey BindKey = nullptr;
+
+		typedef void( __cdecl* PFN_StoreKey )( Input* input, const uint32_t key );
+		PFN_StoreKey StoreKey = nullptr;
+
+		typedef void( __cdecl* PFN_ReleaseKey )( Input* input, const uint32_t key );
+		PFN_ReleaseKey ReleaseKey = nullptr;
+
+		typedef void( __cdecl* PFN_StoreMouseClick )( Input* input, const int32_t x, const int32_t y );
+		PFN_StoreMouseClick StoreMouseClick = nullptr;
+
+		typedef void( __cdecl* PFN_ClearMouseClick )( Input* input );
+		PFN_ClearMouseClick ClearMouseClick = nullptr;
+	};
+
+	void LoadDllInterface( runtimeDllInterface_t* dllInterface, HINSTANCE libInstance )
+	{
+		assert( dllInterface != nullptr );
+		assert( libInstance != nullptr );
+
+		if ( ( dllInterface == nullptr ) || ( libInstance == nullptr ) ) {
+			return;
+		}
+
+		// Global
+		RuntimeImportDllFunction( libInstance, dllInterface, DefaultConfig );
+		RuntimeImportDllFunction( libInstance, dllInterface, ScreenWidth );
+		RuntimeImportDllFunction( libInstance, dllInterface, ScreenHeight );
+		RuntimeImportDllFunction( libInstance, dllInterface, SpriteLimit );
+
+		// Init
+		RuntimeImportDllFunction( libInstance, dllInterface, CreateEmulatorInstance );
+		RuntimeImportDllFunction( libInstance, dllInterface, DestroyEmulatorInstance );
+
+		// Interface 
+		RuntimeImportDllFunction( libInstance, dllInterface, Boot );
+		RuntimeImportDllFunction( libInstance, dllInterface, Shutdown );
+		RuntimeImportDllFunction( libInstance, dllInterface, RunEpoch );
+		RuntimeImportDllFunction( libInstance, dllInterface, GetFrameResult );	
+		RuntimeImportDllFunction( libInstance, dllInterface, SetConfig );
+		RuntimeImportDllFunction( libInstance, dllInterface, SubmitCommand );
+		RuntimeImportDllFunction( libInstance, dllInterface, UpdateDebugImages );
+		RuntimeImportDllFunction( libInstance, dllInterface, GenerateRomDissambly );
+		RuntimeImportDllFunction( libInstance, dllInterface, GenerateChrRomTables );
+
+		// Input
+		RuntimeImportDllFunction( libInstance, dllInterface, GetKeyBuffer );
+		RuntimeImportDllFunction( libInstance, dllInterface, GetMouse );
+		RuntimeImportDllFunction( libInstance, dllInterface, BindKey );
+		RuntimeImportDllFunction( libInstance, dllInterface, StoreKey );
+		RuntimeImportDllFunction( libInstance, dllInterface, ReleaseKey );
+		RuntimeImportDllFunction( libInstance, dllInterface, StoreMouseClick );
+		RuntimeImportDllFunction( libInstance, dllInterface, ClearMouseClick );
+	}
+#endif
 
 	enum analogMode_t
 	{
@@ -97,7 +182,7 @@ namespace Tomtendo
 		return ( static_cast<uint32_t>( lhs ) & static_cast<uint32_t>( rhs ) );
 	}
 
-	struct config_t
+	struct EXPORT_CLASS_DLL config_t
 	{
 		struct System
 		{
@@ -131,6 +216,8 @@ namespace Tomtendo
 			bool				showSprite;
 		} ppu;
 	};
+
+	EXPORT_DLL config_t DefaultConfig();
 
 	struct debugTiming_t
 	{

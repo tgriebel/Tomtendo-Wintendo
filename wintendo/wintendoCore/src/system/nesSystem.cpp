@@ -228,7 +228,7 @@ void wtSystem::SetMirrorMode( uint8_t mode )
 
 bool wtSystem::MouseInRegion( const wtRect& region ) const // TODO: draft code, kill later
 {
-	return ( ( GetInput()->GetMouse().x >= region.x ) && ( GetInput()->GetMouse().x < region.width ) && ( GetInput()->GetMouse().y >= region.y ) && ( GetInput()->GetMouse().y < region.height ) );
+	return ( ( GetMouse( GetInput() ).x >= region.x ) && ( GetMouse( GetInput() ).x < region.width ) && ( GetMouse( GetInput() ).y >= region.y ) && ( GetMouse( GetInput() ).y < region.height ) );
 }
 
 
@@ -328,12 +328,12 @@ uint8_t wtSystem::ReadInput( const uint16_t address )
 
 	if ( strobeOn )
 	{
-		keyBuffer = static_cast<uint8_t>( GetInput()->GetKeyBuffer( controllerId ) & static_cast<ButtonFlags>( 0X80 ) );
+		keyBuffer = static_cast<uint8_t>( GetKeyBuffer( GetInput(), controllerId ) & static_cast<ButtonFlags>( 0X80 ) );
 		btnShift[ controllerIndex ] = 0;
 	}
 	else
 	{
-		keyBuffer = static_cast<uint8_t>( GetInput()->GetKeyBuffer( controllerId ) >> static_cast<ButtonFlags>( 7 - btnShift[ controllerIndex ] ) ) & 0x01;
+		keyBuffer = static_cast<uint8_t>( GetKeyBuffer( GetInput(), controllerId ) >> static_cast<ButtonFlags>( 7 - btnShift[ controllerIndex ] ) ) & 0x01;
 		++btnShift[ controllerIndex ];
 		btnShift[ controllerIndex ] %= 8;
 	}

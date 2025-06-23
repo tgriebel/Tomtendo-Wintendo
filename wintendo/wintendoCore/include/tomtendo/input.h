@@ -1,27 +1,5 @@
-/*
-* MIT License
-*
-* Copyright( c ) 2017-2021 Thomas Griebel
-* Permission is hereby granted, free of charge, to any person obtaining a copy
-* of this softwareand associated documentation files( the "Software" ), to deal
-* in the Software without restriction, including without limitation the rights
-* to use, copy, modify, merge, publish, distribute, sublicense, and /or sell
-* copies of the Software, and to permit persons to whom the Software is
-* furnished to do so, subject to the following conditions :
-*
-* The above copyright noticeand this permission notice shall be included in all
-* copies or substantial portions of the Software.
-*
-* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-* IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-* FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.IN NO EVENT SHALL THE
-* AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-* LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-* OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-* SOFTWARE.
-*/
-
 #pragma once
+#include "base.h"
 
 #include "../../stdafx.h"
 #include <stdint.h>
@@ -36,6 +14,7 @@ namespace Tomtendo
 		CONTROLLER_2 = 0X02,
 		CONTROLLER_3 = 0X03,
 		CONTROLLER_COUNT,
+		CONTROLLER_INVALID,
 	};
 
 	enum class ButtonFlags : uint8_t
@@ -79,22 +58,24 @@ namespace Tomtendo
 		return static_cast<ButtonFlags>( static_cast<uint8_t>( lhs ) << static_cast<uint8_t>( rhs ) );
 	}
 
-	using keyBinding_t = std::pair<ControllerId, ButtonFlags>;
-
-	class Input
+	struct EXPORT_CLASS_DLL keyBinding_t
 	{
-		private:
-			ButtonFlags							keyBuffer[ 2 ];
-			mouse_t								mousePoint;
-			std::map<uint32_t, keyBinding_t>	keyMap;
-
-		public:
-			ButtonFlags			GetKeyBuffer( const ControllerId controllerId ) const;
-			mouse_t				GetMouse() const;
-			void				BindKey( const char key, const ControllerId controllerId, const ButtonFlags button );		
-			void				StoreKey( const uint32_t key );
-			void				ReleaseKey( const uint32_t key );
-			void				StoreMouseClick( const int32_t x, const int32_t y );
-			void				ClearMouseClick();
+		ControllerId	controllerId	= ControllerId::CONTROLLER_INVALID;
+		ButtonFlags		buttonFlags		= ButtonFlags::BUTTON_NONE;
 	};
+
+	struct EXPORT_CLASS_DLL Input
+	{
+		ButtonFlags		keyBuffer[ 2 ];
+		mouse_t			mousePoint;
+		keyBinding_t	keyMap[ 256 ];
+	};
+
+	EXPORT_DLL ButtonFlags	GetKeyBuffer( const Input* input, const ControllerId controllerId );
+	EXPORT_DLL mouse_t		GetMouse( const Input* input );
+	EXPORT_DLL void			BindKey( Input* input, const char key, const ControllerId controllerId, const ButtonFlags button );
+	EXPORT_DLL void			StoreKey( Input* input, const uint32_t key );
+	EXPORT_DLL void			ReleaseKey( Input* input, const uint32_t key );
+	EXPORT_DLL void			StoreMouseClick( Input* input, const int32_t x, const int32_t y );
+	EXPORT_DLL void			ClearMouseClick( Input* input );
 };
