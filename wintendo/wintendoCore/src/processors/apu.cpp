@@ -540,6 +540,11 @@ void APU::RunFrameClock( const bool halfClk, const bool quarterClk, const bool i
 			pulse2.lengthCounter--;
 		}
 
+		if( ( triangle.lengthCounter != 0 ) && !triangle.regLinear.sem.counterHalt )
+		{
+			triangle.lengthCounter--;
+		}
+
 		if ( ( noise.lengthCounter != 0 ) && !noise.regCtrl.sem.counterHalt ) {
 			noise.lengthCounter--;
 		}
@@ -558,10 +563,6 @@ void APU::RunFrameClock( const bool halfClk, const bool quarterClk, const bool i
 		}
 		else if ( !triangle.linearCounter.IsZero() && !triangle.regLinear.sem.counterHalt ) {
 			triangle.linearCounter.Dec();
-		}
-
-		if ( ( triangle.lengthCounter != 0 ) && !triangle.regLinear.sem.counterHalt ) {
-			triangle.lengthCounter--;
 		}
 
 		if ( !triangle.regLinear.sem.counterHalt ) {
