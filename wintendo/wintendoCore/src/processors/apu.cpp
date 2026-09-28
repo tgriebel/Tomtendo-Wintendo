@@ -1,7 +1,7 @@
 /*
 * MIT License
 *
-* Copyright( c ) 2017-2021 Thomas Griebel
+* Copyright( c ) 2017-2026 Thomas Griebel
 * Permission is hereby granted, free of charge, to any person obtaining a copy
 * of this softwareand associated documentation files( the "Software" ), to deal
 * in the Software without restriction, including without limitation the rights
@@ -349,10 +349,6 @@ void APU::ExecPulseChannel( PulseChannel& pulse )
 
 void APU::ExecChannelTri()
 {
-	if( triangle.regLinear.sem.counterHalt ) {
-		triangle.lengthCounter = 0;
-	}
-
 	triangle.timer.Dec();
 	if ( triangle.timer.IsZero() )
 	{
