@@ -252,14 +252,16 @@ void APU::ClockEnvelope( envelope_t& envelope, const uint8_t volume, const bool 
 		{
 			envelope.divCounter = volume + 1;
 
-			if( ( envelope.decayLevel > 0 ) || loop ) {
+			if( envelope.decayLevel > 0 ) {
 				--envelope.decayLevel;
+			} else if( ( envelope.decayLevel == 0 ) && loop ) {
+				envelope.decayLevel = 0x0F;
 			}
 		}
 	}
 
 	assert( envelope.divCounter <= 0x10 );
-//	assert( envelope.decayLevel <= 0x0F );
+	assert( envelope.decayLevel <= 0x0F );
 
 	if ( constant ) {
 		envelope.output = volume;
