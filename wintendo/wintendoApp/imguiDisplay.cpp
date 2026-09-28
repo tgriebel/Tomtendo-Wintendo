@@ -633,7 +633,6 @@ void wtRenderer::BuildImguiCommandList()
 			ImGui::SliderFloat( "Mask Dark",	&pipeline.shaderData.maskDark, 0.0f, 2.0f );
 			ImGui::EndTabItem();
 		}
-
 		ImGui::EndTabBar();
 	}
 

@@ -64,3 +64,23 @@
 /wintendo/wintendoApp/dw bank1.txt
 /wintendo/wintendoApp/dw bank0.txt
 /wintendo/wintendoApp/VTune Profiler Results/
+# Visual Studio build output (any configuration / platform)
+[Xx]64/
+[Ww]in32/
+[Dd]ebug/
+[Rr]elease/
+.vs/
+*.pdb
+*.idb
+*.ilk
+*.iobj
+*.ipdb
+*.ipch
+*.tlog
+*.lastbuildstate
+*.recipe
+*.exp
+*.FileListAbsolute.txt
+*.Build.CppClean.log
+*.VC.db
+*.VC.opendb
