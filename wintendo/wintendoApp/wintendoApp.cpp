@@ -92,9 +92,9 @@ DWORD WINAPI EmulatorThread( LPVOID lpParameter )
 		const uint32_t waitFrame = app.frameIx;
 		if ( app.IsResetPending() )
 		{
-			for( uint32_t i = 0; i < FrameResultCount; ++i )
-			{
-				WaitOnThread( app.frameSubmitReadLock[ i ], MaxSpinTime, 1 );
+			WaitOnThread( app.frameSubmitReadLock, MaxSpinTime, 1 );
+
+			for( uint32_t i = 0; i < FrameResultCount; ++i ) {			
 				WaitOnThread( app.audioReadLock[ i ], MaxSpinTime, 1 );
 			}
 			WaitOnThread( app.workerLock, MaxSpinTime, 0 );
@@ -117,7 +117,7 @@ DWORD WINAPI EmulatorThread( LPVOID lpParameter )
 
 			for ( uint32_t i = 0; i < FrameResultCount; ++i )
 			{
-				SignalThread( app.frameSubmitReadLock[ i ], 1 );
+				SignalThread( app.frameSubmitReadLock, 1 );
 				SignalThread( app.audioReadLock[ i ], 1 );
 			}
 			SignalThread( app.workerLock, 1 );
@@ -126,7 +126,7 @@ DWORD WINAPI EmulatorThread( LPVOID lpParameter )
 		}
 		else
 		{
-			WaitOnThread( app.frameSubmitReadLock[ waitFrame ], MaxSpinTime, 0 );
+			WaitOnThread( app.frameSubmitReadLock, MaxSpinTime, 0 );
 			WaitOnThread( app.audioReadLock[ waitFrame ], MaxSpinTime, 0 );
 		}
 
@@ -157,7 +157,7 @@ DWORD WINAPI EmulatorThread( LPVOID lpParameter )
 			r.SubmitFrame();
 		}
 
-		SignalThread( app.frameSubmitWriteLock[ waitFrame ], 1 );
+		SignalThread( app.frameSubmitWriteLock, 1 );
 		SignalThread( app.audioWriteLock[ waitFrame ], 1 );
 
 		app.t.elapsedCopyTime = app.t.elapsedCopyTimer.GetElapsedMs();
@@ -183,7 +183,7 @@ DWORD WINAPI RenderThread( LPVOID lpParameter )
 		{
 			if ( !singleRenderThread )
 			{
-				WaitOnThread( app.frameSubmitWriteLock[ waitFrame ], MaxSpinTime, 0 );
+				WaitOnThread( app.frameSubmitWriteLock, MaxSpinTime, 0 );
 				if( r.NeedsResize( app.clientWidth, app.clientHeight ) )
 				{
 					app.DisableEmulation();
@@ -192,7 +192,7 @@ DWORD WINAPI RenderThread( LPVOID lpParameter )
 					app.EnableEmulation();
 				}
 				r.IssueTextureCopyCommands( waitFrame, r.currentFrameIx );
-				SignalThread( app.frameSubmitReadLock[ waitFrame ], 1 );
+				SignalThread( app.frameSubmitReadLock, 1 );
 
 				r.SubmitFrame();
 			}

@@ -105,11 +105,11 @@ public:
 
 		for ( uint32_t i = 0; i < FrameResultCount; ++i )
 		{
-			frameSubmitWriteLock[ i ] = CreateSemaphore( NULL, 1, 1, NULL );
-			frameSubmitReadLock[ i ] = CreateSemaphore( NULL, 1, 1, NULL );
 			audioWriteLock[ i ] = CreateSemaphore( NULL, 1, 1, NULL );
 			audioReadLock[ i ] = CreateSemaphore( NULL, 1, 1, NULL );
 		}
+		frameSubmitWriteLock = CreateSemaphore( NULL, 0, FrameResultCount, NULL );
+		frameSubmitReadLock = CreateSemaphore( NULL, FrameResultCount, FrameResultCount, NULL );
 		workerLock = CreateSemaphore( NULL, 1, 1, NULL );
 	}
 
@@ -117,11 +117,11 @@ public:
 	{
 		for ( uint32_t i = 0; i < FrameResultCount; ++i )
 		{
-			CloseHandle( frameSubmitWriteLock[ i ] );
-			CloseHandle( frameSubmitReadLock[ i ] );
 			CloseHandle( audioWriteLock[ i ] );
 			CloseHandle( audioReadLock[ i ] );
 		}
+		CloseHandle( frameSubmitWriteLock );
+		CloseHandle( frameSubmitReadLock );
 		CloseHandle( workerLock );
 	}
 
@@ -138,8 +138,8 @@ public:
 	wtAppDebug_t			debugData;
 	uint32_t				frameIx;
 
-	HANDLE					frameSubmitWriteLock[ FrameResultCount ];
-	HANDLE					frameSubmitReadLock[ FrameResultCount ];
+	HANDLE					frameSubmitWriteLock;
+	HANDLE					frameSubmitReadLock;
 	HANDLE					audioWriteLock[ FrameResultCount ];
 	HANDLE					audioReadLock[ FrameResultCount ];
 	HANDLE					workerLock;
