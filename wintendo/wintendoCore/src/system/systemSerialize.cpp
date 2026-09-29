@@ -197,7 +197,7 @@ void PulseChannel::Serialize( Serializer& serializer )
 	serializer.Next8b( regRamp.byte );
 	serializer.Next32b( volume );
 	serializer.Next8b( sequenceStep );
-	serializer.NextBool( mute );
+	serializer.NextBool( enabled );
 
 	SerializeEnvelope( serializer, envelope );
 	SerializeSweep( serializer, sweep );
@@ -213,7 +213,7 @@ void TriangleChannel::Serialize( Serializer& serializer )
 	serializer.Next8b( sequenceStep );
 	serializer.Next16b( regTimer.byte2x );
 	serializer.NextBool( reloadFlag );
-	serializer.NextBool( mute );
+	serializer.NextBool( enabled );
 	serializer.Next8b( lengthCounter );
 
 	SerializeBitCounter( serializer, linearCounter );
@@ -227,7 +227,7 @@ void NoiseChannel::Serialize( Serializer& serializer )
 	serializer.Next8b( regCtrl.byte );
 	serializer.Next8b( regFreq1.byte );
 	serializer.Next8b( regFreq2.byte );
-	serializer.NextBool( mute );
+	serializer.NextBool( enabled );
 	serializer.Next8b( lengthCounter );
 	
 	SerializeBitCounter( serializer, shift );
@@ -245,7 +245,7 @@ void DmcChannel::Serialize( Serializer& serializer )
 	serializer.Next16b( regLength );
 	serializer.NextBool( irq );
 	serializer.NextBool( silenceFlag );
-	serializer.NextBool( mute );
+	serializer.NextBool( enabled );
 
 	serializer.Next16b( addr );
 	serializer.Next16b( bitCnt );

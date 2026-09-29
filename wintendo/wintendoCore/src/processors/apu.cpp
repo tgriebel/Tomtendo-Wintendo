@@ -64,7 +64,9 @@ void APU::WriteReg( const uint16_t addr, const uint8_t value )
 		case 0x4003:
 		{
 			pulse1.regTune.sem1.upper = value;
-			pulse1.lengthCounter = LengthLUT[ pulse1.regTune.sem0.counter ];
+			if( pulse1.enabled ) {
+				pulse1.lengthCounter = LengthLUT[ pulse1.regTune.sem0.counter ];
+			}
 			pulse1.period.Reload( pulse1.regTune.sem0.timer );
 			pulse1.sequenceStep = 0;
 			pulse1.envelope.startFlag = true;
@@ -88,7 +90,9 @@ void APU::WriteReg( const uint16_t addr, const uint8_t value )
 		case 0x4007:
 		{
 			pulse2.regTune.sem1.upper = value;
-			pulse2.lengthCounter = LengthLUT[ pulse2.regTune.sem0.counter ];
+			if( pulse2.enabled ) {
+				pulse2.lengthCounter = LengthLUT[ pulse2.regTune.sem0.counter ];
+			}
 			pulse2.period.Reload( pulse2.regTune.sem0.timer );
 			pulse2.sequenceStep = 0;
 			pulse2.envelope.startFlag = true;
@@ -105,7 +109,9 @@ void APU::WriteReg( const uint16_t addr, const uint8_t value )
 		case 0x400B:
 		{
 			triangle.regTimer.sem1.upper = value;
-			triangle.lengthCounter = LengthLUT[ triangle.regTimer.sem0.counter ];
+			if( triangle.enabled ) {
+				triangle.lengthCounter = LengthLUT[ triangle.regTimer.sem0.counter ];
+			}
 			triangle.reloadFlag = true;
 		} break;
 
@@ -124,7 +130,9 @@ void APU::WriteReg( const uint16_t addr, const uint8_t value )
 			noise.envelope.startFlag = true;
 			noise.envelope.decayLevel = 0x0F;
 			noise.regFreq2.byte = value;
-			noise.lengthCounter = LengthLUT[ noise.regFreq2.sem.length ];
+			if( noise.enabled ) {
+				noise.lengthCounter = LengthLUT[ noise.regFreq2.sem.length ];
+			}
 		} break;
 
 		case 0x4010: {
@@ -153,29 +161,29 @@ void APU::WriteReg( const uint16_t addr, const uint8_t value )
 		{
 			regStatus.byte = value;
 
-			pulse1.mute		= !regStatus.sem.p1;
-			pulse2.mute		= !regStatus.sem.p2;
-			triangle.mute	= !regStatus.sem.t;
-			noise.mute		= !regStatus.sem.n;
-			dmc.mute		= !regStatus.sem.d;
+			pulse1.enabled		= regStatus.sem.p1;
+			pulse2.enabled		= regStatus.sem.p2;
+			triangle.enabled	= regStatus.sem.t;
+			noise.enabled		= regStatus.sem.n;
+			dmc.enabled			= regStatus.sem.d;
 
-			if ( pulse1.mute ) {
+			if ( pulse1.enabled == false ) {
 				pulse1.lengthCounter = 0;
 			}
 
-			if ( pulse2.mute ) {
+			if ( pulse2.enabled == false ) {
 				pulse2.lengthCounter = 0;
 			}
 
-			if( triangle.mute ) {
+			if( triangle.enabled == false ) {
 				triangle.lengthCounter = 0;
 			}
 
-			if ( noise.mute ) {
+			if ( noise.enabled == false ) {
 				noise.lengthCounter = 0;
 			}
-			
-			if ( dmc.mute ) {
+
+			if ( dmc.enabled == false ) {
 				dmc.bytesRemaining = 0;
 			} else if ( dmc.bytesRemaining == 0 ) {
 				dmc.startRead = true;
@@ -339,7 +347,7 @@ void APU::ExecPulseChannel( PulseChannel& pulse )
 	float pulseSample = pulse.envelope.output;
 	if ( ( pulse.lengthCounter == 0 ) ||
 		( pulse.period.Value() < 8 ) ||
-		pulse.mute ||
+		( pulse.enabled == false ) ||
 		!IsDutyHigh( pulse ) || pulse.sweep.mute )
 	{
 		pulseSample = 0;
@@ -365,7 +373,7 @@ void APU::ExecChannelTri()
 	}
 
 	float volume = TriLUT[ triangle.sequenceStep ];
-	if ( triangle.mute ) {
+	if ( triangle.enabled == false ) {
 		volume = 0;
 	}
 
@@ -388,7 +396,7 @@ void APU::ExecChannelNoise()
 	}
 
 	uint8_t volume = noise.envelope.output;
-	if ( ( noise.lengthCounter == 0 ) || ( noise.shift.Value() & BIT_MASK( 0 ) ) || noise.mute ) {
+	if ( ( noise.lengthCounter == 0 ) || ( noise.shift.Value() & BIT_MASK( 0 ) ) || ( noise.enabled == false ) ) {
 		volume = 0;
 	}
 
@@ -496,7 +504,7 @@ void APU::ExecChannelDMC()
 	}
 
 	const float volume = dmc.outputLevel.Value();
-	dmc.sample = ( dmc.mute ? 0.0f : volume );
+	dmc.sample = ( dmc.enabled ? volume : 0.0f );
 }
 
 

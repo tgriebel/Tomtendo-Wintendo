@@ -253,7 +253,7 @@ public:
 	sweep_t				sweep;
 	uint32_t			volume;
 	float				sample;
-	bool				mute;
+	bool				enabled;
 
 	void Clear()
 	{
@@ -267,7 +267,7 @@ public:
 		volume					= 0;
 		lengthCounter			= 0;
 
-		mute					= true;
+		enabled					= false;
 		sweep.reloadFlag		= true;
 		sweep.mute				= false;
 		
@@ -311,7 +311,7 @@ public:
 	uint8_t				sequenceStep;
 	cpuCycle_t			lastCycle;
 	float				sample;
-	bool				mute;
+	bool				enabled;
 
 	void Clear()
 	{
@@ -325,7 +325,7 @@ public:
 		lengthCounter = 0;
 		timer.Reload();
 
-		mute = true;
+		enabled = false;
 	}
 
 	void GetDebugInfo( apuTriangleDebug_t& dbgInfo )
@@ -356,7 +356,7 @@ public:
 	float				sample;
 	apuCycle_t			lastApuCycle;
 	cpuCycle_t			lastCycle;
-	bool				mute;
+	bool				enabled;
 
 	void Clear()
 	{
@@ -373,7 +373,7 @@ public:
 		lastApuCycle = apuCycle_t( 0 );
 		lastCycle = cpuCycle_t( 0 );
 
-		mute = true;
+		enabled = false;
 	}
 
 	void GetDebugInfo( apuNoiseDebug_t& dbgInfo )
@@ -406,7 +406,7 @@ public:
 	cpuCycle_t			lastCycle;
 	bool				irq;
 	bool				silenceFlag;
-	bool				mute;
+	bool				enabled;
 
 	uint16_t			addr;
 	uint16_t			bitCnt;
@@ -438,7 +438,7 @@ public:
 		periodCounter	= period;
 		silenceFlag		= true;
 		irq				= false;
-		mute			= false;
+		enabled			= true;
 
 		outputLevel.Reload();
 		samples.Reset();
