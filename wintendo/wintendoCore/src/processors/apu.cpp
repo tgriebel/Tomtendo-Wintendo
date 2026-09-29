@@ -600,13 +600,13 @@ bool APU::Step( const cpuCycle_t& nextCpuCycle )
 		ExecFrameCounter();
 		ExecChannelTri();
 		ExecChannelDMC();
+		ExecChannelNoise();
 
 		//apuCycle = chrono::duration_cast<apuCycle_t>( cpuCycle );
 		if ( ( cpuCycle.count() & 1 ) == 0 )
 		{
 			ExecPulseChannel( pulse1 );
 			ExecPulseChannel( pulse2 );
-			ExecChannelNoise();
 		}
 
 		Mixer();
