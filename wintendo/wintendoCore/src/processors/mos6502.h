@@ -217,38 +217,10 @@ private:
 	bool				halt;
 
 public:
-	void Reset()
-	{
-		PC = resetVector;
 
-		X = 0;
-		Y = 0;
-		A = 0;
-		SP = 0xFD;
+	Cpu6502();
 
-		P.byte = 0;
-		P.bit.i = 1;
-		P.bit.b = 1;
-
-		cycle = cpuCycle_t( 7 ); // FIXME: +7 is a hack to match test log, +21 on PPU
-
-		interruptRequestNMI = false;
-		interruptRequest = false;
-		oamInProcess = false;
-		dmcTransfer = false;
-
-		halt = false;
-
-		resetLog = false;
-		dbgLog.Reset( 1 );
-	}
-
-	Cpu6502()
-	{
-		resetLog = false;
-		Reset();
-		BuildOpLUT();
-	}
+	void Reset();
 
 	bool Step( const cpuCycle_t& nextCycle );
 	void RegisterSystem( wtSystem* sys );
